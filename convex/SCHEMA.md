@@ -133,7 +133,14 @@ Cross-references between KB nodes. These capture relationships that don't fit in
 | targetNodeId | reference | The node this link points to |
 | relationship | `"depends_on"` \| `"related_to"` \| `"see_also"` \| `"parent_of"` | What kind of relationship |
 
+**Indexes:**
+- `by_orgId` - Query all links for an organization (used by knowledge graph visualization)
+- `by_sourceNodeId` - Find outgoing links from a node
+- `by_targetNodeId` - Find incoming links to a node
+
 **Example:** The "VAT Filings" node might have a `depends_on` link to "Invoices" because VAT filings reference invoice data.
+
+**Used in:** Knowledge graph visualization (`convex/knowledgeGraph.ts`) to show relationships between nodes in the interactive force-directed graph.
 
 ---
 
@@ -281,3 +288,61 @@ Agent picks best guide  ──>  Runs job  ──>  Files report  ──>  Guide
 | **Verify** | `verificationQuestions`, `knowledgeBaseNodes` |
 | **Ready / Use** | All tables (read), `performanceReports` (write) |
 | **Cross-org** | `forumGuides`, `performanceReports` |
+
+---
+
+## Knowledge Graph Visualization
+
+The **Structure** phase features an interactive, real-time force-directed graph visualization built with `react-force-graph-2d`.
+
+### Backend Queries (`convex/knowledgeGraph.ts`)
+
+**`getKnowledgeGraph(orgId)`**
+- Returns all `knowledgeBaseNodes` and `knowledgeBaseLinks` for an organization
+- Transforms data into react-force-graph format:
+  - Nodes: `{ id, name, depth, status, readme, parentId, orderIndex }`
+  - Links: `{ source, target, relationship }`
+- Uses indexes: `by_orgId` on both tables for efficient querying
+
+**`getNodeDetails(nodeId)`**
+- Returns detailed information about a specific node
+- Includes:
+  - Node data (name, readme, status, depth)
+  - Associated data items via `nodeDataItems` junction table
+  - Outgoing links via `by_sourceNodeId` index
+  - Incoming links via `by_targetNodeId` index
+
+### Frontend Components (`src/components/`)
+
+**`KnowledgeGraphView.tsx`**
+- Main graph visualization component
+- Features:
+  - Color-coded nodes by status (verified=green, draft=orange, archived=gray)
+  - Color-coded links by relationship type
+  - Node size based on depth (root nodes are larger)
+  - Hover effects to highlight connected nodes
+  - Click to select nodes
+  - Auto-zoom to fit on load
+  - Real-time updates via Convex reactive queries
+
+**`GraphNodeDetail.tsx`**
+- Side panel showing node details
+- Displays: status, depth, README, data items, links
+
+### Real-time Updates
+
+The graph automatically updates when:
+- Agents create new nodes during Structure phase (draft nodes appear)
+- Humans verify nodes during Verify phase (nodes turn green)
+- Links are created or modified
+
+New draft nodes are highlighted with a glow effect to draw attention.
+
+### Demo Data
+
+Use `convex/seed.ts` → `seedAccountingFirmKB(orgId)` to populate demo data:
+- Creates 9 nodes (Finance, Clients, Compliance + children)
+- Creates 11 links showing various relationship types
+- Perfect for demonstrating the graph in Phase 3
+
+See `QUICKSTART.md` and `KNOWLEDGE_GRAPH_IMPLEMENTATION.md` for setup instructions.

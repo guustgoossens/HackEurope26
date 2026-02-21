@@ -3,6 +3,34 @@
 Write your Convex functions here.
 See https://docs.convex.dev/functions for more.
 
+## HackEurope26 Project Files
+
+This directory contains the backend logic for an Agent-Ready Data Infrastructure platform:
+
+- **`schema.ts`** - Database schema (see SCHEMA.md for full documentation)
+- **`knowledgeGraph.ts`** - Queries for knowledge graph visualization
+- **`seed.ts`** - Demo data seeding functions
+- **`myFunctions.ts`** - Example queries and mutations
+- **`auth.config.ts`** - WorkOS authentication configuration
+
+### Knowledge Graph Queries
+
+The `knowledgeGraph.ts` file provides real-time data for the force-directed graph visualization:
+
+```ts
+// Get all nodes and links for an organization
+const graphData = useQuery(api.knowledgeGraph.getKnowledgeGraph, { orgId });
+
+// Get detailed information about a specific node
+const nodeDetails = useQuery(api.knowledgeGraph.getNodeDetails, { nodeId });
+```
+
+See `KNOWLEDGE_GRAPH_IMPLEMENTATION.md` in the project root for integration guide.
+
+---
+
+## Convex Basics
+
 A query function that takes two arguments looks like:
 
 ```ts

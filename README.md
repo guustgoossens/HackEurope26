@@ -9,6 +9,18 @@ After the initial setup (<2 minutes) you'll have a working full-stack app using:
 - [Vite](https://vitest.dev/) for optimized web hosting
 - [Tailwind](https://tailwindcss.com/) for building great looking accessible UI
 - [WorkOS AuthKit](https://workos.com/docs/authkit) for authentication
+- [react-force-graph](https://github.com/vasturiano/react-force-graph) for interactive knowledge graph visualization
+
+## HackEurope26 Project Features
+
+This project includes an **Agent-Ready Data Infrastructure** with:
+
+- **Interactive Knowledge Graph** - Real-time force-directed graph visualization of hierarchical knowledge base
+- **5-Phase Product Flow** - Onboard → Explore → Structure → Verify → Use
+- **AI Agent Integration** - Built for multi-agent orchestration (Gemini + Claude)
+- **Human-in-the-Loop Verification** - Structured questionnaires for data validation
+
+See `docs/README.md` for full project context and `QUICKSTART.md` for knowledge graph setup.
 
 ## Get started
 

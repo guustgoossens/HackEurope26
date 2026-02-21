@@ -27,7 +27,8 @@
     "@workos-inc/authkit-react": "^0.16.0",
     "convex": "^1.31.7",
     "react": "^19.2.4",
-    "react-dom": "^19.2.4"
+    "react-dom": "^19.2.4",
+    "react-force-graph-2d": "^1.29.1"
   },
   "devDependencies": {
     "@convex-dev/eslint-plugin": "^1.1.1",

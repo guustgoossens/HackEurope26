@@ -113,6 +113,7 @@ export default defineSchema({
       v.literal("parent_of"),
     ),
   })
+    .index("by_orgId", ["orgId"])
     .index("by_sourceNodeId", ["sourceNodeId"])
     .index("by_targetNodeId", ["targetNodeId"]),
 
