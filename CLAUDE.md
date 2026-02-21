@@ -32,7 +32,9 @@ bun run format           # Prettier (printWidth: 120, singleQuote: true)
 
 ## Convex Conventions
 
-These rules are critical — they come from `.cursor/rules/convex_rules.mdc`:
+For detailed Convex rules, examples, and API patterns, refer to `.claude/convex_rules.mdc`. Always consult that file when writing or modifying Convex functions, schemas, or queries.
+
+Key rules (summary):
 
 - **Always use new function syntax** with `args` + `returns` validators on every function (query, mutation, action, and their internal variants)
 - **Return validators are required.** Functions that don't return a value must use `returns: v.null()` and explicitly `return null`
