@@ -98,9 +98,15 @@ export default defineSchema({
     authorAgent: v.string(),
     tags: v.array(v.string()),
     upvotes: v.number(),
+    sourceType: v.optional(v.string()),
+    phase: v.optional(v.string()),
+    fileType: v.optional(v.string()),
   })
     .index('by_category', ['category'])
-    .searchIndex('search_content', { searchField: 'content' }),
+    .searchIndex('search_content', {
+      searchField: 'content',
+      filterFields: ['sourceType', 'phase', 'fileType', 'category'],
+    }),
 
   pipeline_status: defineTable({
     clientId: v.id('clients'),

@@ -10,17 +10,29 @@ const forumEntryDocValidator = v.object({
   authorAgent: v.string(),
   tags: v.array(v.string()),
   upvotes: v.number(),
+  sourceType: v.optional(v.string()),
+  phase: v.optional(v.string()),
+  fileType: v.optional(v.string()),
 });
 
 export const search = internalQuery({
   args: {
     query: v.string(),
+    sourceType: v.optional(v.string()),
+    phase: v.optional(v.string()),
+    fileType: v.optional(v.string()),
   },
   returns: v.array(forumEntryDocValidator),
   handler: async (ctx, args) => {
     return await ctx.db
       .query('forum_entries')
-      .withSearchIndex('search_content', (q) => q.search('content', args.query))
+      .withSearchIndex('search_content', (q) => {
+        let query = q.search('content', args.query);
+        if (args.sourceType !== undefined) query = query.eq('sourceType', args.sourceType);
+        if (args.phase !== undefined) query = query.eq('phase', args.phase);
+        if (args.fileType !== undefined) query = query.eq('fileType', args.fileType);
+        return query;
+      })
       .take(20);
   },
 });
@@ -32,6 +44,9 @@ export const create = internalMutation({
     content: v.string(),
     authorAgent: v.string(),
     tags: v.array(v.string()),
+    sourceType: v.optional(v.string()),
+    phase: v.optional(v.string()),
+    fileType: v.optional(v.string()),
   },
   returns: v.id('forum_entries'),
   handler: async (ctx, args) => {
@@ -42,6 +57,9 @@ export const create = internalMutation({
       authorAgent: args.authorAgent,
       tags: args.tags,
       upvotes: 0,
+      ...(args.sourceType !== undefined && { sourceType: args.sourceType }),
+      ...(args.phase !== undefined && { phase: args.phase }),
+      ...(args.fileType !== undefined && { fileType: args.fileType }),
     });
     return id;
   },
@@ -58,6 +76,9 @@ export const list = query({
 export const publicSearch = query({
   args: {
     query: v.string(),
+    sourceType: v.optional(v.string()),
+    phase: v.optional(v.string()),
+    fileType: v.optional(v.string()),
   },
   returns: v.array(forumEntryDocValidator),
   handler: async (ctx, args) => {
@@ -66,7 +87,13 @@ export const publicSearch = query({
     }
     return await ctx.db
       .query('forum_entries')
-      .withSearchIndex('search_content', (q) => q.search('content', args.query))
+      .withSearchIndex('search_content', (q) => {
+        let query = q.search('content', args.query);
+        if (args.sourceType !== undefined) query = query.eq('sourceType', args.sourceType);
+        if (args.phase !== undefined) query = query.eq('phase', args.phase);
+        if (args.fileType !== undefined) query = query.eq('fileType', args.fileType);
+        return query;
+      })
       .take(20);
   },
 });

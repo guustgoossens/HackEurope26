@@ -159,8 +159,21 @@ class ConvexClient:
 
     # ── Agent forum ────────────────────────────────────────────────────
 
-    async def search_forum(self, query: str) -> list[dict]:
-        result = await self._post("/api/agent/forum/search", {"query": query})
+    async def search_forum(
+        self,
+        query: str,
+        source_type: str | None = None,
+        phase: str | None = None,
+        file_type: str | None = None,
+    ) -> list[dict]:
+        payload: dict[str, Any] = {"query": query}
+        if source_type is not None:
+            payload["sourceType"] = source_type
+        if phase is not None:
+            payload["phase"] = phase
+        if file_type is not None:
+            payload["fileType"] = file_type
+        result = await self._post("/api/agent/forum/search", payload)
         if isinstance(result, dict):
             return result.get("results", [])
         return result if isinstance(result, list) else []
@@ -172,17 +185,24 @@ class ConvexClient:
         content: str,
         author_agent: str,
         tags: list[str],
+        source_type: str | None = None,
+        phase: str | None = None,
+        file_type: str | None = None,
     ) -> dict | None:
-        return await self._post(
-            "/api/agent/forum/create",
-            {
-                "title": title,
-                "category": category,
-                "content": content,
-                "authorAgent": author_agent,
-                "tags": tags,
-            },
-        )
+        payload: dict[str, Any] = {
+            "title": title,
+            "category": category,
+            "content": content,
+            "authorAgent": author_agent,
+            "tags": tags,
+        }
+        if source_type is not None:
+            payload["sourceType"] = source_type
+        if phase is not None:
+            payload["phase"] = phase
+        if file_type is not None:
+            payload["fileType"] = file_type
+        return await self._post("/api/agent/forum/create", payload)
 
     # ── Questionnaire ──────────────────────────────────────────────────
 

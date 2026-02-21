@@ -90,7 +90,10 @@ EXPLORER_TOOLS = [
         description="Search the agent forum for relevant past experiences",
         parameters={
             "properties": {
-                "query": {"type": "string", "description": "Search query"},
+                "query": {"type": "string", "description": "Full-text search query"},
+                "source_type": {"type": "string", "description": "Filter by source (gmail, drive, sheets)"},
+                "phase": {"type": "string", "description": "Filter by phase (explore, structure, verify, use)"},
+                "file_type": {"type": "string", "description": "Filter by file type (spreadsheet, pdf, email, document)"},
             },
             "required": ["query"],
         },
@@ -104,6 +107,9 @@ EXPLORER_TOOLS = [
                 "category": {"type": "string", "description": "Category (e.g. 'gmail', 'drive', 'sheets', 'general')"},
                 "content": {"type": "string", "description": "Entry content"},
                 "tags": {"type": "array", "items": {"type": "string"}, "description": "Tags"},
+                "source_type": {"type": "string", "description": "Source type (gmail, drive, sheets)"},
+                "phase": {"type": "string", "description": "Pipeline phase (explore, structure, verify, use)"},
+                "file_type": {"type": "string", "description": "File type (spreadsheet, pdf, email, document)"},
             },
             "required": ["title", "category", "content"],
         },
@@ -162,7 +168,12 @@ STRUCTURER_TOOLS = [
         name="check_forum",
         description="Search the agent forum for relevant past experiences",
         parameters={
-            "properties": {"query": {"type": "string", "description": "Search query"}},
+            "properties": {
+                "query": {"type": "string", "description": "Full-text search query"},
+                "source_type": {"type": "string", "description": "Filter by source (gmail, drive, sheets)"},
+                "phase": {"type": "string", "description": "Filter by phase (explore, structure, verify, use)"},
+                "file_type": {"type": "string", "description": "Filter by file type (spreadsheet, pdf, email, document)"},
+            },
             "required": ["query"],
         },
     ),
@@ -171,10 +182,13 @@ STRUCTURER_TOOLS = [
         description="Write to the agent forum",
         parameters={
             "properties": {
-                "title": {"type": "string"},
-                "category": {"type": "string"},
-                "content": {"type": "string"},
-                "tags": {"type": "array", "items": {"type": "string"}},
+                "title": {"type": "string", "description": "Entry title"},
+                "category": {"type": "string", "description": "Category"},
+                "content": {"type": "string", "description": "Entry content"},
+                "tags": {"type": "array", "items": {"type": "string"}, "description": "Tags"},
+                "source_type": {"type": "string", "description": "Source type (gmail, drive, sheets)"},
+                "phase": {"type": "string", "description": "Pipeline phase (explore, structure, verify, use)"},
+                "file_type": {"type": "string", "description": "File type (spreadsheet, pdf, email, document)"},
             },
             "required": ["title", "category", "content"],
         },
