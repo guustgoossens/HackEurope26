@@ -1,151 +1,112 @@
-# Context
+# Project Context: Agent-Ready Data Infrastructure for SMEs
 
-## The Problem
+## Vision
 
-AI demos fail. Not because the models are bad, but because company data is. Most businesses — especially traditional ones like accounting firms — have data that is messy, unstructured, and scattered across dozens of tools, inboxes, and drives. When an AI agent lands in that environment, it has none of the context that a 10-year employee carries in their head. It doesn't know where things are, what matters, or how pieces relate. The result: shallow retrieval, hallucinated answers, and demos that underwhelm.
+**Long-term:** Build the infrastructure layer that makes any company agent-ready. 
+Today, SMEs and traditional businesses have chaotic, fragmented data — Excel files, 
+forgotten Airtables, emails, cloud systems built by external contractors they don't 
+control. When an agentic workforce arrives (and it's arriving now), these companies 
+will be paralyzed: no context, no organizational memory, no navigable structure. 
+We build the layer that fixes that.
 
-The deeper issue is that making data "AI-ready" is treated as a one-time ETL job, when it's actually an ongoing structuring and verification problem that requires both machine intelligence and human judgment.
+**Short-term (hackathon focus):** Prove the concept on French accounting firms 
+(cabinets d'expertise comptable). 19,500 firms in France, 70% are TPEs (<10 people), 
+all facing AI disruption, all with fragmented data across multiple tools. 
+Perfect beachhead market.
 
-## The Idea
+## The Core Problem
 
-A platform that connects to a company's existing data sources, explores and understands what's there, and organizes it into a structured, AI-navigable knowledge base — with the human in the loop to verify and correct what the AI can't figure out on its own.
+AI agents fail in enterprise environments not because models are bad, but because 
+company data is unstructured and unnavigable. A new agent arriving at an SME is 
+like a consultant on day one — zero context, zero access, zero efficiency.
 
-The output is not a reduction of the data. It's a smarter routing layer on top of it: a hierarchical index with progressive disclosure, so any AI agent can navigate the company's knowledge with precision instead of brute-force search.
+The solution is not better RAG. It's a **hierarchical, verified knowledge base** 
+that any agent can navigate precisely, built by AI agents with human verification 
+in the loop.
 
-## Three Primitives
+## Three Core Primitives
 
-The approach is built on three core primitives that reinforce each other.
+1. **Skill-Based Knowledge Base (Static)** — hierarchical folder structure where 
+every level has a README explaining what's inside, why it matters, dependencies, 
+and usage guidelines. Progressive disclosure from overview to detail. 
+Outperforms flat vector stores on complex document-heavy domains.
 
-### 1. Skill-Based Knowledge Base (Static Index)
+2. **Agent Forum (Dynamic)** — structured wiki of action guides that agents 
+write to and read from. When an agent figures out how to connect a data source 
+or resolve a format ambiguity, it writes that as a reusable guide. 
+Living documentation that improves with every engagement. The data moat.
 
-Instead of dumping all company data into a flat vector store, we organize it into a hierarchical folder structure where every level has a README that explains what's inside, why it matters, what depends on it, and how to use it. This is the pattern behind the Accaio intelligence brain — numbered directories, progressive disclosure from overview to detail, cross-references between domains, and role-based usage guidelines.
+3. **Human-in-the-Loop Verification** — AI builds draft KB structure, 
+surfaces ambiguities as structured questionnaires. 
+Examples: "This column 'Ref' — is it invoice reference, client code, or internal ID?" 
+Human corrects the shape. Output: verified, paradox-free knowledge base.
 
-Research supports this: hierarchical retrieval approaches (like HiREC for financial QA) consistently outperform flat retrieval on complex, document-heavy domains. The key insight is that an AI agent navigating a well-indexed knowledge base — folder by folder, README by README — retrieves more accurately than one doing similarity search across an unstructured pile.
+## 5-Phase Product Flow
 
-This is the **static** part of the system: the organized map of what a company knows.
+1. **Onboard** — connect data sources (Google Drive, OneDrive, Gmail, Outlook)
+2. **Explore** — agents crawl and discover, data visualization of what exists
+3. **Structure** — AI builds hierarchical KB with READMEs and cross-references
+4. **Verify** — human answers structured questionnaire to resolve ambiguities
+5. **Use** — any agent can navigate the KB; build domain agents on top
 
-### 2. Agent Forum (Dynamic Action Guides)
+## Tech Stack
 
-Inspired by Moltbook — a social network where AI agents are the primary participants. We apply this primitive not as a social network, but as a **structured wiki of action guides** that agents write to and read from.
+- **Gemini** — multimodal data processing (PDFs, images, spreadsheets, emails)
+- **Claude** — agent orchestration, KB structuring, README generation, 
+  contradiction reasoning
+- **Convex** — real-time reactive backend (UI updates live as agents work)
+- **React + Vite + Tailwind** — frontend
+- **Google APIs + Microsoft Graph API** — data source connectors
+- **react-force-graph** — knowledge graph visualization (Obsidian-style)
+- **Recharts** — data landscape visualization (treemap/bubble charts)
 
-When an agent figures out how to connect to a new data source, clean a particular data format, or resolve a common ambiguity, it writes that knowledge into the forum as a structured guide. Other agents — working on other companies — can then retrieve and apply those guides. The wiki improves with every engagement.
+## Hackathon Scope (12 hours total: ~8h today + 4h tomorrow morning)
 
-This is the **dynamic** part: a living documentation layer that accumulates operational intelligence over time. It's also the data moat — an AI-native knowledge base about the process of connecting, cleaning, and organizing data across different tools, formats, and domains.
+**Demo narrative:** One French accounting firm, messy real-world data, 
+watch the system explore → structure → ask for verification → produce navigable KB.
 
-### 3. Human-in-the-Loop Verification
+**Focus on phases 2 + 3 + 4 only.** Phase 5 shown as pre-built result.
 
-Automatically derived knowledge is always incomplete. Data has contradictions, ambiguities, and gaps that no model can resolve from the data alone. The critical UX layer is a **verification questionnaire**: the AI builds a draft structure, then surfaces the things it's uncertain about as a structured multi-option form — similar to Claude Code's plan mode.
+**Two key visualizations:**
+- Data landscape view (Phase 2): bubble/treemap showing data volume by source and type
+- Knowledge graph (Phase 3): force-directed graph showing KB hierarchy + cross-references
 
-Examples:
-- "This column is labeled 'Ref'. Does it mean invoice reference, client code, or internal ID?"
-- "Q3 revenue is EUR 1.2M in one report and EUR 1.4M in another. Which is correct?"
-- "We found 15 VAT filing documents. Should they live under Compliance, Finance, or both?"
+Use **synthetic but realistic** accounting firm data for the demo.
 
-The agent builds the draft; the human corrects the shape. The result is a verified, paradox-free knowledge base rather than a best guess.
+## Team & Roles
 
-## How They Combine
+- **Emeric** — product design, frontend, pitch & demo ownership
+- **Emily** — data, data visualization
+- **Guust + Elie** — ML, agentic tech, backend dev
 
-```
-┌─────────────────────────────────────────────────────┐
-│                   PHASE 1: ONBOARD                  │
-│                                                     │
-│  Company details → Connect data sources → Set goals │
-│  (Google Drive, OneDrive, Gmail, Outlook, etc.)     │
-└──────────────────────┬──────────────────────────────┘
-                       │
-                       ▼
-┌─────────────────────────────────────────────────────┐
-│                  PHASE 2: EXPLORE                   │
-│                                                     │
-│  AI agents connect to sources → Crawl & discover    │
-│  → Data visualization (volume, types, character)    │
-│  → Agents consult the Forum for how-to guides       │
-└──────────────────────┬──────────────────────────────┘
-                       │
-                       ▼
-┌─────────────────────────────────────────────────────┐
-│                 PHASE 3: STRUCTURE                  │
-│                                                     │
-│  AI builds hierarchical KB with READMEs             │
-│  → Progressive disclosure (overview → detail)       │
-│  → Cross-references between domains                 │
-│  → Agents write new guides to the Forum             │
-└──────────────────────┬──────────────────────────────┘
-                       │
-                       ▼
-┌─────────────────────────────────────────────────────┐
-│                  PHASE 4: VERIFY                    │
-│                                                     │
-│  AI surfaces ambiguities & contradictions           │
-│  → Human answers structured questionnaire           │
-│  → KB gets corrected and finalized                  │
-│  → Result: verified, navigable knowledge base       │
-└──────────────────────┬──────────────────────────────┘
-                       │
-                       ▼
-┌─────────────────────────────────────────────────────┐
-│                   PHASE 5: USE                      │
-│                                                     │
-│  Any AI agent can now navigate the KB precisely     │
-│  → Build domain-specific agents on top (email,      │
-│    client comms, compliance, reporting)              │
-│  → Agents stay informed by the company's context    │
-└─────────────────────────────────────────────────────┘
-```
+## Competitive Landscape
 
-## Business Model
+Existing tools (Pennylane, Dext, Cegid, Inqom, Agiris) all do the same thing: 
+automate accounting data entry and production. Level 1.
 
-### Who
+**Nobody is building the organizational knowledge layer.** 
+That's the gap. Not processing client accounting data — 
+structuring the firm's own operational knowledge to support agents.
 
-Traditional businesses that want to become AI-native but are blocked by their own data. Starting with **accountancy firms** — they have high data volume, fragmented tools, regulatory pressure, and are acutely aware that AI is coming for their industry.
+## Key Differentiators
 
-### The Pitch
+- Hierarchical KB outperforms flat RAG on complex document-heavy domains
+- Human verification loop produces paradox-free output (not best-guess)
+- Agent Forum creates cross-company operational intelligence moat
+- RGPD/data sovereignty angle is a real selling point for French accounting firms
 
-"Your data is the bottleneck for AI. We connect to your existing systems, let AI explore and organize what's there, and give you a verified knowledge base that any AI agent can navigate. First step: understand what you have. Next step: build on it."
+## Constraints & Principles
 
-### Revenue Angle
+- Data never leaves the client environment (important for accounting firms + RGPD)
+- Human judgment is not optional — it's a feature, not a fallback
+- Start with the concrete accounting case, open to "this works for any company" later
+- Don't over-pitch the vision upfront — anchor on the specific problem first
 
-1. **Onboarding as a service** — the exploration, structuring, and verification process itself has standalone value. Companies get a clear overview of their data landscape for the first time.
-2. **Outcome-based** — once the KB exists, build AI agents on top (email agent, compliance agent, client communication agent) that are actually informed by the company's context. Charge for outcomes these agents deliver.
-3. **Platform play** — the Forum accumulates cross-company operational intelligence about connecting and organizing data. This becomes the moat: every new engagement makes the platform smarter at handling the next one.
+## What "Done" Looks Like for the Hackathon
 
-### Why Now
-
-- LLMs can finally process unstructured data meaningfully (multimodal, long context, tool use)
-- Traditional businesses feel AI pressure but can't act because their data isn't ready
-- The "AI-readiness" gap is a recognized pain point with no clean solution
-- Agent infrastructure (tool calling, structured outputs) has matured enough to build this
-
-## Technology Approach
-
-- **Gemini** for multimodal data processing — ingesting PDFs, images, spreadsheets, emails in their native formats
-- **Claude** for agent orchestration — structuring the knowledge base, generating READMEs, creating verification questions, reasoning about contradictions
-- **Convex** as the real-time backend — reactive data layer so the UI updates live as agents work
-- **React + Vite + Tailwind** for the frontend
-- Data source connections via **Google APIs** and **Microsoft Graph API**
-
-## Open Questions
-
-### Concept
-- How deep should the initial data exploration go? Full crawl vs. sampling?
-- Should the verification questionnaire be a one-time thing or ongoing as new data arrives?
-- How much of the KB structure should be templated (based on industry) vs. fully AI-generated?
-- What's the right level of human involvement — just verification, or also manual reorganization?
-
-### Product
-- What does the "talk to your data" interface look like after the KB is built?
-- How do we handle data that changes frequently (new emails, updated docs)?
-- Should companies see the Forum / action guides, or is that internal-only?
-- What's the minimal onboarding flow that still delivers value?
-
-### Business
-- Do we charge for the structuring process, or use it as a free hook into paid agents?
-- How do we handle data privacy / security concerns (data never leaves the machine vs. cloud processing)?
-- Is the first target a single accountancy firm we have a relationship with, or a broader launch?
-- How do we measure and communicate the value of "AI-ready data" to non-technical buyers?
-
-### Hackathon Scope
-- What's the demo narrative? Walk through a single accountancy firm's data end-to-end?
-- Do we need real accountancy data or can we use realistic synthetic data?
-- Which data source connection is most impressive for the demo (email? drive? both?)
-- How do we show the Forum primitive in 5 minutes of demo time?
+A live demo showing:
+1. Chaotic input data (emails + Drive docs + Excel) from a fictional accounting firm
+2. Agent exploring and mapping what exists (data landscape viz)
+3. Agent building a structured KB (knowledge graph appearing in real-time via Convex)
+4. Verification questionnaire surfacing 3-4 ambiguities for human input
+5. Final navigable KB — and a domain agent answering a precise question using it
