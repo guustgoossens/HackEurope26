@@ -59,6 +59,8 @@ Human corrects the shape. Output: verified, paradox-free knowledge base.
 - **Google APIs + Microsoft Graph API** — data source connectors
 - **react-force-graph** — knowledge graph visualization (Obsidian-style)
 - **Recharts** — data landscape visualization (treemap/bubble charts)
+- Paid.ai — agentic payment visualisation
+   
 
 ## Hackathon Scope (12 hours total: ~8h today + 4h tomorrow morning)
 
