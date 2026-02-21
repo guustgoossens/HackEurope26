@@ -8,7 +8,19 @@
  * @module
  */
 
-import type * as myFunctions from "../myFunctions.js";
+import type * as agentEvents from "../agentEvents.js";
+import type * as clients from "../clients.js";
+import type * as composio from "../composio.js";
+import type * as contradictions from "../contradictions.js";
+import type * as dataSources from "../dataSources.js";
+import type * as explorations from "../explorations.js";
+import type * as forum from "../forum.js";
+import type * as http from "../http.js";
+import type * as knowledge from "../knowledge.js";
+import type * as pipeline from "../pipeline.js";
+import type * as questionnaires from "../questionnaires.js";
+import type * as seed from "../seed.js";
+import type * as triggerPipeline from "../triggerPipeline.js";
 
 import type {
   ApiFromModules,
@@ -17,7 +29,19 @@ import type {
 } from "convex/server";
 
 declare const fullApi: ApiFromModules<{
-  myFunctions: typeof myFunctions;
+  agentEvents: typeof agentEvents;
+  clients: typeof clients;
+  composio: typeof composio;
+  contradictions: typeof contradictions;
+  dataSources: typeof dataSources;
+  explorations: typeof explorations;
+  forum: typeof forum;
+  http: typeof http;
+  knowledge: typeof knowledge;
+  pipeline: typeof pipeline;
+  questionnaires: typeof questionnaires;
+  seed: typeof seed;
+  triggerPipeline: typeof triggerPipeline;
 }>;
 
 /**
