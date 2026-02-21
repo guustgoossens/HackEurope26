@@ -129,50 +129,12 @@ export default defineSchema({
     metadata: v.optional(v.any()),
   }).index('by_clientId', ['clientId']),
 
-  // ─── LEGACY VISUALIZATION TABLES (for demo) ─────────────────────
-  organizations: defineTable({
+  // Raw discovered data items (files, emails, etc) before processing into knowledge
+  data_items: defineTable({
+    clientId: v.id('clients'),
+    dataSourceId: v.id('data_sources'),
     name: v.string(),
-    description: v.optional(v.string()),
-    phase: v.union(
-      v.literal('onboard'),
-      v.literal('explore'),
-      v.literal('structure'),
-      v.literal('verify'),
-      v.literal('ready'),
-    ),
-    goals: v.optional(v.array(v.string())),
-    createdBy: v.optional(v.string()),
-  }).index('by_createdBy', ['createdBy']),
-
-  dataSources: defineTable({
-    organizationId: v.id('organizations'),
-    name: v.string(),
-    provider: v.union(
-      v.literal('google_drive'),
-      v.literal('gmail'),
-      v.literal('sharepoint'),
-      v.literal('dropbox'),
-      v.literal('onedrive'),
-      v.literal('local_upload'),
-      v.literal('other'),
-    ),
-    connectionStatus: v.union(
-      v.literal('pending'),
-      v.literal('connected'),
-      v.literal('syncing'),
-      v.literal('error'),
-      v.literal('disconnected'),
-    ),
-    lastSyncedAt: v.optional(v.number()),
-    itemCount: v.optional(v.number()),
-    errorMessage: v.optional(v.string()),
-  }).index('by_organizationId', ['organizationId']),
-
-  dataItems: defineTable({
-    organizationId: v.id('organizations'),
-    dataSourceId: v.id('dataSources'),
-    name: v.string(),
-    path: v.string(),
+    path: v.optional(v.string()),
     fileType: v.union(
       v.literal('pdf'),
       v.literal('spreadsheet'),
@@ -183,58 +145,18 @@ export default defineSchema({
       v.literal('other'),
     ),
     size: v.optional(v.number()),
+    mimeType: v.optional(v.string()),
     processingStatus: v.union(
       v.literal('discovered'),
       v.literal('processing'),
       v.literal('processed'),
       v.literal('error'),
     ),
+    processedAt: v.optional(v.number()),
     errorMessage: v.optional(v.string()),
     metadata: v.optional(v.any()),
   })
-    .index('by_organizationId', ['organizationId'])
-    .index('by_dataSourceId', ['dataSourceId']),
-
-  knowledgeBaseNodes: defineTable({
-    organizationId: v.id('organizations'),
-    name: v.string(),
-    description: v.optional(v.string()),
-    nodeType: v.union(
-      v.literal('domain'),
-      v.literal('subdomain'),
-      v.literal('concept'),
-      v.literal('fact'),
-      v.literal('procedure'),
-      v.literal('other'),
-    ),
-    depth: v.number(),
-    status: v.union(v.literal('draft'), v.literal('verified'), v.literal('archived')),
-    metadata: v.optional(v.any()),
-  }).index('by_organizationId', ['organizationId']),
-
-  knowledgeBaseLinks: defineTable({
-    organizationId: v.id('organizations'),
-    sourceNodeId: v.id('knowledgeBaseNodes'),
-    targetNodeId: v.id('knowledgeBaseNodes'),
-    relationship: v.union(
-      v.literal('parent_of'),
-      v.literal('relates_to'),
-      v.literal('depends_on'),
-      v.literal('contradicts'),
-      v.literal('same_folder'),
-    ),
-    strength: v.optional(v.number()),
-  })
-    .index('by_organizationId', ['organizationId'])
-    .index('by_sourceNodeId', ['sourceNodeId'])
-    .index('by_targetNodeId', ['targetNodeId']),
-
-  nodeDataItems: defineTable({
-    organizationId: v.id('organizations'),
-    nodeId: v.id('knowledgeBaseNodes'),
-    dataItemId: v.id('dataItems'),
-    relevanceScore: v.optional(v.number()),
-  })
-    .index('by_nodeId', ['nodeId'])
-    .index('by_dataItemId', ['dataItemId']),
+    .index('by_clientId', ['clientId'])
+    .index('by_dataSourceId', ['dataSourceId'])
+    .index('by_clientId_and_status', ['clientId', 'processingStatus']),
 });
