@@ -208,13 +208,75 @@ export const getExplorationGraph = query({
 });
 
 /**
- * Get open contradictions as a graph.
- * Each unique source file is a node; contradictions between them are edges.
+ * Get contradictions overlaid on the full knowledge tree.
+ *
+ * Returns the complete folder/file hierarchy (blue parent_of + green relates_to edges)
+ * PLUS red "contradicts" edges between files that conflict with each other.
+ * This shows WHERE in the messy folder structure the conflicts actually live.
  */
 export const getContradictionsGraph = query({
   args: { clientId: v.id('clients') },
   returns: graphDataValidator,
   handler: async (ctx, args) => {
+    // ── 1. Full knowledge tree ─────────────────────────────────────
+    const treeNodes = await ctx.db
+      .query('knowledge_tree')
+      .withIndex('by_clientId', (q) => q.eq('clientId', args.clientId))
+      .collect();
+
+    const graphNodes = treeNodes.map((node) => ({
+      id: node._id as string,
+      name: node.name,
+      type: node.type,
+      readme: node.readme,
+      parentId: node.parentId as string | undefined,
+      order: node.order,
+      depth: 0,
+    }));
+
+    // Calculate depth by walking up parent chain
+    const nodeMap = new Map(graphNodes.map((n) => [n.id, n]));
+    for (const node of graphNodes) {
+      let depth = 0;
+      let current = node;
+      while (current.parentId) {
+        const parent = nodeMap.get(current.parentId);
+        if (!parent) break;
+        depth++;
+        current = parent;
+      }
+      node.depth = depth;
+    }
+
+    // ── 2. Hierarchy links (blue) ──────────────────────────────────
+    const links: Array<{ source: string; target: string; relationship: string }> = graphNodes
+      .filter((n) => n.parentId)
+      .map((n) => ({ source: n.parentId!, target: n.id, relationship: 'parent_of' }));
+
+    // ── 3. Cross-reference links (green) ──────────────────────────
+    const entries = await ctx.db
+      .query('knowledge_entries')
+      .withIndex('by_clientId', (q) => q.eq('clientId', args.clientId))
+      .collect();
+
+    const refToNodes = new Map<string, string[]>();
+    for (const entry of entries) {
+      if (!entry.sourceRef) continue;
+      const existing = refToNodes.get(entry.sourceRef) ?? [];
+      existing.push(entry.treeNodeId as string);
+      refToNodes.set(entry.sourceRef, existing);
+    }
+    for (const [, nodeIds] of refToNodes) {
+      for (let i = 0; i < nodeIds.length - 1; i++) {
+        for (let j = i + 1; j < nodeIds.length; j++) {
+          links.push({ source: nodeIds[i], target: nodeIds[j], relationship: 'relates_to' });
+        }
+      }
+    }
+
+    // ── 4. Contradiction links (red) — match by filename ──────────
+    // Match contradiction sourceA/sourceB filenames to entry_group node names,
+    // then draw red edges between those nodes in the tree.
     const contradictions = await ctx.db
       .query('contradictions')
       .withIndex('by_clientId_and_status', (q) =>
@@ -222,27 +284,21 @@ export const getContradictionsGraph = query({
       )
       .collect();
 
-    // Unique sources become nodes
-    const sourceSet = new Set<string>();
-    contradictions.forEach((c) => {
-      sourceSet.add(c.sourceA);
-      sourceSet.add(c.sourceB);
-    });
+    const nameToId = new Map<string, string>();
+    for (const node of graphNodes) {
+      if (node.type === 'entry_group') {
+        nameToId.set(node.name, node.id);
+      }
+    }
 
-    const nodes = Array.from(sourceSet).map((source, idx) => ({
-      id: `source_${idx}`,
-      name: source,
-      type: 'source',
-      depth: 0,
-    }));
+    for (const c of contradictions) {
+      const idA = nameToId.get(c.sourceA);
+      const idB = nameToId.get(c.sourceB);
+      if (idA && idB) {
+        links.push({ source: idA, target: idB, relationship: 'contradicts' });
+      }
+    }
 
-    const sourceToId = new Map(Array.from(sourceSet).map((s, idx) => [s, `source_${idx}`]));
-    const links = contradictions.map((c) => ({
-      source: sourceToId.get(c.sourceA)!,
-      target: sourceToId.get(c.sourceB)!,
-      relationship: 'contradicts',
-    }));
-
-    return { nodes, links };
+    return { nodes: graphNodes, links };
   },
 });
