@@ -68,14 +68,38 @@ export const getKnowledgeTree = query({
       node.depth = depth;
     }
 
-    // Links come from parentId relationships
-    const links = graphNodes
+    // Links from parentId (hierarchy)
+    const links: Array<{ source: string; target: string; relationship: string }> = graphNodes
       .filter((node) => node.parentId)
       .map((node) => ({
         source: node.parentId!,
         target: node.id,
         relationship: 'parent_of',
       }));
+
+    // Cross-links from knowledge_entries that share a sourceRef with another entry
+    // This surfaces files that are referenced from multiple parts of the tree
+    const entries = await ctx.db
+      .query('knowledge_entries')
+      .withIndex('by_clientId', (q) => q.eq('clientId', args.clientId))
+      .collect();
+
+    // Group entries by sourceRef — if same file appears under >1 node, draw a relates_to edge
+    const refToNodes = new Map<string, string[]>();
+    for (const entry of entries) {
+      if (!entry.sourceRef) continue;
+      const existing = refToNodes.get(entry.sourceRef) ?? [];
+      existing.push(entry.treeNodeId as string);
+      refToNodes.set(entry.sourceRef, existing);
+    }
+    for (const [, nodeIds] of refToNodes) {
+      // Connect each pair of nodes that share this file
+      for (let i = 0; i < nodeIds.length - 1; i++) {
+        for (let j = i + 1; j < nodeIds.length; j++) {
+          links.push({ source: nodeIds[i], target: nodeIds[j], relationship: 'relates_to' });
+        }
+      }
+    }
 
     return { nodes: graphNodes, links };
   },

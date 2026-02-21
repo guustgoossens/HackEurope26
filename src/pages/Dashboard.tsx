@@ -2,8 +2,17 @@ import { useQuery, useMutation } from 'convex/react';
 import { api } from '../../convex/_generated/api';
 import { useState } from 'react';
 import { Plus, Building2, ChevronRight } from 'lucide-react';
-import { useAuth } from '@workos-inc/authkit-react';
+import { useAuth as useAuthKit } from '@workos-inc/authkit-react';
 import clsx from 'clsx';
+
+// Safe wrapper — returns empty user when WorkOS isn't mounted (dev bypass mode)
+function useAuthSafe() {
+  try {
+    return useAuthKit();
+  } catch {
+    return { user: null };
+  }
+}
 
 const phaseBadgeColors: Record<string, string> = {
   onboard: 'bg-slate-600 text-slate-200',
@@ -15,11 +24,12 @@ const phaseBadgeColors: Record<string, string> = {
 
 interface DashboardProps {
   onSelectClient: (id: string) => void;
+  devBypassUser?: string;
 }
 
-export function Dashboard({ onSelectClient }: DashboardProps) {
-  const { user } = useAuth();
-  const userId = user?.id ?? '';
+export function Dashboard({ onSelectClient, devBypassUser }: DashboardProps) {
+  const { user } = useAuthSafe();
+  const userId = devBypassUser ?? user?.id ?? '';
   const clients = useQuery(api.clients.list, userId ? { createdBy: userId } : 'skip');
   const createClient = useMutation(api.clients.create);
   const [showForm, setShowForm] = useState(false);
@@ -28,7 +38,7 @@ export function Dashboard({ onSelectClient }: DashboardProps) {
   const [creating, setCreating] = useState(false);
 
   const handleCreate = async () => {
-    if (!name.trim() || !industry.trim() || !userId) return;
+    if (!name.trim() || !industry.trim()) return;
     setCreating(true);
     try {
       await createClient({ name: name.trim(), industry: industry.trim(), createdBy: userId });

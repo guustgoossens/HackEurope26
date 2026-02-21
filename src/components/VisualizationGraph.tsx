@@ -41,12 +41,10 @@ export function VisualizationGraph({
   const [highlightNodes, setHighlightNodes] = useState(new Set());
   const [hoverNode, setHoverNode] = useState<any>(null);
 
-  // Zoom to fit when graph loads
+  // Reset zoom when graph data changes (new client or type switch)
   useEffect(() => {
-    if (graphRef.current && graphData?.nodes.length) {
-      setTimeout(() => {
-        graphRef.current?.zoomToFit(400, 50);
-      }, 100);
+    if (graphRef.current) {
+      graphRef.current.zoom(1, 0); // reset zoom to 1x immediately on data change
     }
   }, [graphData?.nodes.length]);
 
@@ -197,7 +195,11 @@ export function VisualizationGraph({
         }}
         onNodeClick={handleNodeClick}
         onNodeHover={handleNodeHover}
-        cooldownTicks={100}
+        cooldownTicks={150}
+        onEngineStop={() => {
+          // Zoom to fit AFTER simulation settles — gives a proper bird's-eye view
+          graphRef.current?.zoomToFit(600, 80);
+        }}
         enableNodeDrag={true}
         enableZoomInteraction={true}
         enablePanInteraction={true}
