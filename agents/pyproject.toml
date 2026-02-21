@@ -17,6 +17,7 @@ dependencies = [
     "composio-anthropic>=0.7.0",
     "fastapi>=0.115.0",
     "uvicorn>=0.34.0",
+    "python-magic>=0.4.27",
 ]
 
 [build-system]

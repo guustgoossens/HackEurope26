@@ -6,6 +6,8 @@ from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 
+from .sandbox import SandboxFileManager
+
 logging.basicConfig(
     level=logging.INFO, format="%(asctime)s [%(name)s] %(levelname)s: %(message)s"
 )
@@ -20,8 +22,10 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# Track running pipelines
+# Track running pipelines and their workspaces
 _running_pipelines: dict[str, asyncio.Task] = {}
+_active_workspaces: dict[str, str] = {}
+_file_manager = SandboxFileManager()
 
 
 class PipelineRequest(BaseModel):
@@ -36,6 +40,8 @@ class PipelineResponse(BaseModel):
 
 async def _run_pipeline(client_id: str):
     """Run the full agent pipeline for a client."""
+    workspace = _file_manager.create_workspace(client_id)
+    _active_workspaces[client_id] = workspace
     try:
         from .main import main
         await main(client_id)
@@ -44,6 +50,9 @@ async def _run_pipeline(client_id: str):
         logger.error(f"Pipeline failed for client {client_id}: {e}")
     finally:
         _running_pipelines.pop(client_id, None)
+        ws = _active_workspaces.pop(client_id, None)
+        if ws:
+            _file_manager.cleanup(ws)
 
 
 @app.post("/api/pipeline/start", response_model=PipelineResponse)
@@ -73,6 +82,16 @@ async def pipeline_status(client_id: str):
         task = _running_pipelines[client_id]
         return {"status": "running" if not task.done() else "completed"}
     return {"status": "idle"}
+
+
+@app.get("/api/workspace/{client_id}/files")
+async def workspace_files(client_id: str):
+    """Debug endpoint: list files in a client's active workspace."""
+    workspace = _active_workspaces.get(client_id)
+    if not workspace:
+        return {"status": "no_workspace", "files": []}
+    files = _file_manager.list_files(workspace)
+    return {"status": "active", "workspace": workspace, "files": files}
 
 
 @app.get("/health")

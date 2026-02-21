@@ -1,9 +1,10 @@
 import asyncio
-import logging
 import json
+import logging
+import os
 
 from .llm.adapters import AnthropicAdapter, GeminiAdapter
-from .tools.definitions import MASTER_TOOLS, EXPLORER_TOOLS, get_tool_schema, ToolCall
+from .tools.definitions import MASTER_TOOLS, EXPLORER_TOOLS, SANDBOX_TOOLS, get_tool_schema, ToolCall
 from .tools.executor import ToolExecutor
 from .tools.hybrid_executor import HybridToolExecutor
 from .storage.convex_client import ConvexClient
@@ -13,6 +14,7 @@ from .sub_agents.structurer import StructurerAgent
 from .sub_agents.knowledge_writer import KnowledgeWriterAgent
 from .integrations.google_workspace import GoogleWorkspaceClient
 from .integrations.composio_client import ComposioIntegration
+from .sandbox import SandboxFileManager, CommandExecutor
 
 logger = logging.getLogger(__name__)
 
@@ -37,6 +39,9 @@ class MasterAgent:
         self.composio_user_id = f"{composio_user_prefix}_{client_id}" if composio else ""
         self.state = PipelineState(client_id=client_id)
         self.max_turns = 20
+        self.file_manager = SandboxFileManager()
+        self.command_executor = CommandExecutor()
+        self.workspace: str | None = None
 
     # ── Explorer tool executor ──────────────────────────────────────
 
@@ -49,6 +54,12 @@ class MasterAgent:
             executor.register("read_sheet", self._tool_read_sheet)
         executor.register("check_forum", self._tool_check_forum)
         executor.register("write_to_forum", self._tool_write_forum)
+        # Sandbox tools
+        executor.register("download_file", self._tool_download_file)
+        executor.register("run_command", self._tool_run_command)
+        executor.register("read_local_file", self._tool_read_local_file)
+        executor.register("list_workspace", self._tool_list_workspace)
+        executor.register("install_package", self._tool_install_package)
         return HybridToolExecutor(
             custom_executor=executor,
             composio=self.composio,
@@ -57,16 +68,17 @@ class MasterAgent:
 
     def _get_explorer_tools(self) -> list[dict]:
         """Get merged tool schemas for explorer agents."""
+        sandbox_schemas = [get_tool_schema(t) for t in SANDBOX_TOOLS]
         if self.composio:
             # Use Composio Google tools + only custom non-Google tools
             custom_only = [
                 t for t in EXPLORER_TOOLS
                 if t.name not in ("list_gmail_messages", "list_drive_files", "read_sheet")
             ]
-            custom_schemas = [get_tool_schema(t) for t in custom_only]
+            custom_schemas = [get_tool_schema(t) for t in custom_only] + sandbox_schemas
             hybrid = self._build_explorer_executor()
             return hybrid.get_merged_tools(custom_schemas)
-        return [get_tool_schema(t) for t in EXPLORER_TOOLS]
+        return [get_tool_schema(t) for t in EXPLORER_TOOLS] + sandbox_schemas
 
     async def _tool_list_gmail(
         self, query: str = "", max_results: int = 20
@@ -119,21 +131,41 @@ class MasterAgent:
         executor.register("message_master", self._tool_message_master)
         executor.register("check_forum", self._tool_check_forum)
         executor.register("write_to_forum", self._tool_write_forum_structurer)
+        # Sandbox tools
+        executor.register("download_file", self._tool_download_file)
+        executor.register("run_command", self._tool_run_command)
+        executor.register("read_local_file", self._tool_read_local_file)
+        executor.register("list_workspace", self._tool_list_workspace)
+        executor.register("install_package", self._tool_install_package)
         return executor
 
     async def _tool_extract_content(
         self, file_id: str, extraction_prompt: str
     ) -> str:
         try:
-            # Download file from Google Drive
-            file_bytes = self.google.read_drive_file(file_id)
-            # Get file metadata to determine mime type
-            files = self.google.list_drive_files()
-            mime_type = "application/pdf"  # default
-            for f in files:
-                if f.get("id") == file_id:
-                    mime_type = f.get("mimeType", "application/pdf")
-                    break
+            file_bytes = None
+            mime_type = "application/pdf"
+
+            # Check if file already exists in workspace (downloaded via download_file)
+            if self.workspace:
+                workspace_files = self.file_manager.list_files(self.workspace)
+                for wf in workspace_files:
+                    # Match by file_id in filename (common pattern after download_file)
+                    if file_id in wf.get("path", ""):
+                        file_bytes = self.file_manager.read_file(wf["absolute_path"])
+                        mime_type = wf.get("mime_type", mime_type)
+                        break
+
+            if file_bytes is None:
+                # Download file from Google Drive
+                file_bytes = self.google.read_drive_file(file_id)
+                # Get file metadata to determine mime type
+                files = self.google.list_drive_files()
+                for f in files:
+                    if f.get("id") == file_id:
+                        mime_type = f.get("mimeType", "application/pdf")
+                        break
+
             # Use Gemini multimodal extraction
             result = await self.gemini.extract_multimodal(
                 file_bytes, mime_type, extraction_prompt
@@ -210,6 +242,101 @@ class MasterAgent:
             title, category, content, "structurer", tags or []
         )
         return "Forum entry created."
+
+    # ── Sandbox tool handlers ────────────────────────────────────────
+
+    async def _tool_download_file(
+        self, file_id: str, filename: str | None = None
+    ) -> str:
+        if not self.workspace:
+            return "Error: no workspace active"
+        try:
+            file_bytes = self.google.read_drive_file(file_id)
+            # Resolve filename from Drive if not provided
+            if not filename:
+                files = self.google.list_drive_files()
+                filename = file_id  # fallback
+                for f in files:
+                    if f.get("id") == file_id:
+                        filename = f.get("name", file_id)
+                        break
+            filepath = self.file_manager.stage_file(self.workspace, filename, file_bytes)
+            mime_type = self.file_manager.detect_mime(filepath)
+            return json.dumps({
+                "path": filepath,
+                "filename": filename,
+                "size_bytes": len(file_bytes),
+                "mime_type": mime_type,
+            })
+        except Exception as e:
+            logger.error(f"Failed to download file {file_id}: {e}")
+            return f"Error downloading file: {e}"
+
+    async def _tool_run_command(
+        self, command: str, timeout: int = 60
+    ) -> str:
+        if not self.workspace:
+            return "Error: no workspace active"
+        try:
+            result = await self.command_executor.run_command(
+                command, self.workspace, timeout
+            )
+            output = ""
+            if result["stdout"]:
+                output += result["stdout"]
+            if result["stderr"]:
+                output += f"\n[stderr] {result['stderr']}"
+            if not result["success"]:
+                output = f"[exit code {result['return_code']}] {output}"
+            # Truncate output to 10K chars
+            if len(output) > 10000:
+                output = output[:10000] + "\n... (truncated)"
+            return output.strip() or "(no output)"
+        except Exception as e:
+            return f"Error running command: {e}"
+
+    async def _tool_read_local_file(
+        self, filepath: str, max_chars: int = 50000
+    ) -> str:
+        if not self.workspace:
+            return "Error: no workspace active"
+        try:
+            # Resolve relative paths against workspace
+            if not os.path.isabs(filepath):
+                filepath = os.path.join(self.workspace, filepath)
+            # Validate path is inside workspace
+            if not self.file_manager.validate_path(filepath, self.workspace):
+                return "Error: filepath is outside the workspace"
+            content = self.file_manager.read_file_text(filepath, max_chars)
+            return content
+        except Exception as e:
+            return f"Error reading file: {e}"
+
+    async def _tool_list_workspace(self) -> str:
+        if not self.workspace:
+            return "Error: no workspace active"
+        try:
+            files = self.file_manager.list_files(self.workspace)
+            if not files:
+                return "Workspace is empty."
+            return json.dumps(files, indent=2)
+        except Exception as e:
+            return f"Error listing workspace: {e}"
+
+    async def _tool_install_package(self, package: str) -> str:
+        if not self.workspace:
+            return "Error: no workspace active"
+        try:
+            result = await self.command_executor.run_command(
+                f"uv pip install --system {package}",
+                self.workspace,
+                timeout=120,
+            )
+            if result["success"]:
+                return f"Successfully installed {package}"
+            return f"Failed to install {package}: {result['stderr']}"
+        except Exception as e:
+            return f"Error installing package: {e}"
 
     # ── Knowledge writer tool executor ──────────────────────────────
 
@@ -804,7 +931,13 @@ class MasterAgent:
 
     async def run(self, data_sources: list[dict]):
         """Run the full pipeline."""
-        await self.run_explore_phase(data_sources)
-        await self.run_structure_phase()
-        await self.run_verify_phase()
-        await self.run_use_phase()
+        self.workspace = self.file_manager.create_workspace(self.client_id)
+        try:
+            await self.run_explore_phase(data_sources)
+            await self.run_structure_phase()
+            await self.run_verify_phase()
+            await self.run_use_phase()
+        finally:
+            if self.workspace:
+                self.file_manager.cleanup(self.workspace)
+                self.workspace = None

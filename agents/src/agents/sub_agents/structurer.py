@@ -2,7 +2,7 @@ import logging
 import json
 
 from ..llm.adapters import AnthropicAdapter, GeminiAdapter
-from ..tools.definitions import ToolCall, STRUCTURER_TOOLS, get_tool_schema
+from ..tools.definitions import ToolCall, STRUCTURER_TOOLS, SANDBOX_TOOLS, get_tool_schema
 from ..tools.executor import ToolExecutor
 from ..storage.convex_client import ConvexClient
 from ..storage.context import SubAgentReport
@@ -55,7 +55,15 @@ class StructurerAgent:
             "3. If you find contradicting information between files, report it with add_contradiction\n"
             "4. Share important discoveries on the forum\n"
             "5. When done processing all files, send a summary to the master via message_master\n\n"
-            "Be thorough but efficient. Process each file and classify its relevance."
+            "Be thorough but efficient. Process each file and classify its relevance.\n\n"
+            "You also have sandbox tools available:\n"
+            "- download_file: Download a file from Google Drive to the local workspace\n"
+            "- run_command: Execute shell commands (ffmpeg, pdftotext, tesseract, python, etc.)\n"
+            "- read_local_file: Read a file from the workspace\n"
+            "- list_workspace: List files in the workspace\n"
+            "- install_package: Install a Python package via uv\n\n"
+            "Use sandbox tools when you need to pre-process files locally before sending to Gemini "
+            "(e.g., convert video to audio, OCR an image, extract text from PDF with pdftotext)."
         )
 
         messages = [
@@ -68,7 +76,7 @@ class StructurerAgent:
                 ),
             }
         ]
-        tools = [get_tool_schema(t) for t in STRUCTURER_TOOLS]
+        tools = [get_tool_schema(t) for t in STRUCTURER_TOOLS] + [get_tool_schema(t) for t in SANDBOX_TOOLS]
         report = SubAgentReport(agent_name="structurer", source_type="mixed")
 
         for turn in range(self.max_turns):

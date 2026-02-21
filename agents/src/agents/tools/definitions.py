@@ -241,6 +241,76 @@ MASTER_TOOLS = [
     ),
 ]
 
+# Sandbox tools (available to explorer + structurer agents)
+SANDBOX_TOOLS = [
+    ToolDefinition(
+        name="download_file",
+        description="Download a file from Google Drive to the local sandbox workspace for processing",
+        parameters={
+            "properties": {
+                "file_id": {"type": "string", "description": "Google Drive file ID"},
+                "filename": {
+                    "type": "string",
+                    "description": "Filename to save as (optional, defaults to Drive filename)",
+                },
+            },
+            "required": ["file_id"],
+        },
+    ),
+    ToolDefinition(
+        name="run_command",
+        description=(
+            "Execute a shell command in the sandbox workspace. "
+            "Allowed commands: ffmpeg, pdftotext, tesseract, python, uv pip install, file, convert, wc, head, tail, cat, ls, mkdir, cp, mv. "
+            "Use this for file format conversion, text extraction, media processing, etc."
+        ),
+        parameters={
+            "properties": {
+                "command": {"type": "string", "description": "Shell command to execute"},
+                "timeout": {
+                    "type": "integer",
+                    "description": "Timeout in seconds (default 60, max 300)",
+                    "default": 60,
+                },
+            },
+            "required": ["command"],
+        },
+    ),
+    ToolDefinition(
+        name="read_local_file",
+        description="Read a file from the sandbox workspace",
+        parameters={
+            "properties": {
+                "filepath": {"type": "string", "description": "Path to the file (relative to workspace or absolute)"},
+                "max_chars": {
+                    "type": "integer",
+                    "description": "Max characters to read (default 50000)",
+                    "default": 50000,
+                },
+            },
+            "required": ["filepath"],
+        },
+    ),
+    ToolDefinition(
+        name="list_workspace",
+        description="List all files in the current sandbox workspace with sizes and MIME types",
+        parameters={
+            "properties": {},
+            "required": [],
+        },
+    ),
+    ToolDefinition(
+        name="install_package",
+        description="Install a Python package via uv for use in subsequent commands",
+        parameters={
+            "properties": {
+                "package": {"type": "string", "description": "Package name (e.g. 'pandas', 'whisper')"},
+            },
+            "required": ["package"],
+        },
+    ),
+]
+
 # Knowledge writer tools
 KNOWLEDGE_WRITER_TOOLS = [
     ToolDefinition(
