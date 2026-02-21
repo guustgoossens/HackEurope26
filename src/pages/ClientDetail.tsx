@@ -1,4 +1,4 @@
-import { useQuery, useAction } from 'convex/react';
+import { useQuery, useMutation } from 'convex/react';
 import { api } from '../../convex/_generated/api';
 import { useState } from 'react';
 import { ArrowLeft, Plus, Play, Mail, HardDrive, Sheet, Loader2 } from 'lucide-react';
@@ -22,9 +22,10 @@ const sourceTypes = ['gmail', 'drive', 'sheets'] as const;
 
 export function ClientDetail({ clientId, onBack }: ClientDetailProps) {
   const client = useQuery(api.clients.get, { id: clientId as Id<'clients'> });
-  const triggerPipeline = useAction(api.triggerPipeline.start);
+  const updatePhase = useMutation(api.clients.updatePhase);
 
   const [pipelineStarting, setPipelineStarting] = useState(false);
+  const [pipelineError, setPipelineError] = useState<string | null>(null);
 
   if (client === undefined) {
     return (
@@ -52,8 +53,28 @@ export function ClientDetail({ clientId, onBack }: ClientDetailProps) {
 
   const handleStartExplore = async () => {
     setPipelineStarting(true);
+    setPipelineError(null);
     try {
-      await triggerPipeline({ clientId: clientId as Id<'clients'> });
+      await updatePhase({ id: clientId as Id<'clients'>, phase: 'explore' });
+
+      const agentUrl = import.meta.env.VITE_AGENT_SERVER_URL ?? 'http://localhost:8000';
+      const res = await fetch(`${agentUrl}/api/pipeline/start`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          client_id: clientId,
+          auth_token: import.meta.env.VITE_AGENT_AUTH_TOKEN ?? '',
+        }),
+      });
+
+      if (!res.ok) {
+        const text = await res.text();
+        throw new Error(`Agent server ${res.status}: ${text}`);
+      }
+    } catch (e) {
+      const msg = e instanceof Error ? e.message : String(e);
+      setPipelineError(msg);
+      console.error('Pipeline start failed:', msg);
     } finally {
       setPipelineStarting(false);
     }
@@ -84,7 +105,7 @@ export function ClientDetail({ clientId, onBack }: ClientDetailProps) {
 
       {/* Phase-specific content */}
       {client.phase === 'onboard' && (
-        <OnboardPanel clientId={clientId} onStartExplore={() => void handleStartExplore()} pipelineStarting={pipelineStarting} />
+        <OnboardPanel clientId={clientId} onStartExplore={() => void handleStartExplore()} pipelineStarting={pipelineStarting} pipelineError={pipelineError} />
       )}
       {client.phase === 'explore' && <ExplorePanel clientId={clientId} />}
       {client.phase === 'structure' && <StructurePanel clientId={clientId} />}
@@ -98,10 +119,12 @@ function OnboardPanel({
   clientId,
   onStartExplore,
   pipelineStarting,
+  pipelineError,
 }: {
   clientId: string;
   onStartExplore: () => void;
   pipelineStarting: boolean;
+  pipelineError: string | null;
 }) {
   const dataSources = useQuery(api.dataSources.listByClient, { clientId: clientId as Id<'clients'> });
   const { connect, connecting } = useComposioConnect({
@@ -187,6 +210,12 @@ function OnboardPanel({
               </>
             )}
           </button>
+        )}
+
+        {pipelineError && (
+          <p className="mt-3 text-sm text-red-400 bg-red-500/10 border border-red-500/20 rounded-lg px-4 py-2">
+            {pipelineError}
+          </p>
         )}
       </div>
     </div>
@@ -426,13 +455,26 @@ function UsePanel({ clientId }: { clientId: string }) {
 }
 
 function StartExploreButton({ clientId }: { clientId: string }) {
-  const triggerPipeline = useAction(api.triggerPipeline.start);
   const [starting, setStarting] = useState(false);
 
   const handleStart = async () => {
     setStarting(true);
     try {
-      await triggerPipeline({ clientId: clientId as Id<'clients'> });
+      const agentUrl = import.meta.env.VITE_AGENT_SERVER_URL ?? 'http://localhost:8000';
+      const res = await fetch(`${agentUrl}/api/pipeline/start`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          client_id: clientId,
+          auth_token: import.meta.env.VITE_AGENT_AUTH_TOKEN ?? '',
+        }),
+      });
+      if (!res.ok) {
+        const text = await res.text();
+        console.error('Pipeline start failed:', text);
+      }
+    } catch (e) {
+      console.error('Pipeline start failed:', e);
     } finally {
       setStarting(false);
     }
