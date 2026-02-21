@@ -21,13 +21,20 @@ async def main(client_id: str):
 
     # Initialize Composio if API key is set, otherwise fall back to Google service account
     composio: ComposioIntegration | None = None
+    google: GoogleWorkspaceClient | None = None
     if settings.COMPOSIO_API_KEY:
         logger.info("Using Composio for Google Workspace integration")
-        composio = ComposioIntegration(settings.COMPOSIO_API_KEY)
+        auth_configs = {}
+        if settings.COMPOSIO_GMAIL_AUTH_CONFIG_ID:
+            auth_configs["gmail"] = settings.COMPOSIO_GMAIL_AUTH_CONFIG_ID
+        if settings.COMPOSIO_DRIVE_AUTH_CONFIG_ID:
+            auth_configs["googledrive"] = settings.COMPOSIO_DRIVE_AUTH_CONFIG_ID
+        if settings.COMPOSIO_SHEETS_AUTH_CONFIG_ID:
+            auth_configs["googlesheets"] = settings.COMPOSIO_SHEETS_AUTH_CONFIG_ID
+        composio = ComposioIntegration(settings.COMPOSIO_API_KEY, auth_config_ids=auth_configs)
     else:
         logger.info("Composio API key not set, using GoogleWorkspaceClient fallback")
-
-    google = GoogleWorkspaceClient(settings.GOOGLE_CREDENTIALS_JSON)
+        google = GoogleWorkspaceClient(settings.GOOGLE_CREDENTIALS_JSON)
 
     async with ConvexClient(
         settings.CONVEX_SITE_URL, settings.CONVEX_AGENT_TOKEN

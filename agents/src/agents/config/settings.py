@@ -9,6 +9,9 @@ class Settings(BaseSettings):
     CONVEX_AGENT_TOKEN: str
     COMPOSIO_API_KEY: str = ""
     COMPOSIO_USER_PREFIX: str = "hackeurope26"
+    COMPOSIO_GMAIL_AUTH_CONFIG_ID: str = ""
+    COMPOSIO_DRIVE_AUTH_CONFIG_ID: str = ""
+    COMPOSIO_SHEETS_AUTH_CONFIG_ID: str = ""
     CLAUDE_MODEL: str = "claude-sonnet-4-20250514"
     GEMINI_MODEL: str = "gemini-2.5-pro"
     MAX_AGENT_TURNS: int = 20
