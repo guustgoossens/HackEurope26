@@ -28,7 +28,9 @@ bun run format           # Prettier (printWidth: 120, singleQuote: true)
 
 **Auth:** WorkOS AuthKit → Convex JWT integration. Custom provider in `src/ConvexProviderWithAuthKit.tsx` bridges WorkOS auth state into Convex's auth system.
 
-**Provider chain** (in `src/main.tsx`): ErrorBoundary → AuthKitProvider → ConvexProviderWithAuthKit → App
+**Provider chain** (in `src/main.tsx`): ErrorBoundary → (demo mode or auth mode). See **Demo mode** below.
+
+**Demo mode** (`VITE_DEMO_SKIP_AUTH=true`): No WorkOS. Landing at `/`, app démo at `/demo`. Entry: `DemoApp` in `src/DemoApp.tsx` (Landing first, then `/demo` → ClientDetail with Convex demo client). URLs: sync via `history.pushState` and `popstate`. Handoff details: `docs/HANDOFF.md`.
 
 ## Convex Conventions
 
@@ -50,7 +52,7 @@ Key rules (summary):
 
 ## Environment Variables
 
-Frontend (in `.env.local`): `VITE_CONVEX_URL`, `VITE_CONVEX_SITE_URL`, `VITE_WORKOS_CLIENT_ID`, `VITE_WORKOS_REDIRECT_URI`
+Frontend (in `.env.local`): `VITE_CONVEX_URL`, `VITE_CONVEX_SITE_URL`, `VITE_WORKOS_CLIENT_ID`, `VITE_WORKOS_REDIRECT_URI`, `VITE_DEMO_SKIP_AUTH` (when `true`: no WorkOS, landing at `/`, démo at `/demo`)
 
 Backend (Convex dashboard): `WORKOS_API_KEY`, `CONVEX_DEPLOYMENT`
 

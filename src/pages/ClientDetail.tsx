@@ -11,6 +11,9 @@ import { ContradictionsList } from '@/components/ContradictionsList';
 import { QuestionCard } from '@/components/QuestionCard';
 import { KnowledgeEntryList } from '@/components/KnowledgeEntry';
 import { useComposioConnect } from '@/hooks/useComposioConnect';
+import { ExploreVisualization } from '@/components/ExploreVisualization';
+import { KnowledgeGraph } from '@/components/KnowledgeGraph';
+import { NodeDetailPanel } from '@/components/NodeDetailPanel';
 import type { Id } from '../../convex/_generated/dataModel';
 
 interface ClientDetailProps {
@@ -262,6 +265,9 @@ function ExplorePanel({
 }: ExplorePanelProps) {
   return (
     <div className="space-y-6">
+      {/* Source visualisation */}
+      <ExploreVisualization clientId={clientId} />
+
       {/* Metrics */}
       <ExploreMetrics clientId={clientId} />
 
@@ -350,15 +356,31 @@ function ExplorePanel({
 
 function StructurePanel({ clientId }: { clientId: string }) {
   const [selectedNodeId, setSelectedNodeId] = useState<string | null>(null);
+  const [selectedNodeName, setSelectedNodeName] = useState<string | null>(null);
+  const [selectedNodeReadme, setSelectedNodeReadme] = useState<string | null>(null);
+  const [selectedNodeType, setSelectedNodeType] = useState<string | null>(null);
+
+  const handleSelectNode = (nodeId: string | null, readme?: string, name?: string, type?: string) => {
+    setSelectedNodeId(nodeId ?? null);
+    setSelectedNodeName(name ?? null);
+    setSelectedNodeReadme(readme ?? null);
+    setSelectedNodeType(type ?? null);
+  };
 
   return (
     <div className="space-y-6">
-      <ExploreMetrics clientId={clientId} />
-
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        <KnowledgeTree clientId={clientId} onSelectNode={setSelectedNodeId} selectedNodeId={selectedNodeId} />
-        <ContradictionsList clientId={clientId} />
+      <div className="relative">
+        <KnowledgeGraph clientId={clientId} onSelectNode={handleSelectNode} />
+        <NodeDetailPanel
+          nodeId={selectedNodeId}
+          nodeName={selectedNodeName}
+          nodeReadme={selectedNodeReadme}
+          nodeType={selectedNodeType}
+          onClose={() => handleSelectNode(null)}
+        />
       </div>
+
+      <ContradictionsList clientId={clientId} />
 
       {selectedNodeId && (
         <div>
@@ -429,23 +451,45 @@ function QuestionnaireView({
 
   return (
     <div>
-      <div className="flex items-center justify-between mb-4">
+      <div className="flex items-center justify-between mb-3">
         <h3 className="text-lg font-medium text-white">{questionnaire.title}</h3>
         <span className="text-xs text-slate-400">
           {answeredCount}/{totalCount} answered
         </span>
       </div>
-      <div className="space-y-4">
-        {questionnaire.questions.map((q) => (
-          <QuestionCard
-            key={q.id}
-            questionnaireId={questionnaireId}
-            question={q}
-            existingResponse={responseMap.get(q.id)}
-            respondedBy={respondedBy}
-          />
-        ))}
+
+      {/* Progress bar */}
+      <div className="h-1.5 bg-slate-700 rounded-full mb-6 overflow-hidden">
+        <div
+          className="h-full rounded-full transition-all duration-500 ease-out"
+          style={{
+            width: `${totalCount > 0 ? (answeredCount / totalCount) * 100 : 0}%`,
+            background: 'linear-gradient(90deg, hsl(217, 55%, 60%), hsl(152, 55%, 42%))',
+          }}
+        />
       </div>
+
+      {answeredCount === totalCount && totalCount > 0 ? (
+        <div className="bg-emerald-500/10 border border-emerald-500/30 rounded-xl p-8 text-center">
+          <div className="w-12 h-12 rounded-full bg-emerald-500/20 flex items-center justify-center mx-auto mb-3">
+            <span className="text-emerald-400 text-xl">✓</span>
+          </div>
+          <h4 className="text-white font-semibold mb-1">All questions answered</h4>
+          <p className="text-sm text-slate-400">The knowledge base is ready for deployment.</p>
+        </div>
+      ) : (
+        <div className="space-y-4">
+          {questionnaire.questions.map((q) => (
+            <QuestionCard
+              key={q.id}
+              questionnaireId={questionnaireId}
+              question={q}
+              existingResponse={responseMap.get(q.id)}
+              respondedBy={respondedBy}
+            />
+          ))}
+        </div>
+      )}
     </div>
   );
 }

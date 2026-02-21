@@ -88,7 +88,7 @@ export const seedDemoData = internalMutation({
       readme: 'Client relationships and onboarding',
       order: 1,
     });
-    const onboardingSkill = await ctx.db.insert('knowledge_tree', {
+    await ctx.db.insert('knowledge_tree', {
       clientId,
       parentId: clientDomain,
       name: 'Client Onboarding',
