@@ -13,6 +13,7 @@ import type * as clients from "../clients.js";
 import type * as composio from "../composio.js";
 import type * as contradictions from "../contradictions.js";
 import type * as dataSources from "../dataSources.js";
+import type * as demoData from "../demoData.js";
 import type * as explorations from "../explorations.js";
 import type * as forum from "../forum.js";
 import type * as http from "../http.js";
@@ -35,6 +36,7 @@ declare const fullApi: ApiFromModules<{
   composio: typeof composio;
   contradictions: typeof contradictions;
   dataSources: typeof dataSources;
+  demoData: typeof demoData;
   explorations: typeof explorations;
   forum: typeof forum;
   http: typeof http;

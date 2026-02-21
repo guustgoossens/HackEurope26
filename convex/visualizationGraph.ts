@@ -1,12 +1,42 @@
 import { query } from './_generated/server';
 import { v } from 'convex/values';
 
+// ── Shared node/link validators ───────────────────────────────────────────────
+
+const graphNodeValidator = v.object({
+  id: v.string(),
+  name: v.string(),
+  type: v.string(),
+  depth: v.number(),
+  readme: v.optional(v.string()),
+  parentId: v.optional(v.string()),
+  order: v.optional(v.number()),
+  status: v.optional(v.string()),
+  fileType: v.optional(v.string()),
+  processingStatus: v.optional(v.string()),
+});
+
+const graphLinkValidator = v.object({
+  source: v.string(),
+  target: v.string(),
+  relationship: v.string(),
+});
+
+const graphDataValidator = v.object({
+  nodes: v.array(graphNodeValidator),
+  links: v.array(graphLinkValidator),
+});
+
+// ── Queries ───────────────────────────────────────────────────────────────────
+
 /**
- * Get knowledge tree visualization for a client
- * Adapts the knowledge_tree table to a force-directed graph format
+ * Get knowledge tree visualization for a client.
+ * Adapts the knowledge_tree table to a force-directed graph format.
+ * Nodes are typed by domain/skill/entry_group and linked via parentId.
  */
 export const getKnowledgeTree = query({
   args: { clientId: v.id('clients') },
+  returns: graphDataValidator,
   handler: async (ctx, args) => {
     const nodes = await ctx.db
       .query('knowledge_tree')
@@ -15,17 +45,16 @@ export const getKnowledgeTree = query({
 
     // Transform to react-force-graph format
     const graphNodes = nodes.map((node) => ({
-      id: node._id,
+      id: node._id as string,
       name: node.name,
       type: node.type,
       readme: node.readme,
-      parentId: node.parentId,
+      parentId: node.parentId as string | undefined,
       order: node.order,
-      // Calculate depth based on parent chain
-      depth: 0, // Will be calculated below
+      depth: 0, // calculated below
     }));
 
-    // Calculate depths
+    // Calculate depth by walking up the parent chain
     const nodeMap = new Map(graphNodes.map((n) => [n.id, n]));
     for (const node of graphNodes) {
       let depth = 0;
@@ -39,13 +68,13 @@ export const getKnowledgeTree = query({
       node.depth = depth;
     }
 
-    // Create links from parent relationships
+    // Links come from parentId relationships
     const links = graphNodes
       .filter((node) => node.parentId)
       .map((node) => ({
         source: node.parentId!,
         target: node.id,
-        relationship: 'parent_of' as const,
+        relationship: 'parent_of',
       }));
 
     return { nodes: graphNodes, links };
@@ -53,42 +82,74 @@ export const getKnowledgeTree = query({
 });
 
 /**
- * Get detailed info about a knowledge tree node
+ * Get detailed info about a single knowledge tree node.
+ * Returns the node, its direct children, and its knowledge entries.
  */
 export const getTreeNodeDetails = query({
   args: { nodeId: v.id('knowledge_tree') },
+  returns: v.union(
+    v.null(),
+    v.object({
+      node: v.object({
+        _id: v.id('knowledge_tree'),
+        _creationTime: v.number(),
+        clientId: v.id('clients'),
+        parentId: v.optional(v.id('knowledge_tree')),
+        name: v.string(),
+        type: v.union(v.literal('domain'), v.literal('skill'), v.literal('entry_group')),
+        readme: v.optional(v.string()),
+        order: v.number(),
+      }),
+      children: v.array(v.object({
+        _id: v.id('knowledge_tree'),
+        _creationTime: v.number(),
+        clientId: v.id('clients'),
+        parentId: v.optional(v.id('knowledge_tree')),
+        name: v.string(),
+        type: v.union(v.literal('domain'), v.literal('skill'), v.literal('entry_group')),
+        readme: v.optional(v.string()),
+        order: v.number(),
+      })),
+      entries: v.array(v.object({
+        _id: v.id('knowledge_entries'),
+        _creationTime: v.number(),
+        clientId: v.id('clients'),
+        treeNodeId: v.id('knowledge_tree'),
+        title: v.string(),
+        content: v.string(),
+        sourceRef: v.optional(v.string()),
+        confidence: v.number(),
+        verified: v.boolean(),
+      })),
+    }),
+  ),
   handler: async (ctx, args) => {
     const node = await ctx.db.get(args.nodeId);
     if (!node) return null;
 
-    // Get child nodes
     const children = await ctx.db
       .query('knowledge_tree')
       .withIndex('by_clientId_and_parentId', (q) =>
-        q.eq('clientId', node.clientId).eq('parentId', args.nodeId)
+        q.eq('clientId', node.clientId).eq('parentId', args.nodeId),
       )
       .collect();
 
-    // Get knowledge entries for this node
     const entries = await ctx.db
       .query('knowledge_entries')
       .withIndex('by_treeNodeId', (q) => q.eq('treeNodeId', args.nodeId))
       .collect();
 
-    return {
-      node,
-      children,
-      entries,
-    };
+    return { node, children, entries };
   },
 });
 
 /**
- * Get exploration metrics as a graph visualization
- * Shows data sources and exploration status
+ * Get data sources as a graph — the exploration view.
+ * Each data source is a node; completed explorations add edges.
  */
 export const getExplorationGraph = query({
   args: { clientId: v.id('clients') },
+  returns: graphDataValidator,
   handler: async (ctx, args) => {
     const dataSources = await ctx.db
       .query('data_sources')
@@ -100,22 +161,22 @@ export const getExplorationGraph = query({
       .withIndex('by_clientId', (q) => q.eq('clientId', args.clientId))
       .collect();
 
-    // Create nodes for data sources
     const nodes = dataSources.map((source) => ({
-      id: source._id,
+      id: source._id as string,
       name: source.label,
       type: source.type,
       status: source.connectionStatus,
-      fileType: source.type, // Map to file type for icon rendering
+      fileType: source.type,
+      depth: 0,
     }));
 
-    // Create links based on explorations
+    // Only show links for completed explorations
     const links = explorations
       .filter((exp) => exp.status === 'completed')
       .map((exp) => ({
-        source: exp.dataSourceId,
-        target: exp.dataSourceId, // Self-link to show completion
-        relationship: 'explored' as const,
+        source: exp.dataSourceId as string,
+        target: exp.dataSourceId as string,
+        relationship: 'explored',
       }));
 
     return { nodes, links };
@@ -123,20 +184,21 @@ export const getExplorationGraph = query({
 });
 
 /**
- * Get contradictions as a graph
- * Shows contradicting data points as connected nodes
+ * Get open contradictions as a graph.
+ * Each unique source file is a node; contradictions between them are edges.
  */
 export const getContradictionsGraph = query({
   args: { clientId: v.id('clients') },
+  returns: graphDataValidator,
   handler: async (ctx, args) => {
     const contradictions = await ctx.db
       .query('contradictions')
       .withIndex('by_clientId_and_status', (q) =>
-        q.eq('clientId', args.clientId).eq('status', 'open')
+        q.eq('clientId', args.clientId).eq('status', 'open'),
       )
       .collect();
 
-    // Create nodes for each unique source
+    // Unique sources become nodes
     const sourceSet = new Set<string>();
     contradictions.forEach((c) => {
       sourceSet.add(c.sourceA);
@@ -146,17 +208,15 @@ export const getContradictionsGraph = query({
     const nodes = Array.from(sourceSet).map((source, idx) => ({
       id: `source_${idx}`,
       name: source,
-      type: 'source' as const,
-      fileType: 'other' as const,
-      processingStatus: 'discovered' as const,
+      type: 'source',
+      depth: 0,
     }));
 
-    // Create links for contradictions
     const sourceToId = new Map(Array.from(sourceSet).map((s, idx) => [s, `source_${idx}`]));
     const links = contradictions.map((c) => ({
       source: sourceToId.get(c.sourceA)!,
       target: sourceToId.get(c.sourceB)!,
-      relationship: 'contradicts' as const,
+      relationship: 'contradicts',
     }));
 
     return { nodes, links };
