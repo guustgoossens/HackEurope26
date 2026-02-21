@@ -23,6 +23,7 @@
     "format": "prettier --write ."
   },
   "dependencies": {
+    "@composio/core": "^0.6.3",
     "@workos-inc/authkit-react": "^0.16.0",
     "clsx": "^2.1.1",
     "convex": "^1.32.0",

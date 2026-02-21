@@ -1,4 +1,4 @@
-import { useQuery, useMutation, useAction } from 'convex/react';
+import { useQuery, useAction } from 'convex/react';
 import { api } from '../../convex/_generated/api';
 import { useState } from 'react';
 import { ArrowLeft, Plus, Play, Mail, HardDrive, Sheet, Loader2 } from 'lucide-react';
@@ -22,14 +22,8 @@ const sourceTypes = ['gmail', 'drive', 'sheets'] as const;
 
 export function ClientDetail({ clientId, onBack }: ClientDetailProps) {
   const client = useQuery(api.clients.get, { id: clientId as Id<'clients'> });
-  const dataSources = useQuery(api.dataSources.listByClient, { clientId: clientId as Id<'clients'> });
-  const createDataSource = useMutation(api.dataSources.create);
   const triggerPipeline = useAction(api.triggerPipeline.start);
 
-  const [showAddSource, setShowAddSource] = useState(false);
-  const [sourceType, setSourceType] = useState<(typeof sourceTypes)[number]>('gmail');
-  const [sourceLabel, setSourceLabel] = useState('');
-  const [creating, setCreating] = useState(false);
   const [pipelineStarting, setPipelineStarting] = useState(false);
 
   if (client === undefined) {
@@ -55,22 +49,6 @@ export function ClientDetail({ clientId, onBack }: ClientDetailProps) {
       </div>
     );
   }
-
-  const handleAddSource = async () => {
-    if (!sourceLabel.trim()) return;
-    setCreating(true);
-    try {
-      await createDataSource({
-        clientId: clientId as Id<'clients'>,
-        type: sourceType,
-        label: sourceLabel.trim(),
-      });
-      setSourceLabel('');
-      setShowAddSource(false);
-    } finally {
-      setCreating(false);
-    }
-  };
 
   const handleStartExplore = async () => {
     setPipelineStarting(true);
@@ -108,20 +86,7 @@ export function ClientDetail({ clientId, onBack }: ClientDetailProps) {
       {client.phase === 'onboard' && (
         <OnboardPanel clientId={clientId} onStartExplore={() => void handleStartExplore()} pipelineStarting={pipelineStarting} />
       )}
-      {client.phase === 'explore' && (
-        <ExplorePanel
-          clientId={clientId}
-          dataSources={dataSources}
-          showAddSource={showAddSource}
-          setShowAddSource={setShowAddSource}
-          sourceType={sourceType}
-          setSourceType={setSourceType}
-          sourceLabel={sourceLabel}
-          setSourceLabel={setSourceLabel}
-          creating={creating}
-          onAddSource={() => void handleAddSource()}
-        />
-      )}
+      {client.phase === 'explore' && <ExplorePanel clientId={clientId} />}
       {client.phase === 'structure' && <StructurePanel clientId={clientId} />}
       {client.phase === 'verify' && <VerifyPanel clientId={clientId} />}
       {client.phase === 'use' && <UsePanel clientId={clientId} />}
@@ -228,38 +193,21 @@ function OnboardPanel({
   );
 }
 
-interface ExplorePanelProps {
-  clientId: string;
-  dataSources:
-    | Array<{
-        _id: string;
-        type: string;
-        label: string;
-        connectionStatus: string;
-      }>
-    | undefined;
-  showAddSource: boolean;
-  setShowAddSource: (v: boolean) => void;
-  sourceType: 'gmail' | 'drive' | 'sheets';
-  setSourceType: (v: 'gmail' | 'drive' | 'sheets') => void;
-  sourceLabel: string;
-  setSourceLabel: (v: string) => void;
-  creating: boolean;
-  onAddSource: () => void;
-}
+function ExplorePanel({ clientId }: { clientId: string }) {
+  const dataSources = useQuery(api.dataSources.listByClient, { clientId: clientId as Id<'clients'> });
+  const { connect, connecting } = useComposioConnect({ clientId: clientId as Id<'clients'> });
 
-function ExplorePanel({
-  clientId,
-  dataSources,
-  showAddSource,
-  setShowAddSource,
-  sourceType,
-  setSourceType,
-  sourceLabel,
-  setSourceLabel,
-  creating,
-  onAddSource,
-}: ExplorePanelProps) {
+  const [showAddSource, setShowAddSource] = useState(false);
+  const [sourceType, setSourceType] = useState<(typeof sourceTypes)[number]>('gmail');
+  const [sourceLabel, setSourceLabel] = useState('');
+
+  const handleAdd = () => {
+    if (!sourceLabel.trim()) return;
+    void connect(sourceType, sourceLabel.trim());
+    setSourceLabel('');
+    setShowAddSource(false);
+  };
+
   return (
     <div className="space-y-6">
       {/* Metrics */}
@@ -301,16 +249,16 @@ function ExplorePanel({
                 onChange={(e) => setSourceLabel(e.target.value)}
                 className="flex-1 px-3 py-2 bg-slate-800 border border-slate-600 rounded-lg text-sm text-white placeholder-slate-500 focus:outline-none focus:border-blue-500"
                 onKeyDown={(e) => {
-                  if (e.key === 'Enter') onAddSource();
+                  if (e.key === 'Enter') handleAdd();
                 }}
                 autoFocus
               />
               <button
-                onClick={onAddSource}
-                disabled={creating || !sourceLabel.trim()}
+                onClick={handleAdd}
+                disabled={!!connecting || !sourceLabel.trim()}
                 className="px-4 py-2 bg-blue-600 text-white rounded-lg text-sm font-medium hover:bg-blue-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
               >
-                {creating ? 'Adding...' : 'Add'}
+                {connecting ? 'Connecting...' : 'Connect'}
               </button>
             </div>
           </div>

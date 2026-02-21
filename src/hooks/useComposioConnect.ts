@@ -16,68 +16,77 @@ export function useComposioConnect({ clientId, onSuccess, onError }: UseComposio
   const updateConnection = useMutation(api.dataSources.updateConnection);
 
   const connect = useCallback(
-    async (sourceType: 'gmail' | 'drive' | 'sheets') => {
+    async (sourceType: 'gmail' | 'drive' | 'sheets', label?: string) => {
+      console.log('[composio] connect called:', sourceType, label);
       setConnecting(sourceType);
+      let sourceId: Id<'data_sources'> | null = null;
+
+      // Open popup immediately on user click — browsers block popups after async delays
+      const popup = window.open('about:blank', 'composio-oauth', 'width=600,height=700,popup=1');
+      console.log('[composio] popup opened:', !!popup, popup);
+
       try {
-        // Create the data source record first
-        const sourceId = await createDataSource({
+        sourceId = await createDataSource({
           clientId,
           type: sourceType,
-          label: `${sourceType.charAt(0).toUpperCase() + sourceType.slice(1)} Connection`,
+          label: label || `${sourceType.charAt(0).toUpperCase() + sourceType.slice(1)} Connection`,
         });
+        console.log('[composio] data source created:', sourceId);
 
         const redirectUrl = window.location.href;
 
-        // Initiate Composio OAuth
         const result = await initiateConnection({
           clientId,
           sourceType,
           redirectUrl,
         });
+        console.log('[composio] initiateConnection result:', result);
 
-        if (result.redirectUrl) {
-          // Open OAuth popup
-          const popup = window.open(result.redirectUrl, 'composio-oauth', 'width=600,height=700,popup=1');
+        if (result.redirectUrl && popup) {
+          console.log('[composio] navigating popup to:', result.redirectUrl);
+          popup.location.href = result.redirectUrl;
 
-          // Poll for popup close
           const pollInterval = setInterval(async () => {
-            if (!popup || popup.closed) {
+            const closed = popup.closed;
+            console.log('[composio] polling popup.closed:', closed);
+            if (closed) {
               clearInterval(pollInterval);
-              // Optimistically mark as connected
+              console.log('[composio] popup closed, updating connection to connected');
               await updateConnection({
-                id: sourceId,
+                id: sourceId!,
                 connectionStatus: 'connected',
-                composioEntityId: result.entityId,
+                composioEntityId: result.userId,
               });
               setConnecting(null);
               onSuccess?.();
             }
           }, 1000);
 
-          // Timeout after 5 minutes
           setTimeout(() => {
             clearInterval(pollInterval);
-            if (connecting) {
-              setConnecting(null);
-            }
+            setConnecting(null);
           }, 300000);
         } else {
-          // No redirect URL — direct connection (unlikely but handle gracefully)
-          await updateConnection({
-            id: sourceId,
-            connectionStatus: 'connected',
-            composioEntityId: result.entityId,
-          });
+          console.log('[composio] no redirectUrl or no popup:', { redirectUrl: result.redirectUrl, popup: !!popup });
+          popup?.close();
+          if (sourceId) {
+            await updateConnection({ id: sourceId, connectionStatus: 'error' });
+          }
           setConnecting(null);
-          onSuccess?.();
+          onError?.(popup ? 'No redirect URL received from Composio' : 'Popup was blocked by the browser.');
         }
       } catch (e) {
+        console.error('[composio] error:', e);
+        popup?.close();
+        if (sourceId) {
+          await updateConnection({ id: sourceId, connectionStatus: 'error' }).catch(() => {});
+        }
         setConnecting(null);
         const message = e instanceof Error ? e.message : String(e);
         onError?.(message);
       }
     },
-    [clientId, connecting, createDataSource, initiateConnection, updateConnection, onSuccess, onError],
+    [clientId, createDataSource, initiateConnection, updateConnection, onSuccess, onError],
   );
 
   return { connect, connecting };
