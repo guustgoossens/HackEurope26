@@ -4,6 +4,7 @@ import json
 from ..llm.adapters import AnthropicAdapter
 from ..tools.definitions import KNOWLEDGE_WRITER_TOOLS, get_tool_schema, ToolCall
 from ..tools.executor import ToolExecutor
+from ..tools.loop_detection import ToolLoopDetector
 from ..storage.convex_client import ConvexClient
 
 logger = logging.getLogger(__name__)
@@ -71,6 +72,8 @@ class KnowledgeWriterAgent:
         ]
         tools = [get_tool_schema(t) for t in KNOWLEDGE_WRITER_TOOLS]
 
+        detector = ToolLoopDetector()
+
         for turn in range(self.max_turns):
             text, tool_calls_raw = await self.llm.complete_with_tools_messages(
                 messages, tools, system
@@ -99,6 +102,7 @@ class KnowledgeWriterAgent:
             tool_results = []
             for tc in tool_calls_raw:
                 call = ToolCall(id=tc["id"], name=tc["name"], input=tc["input"])
+                detector.record(call.name, call.input)
 
                 if call.name == "write_knowledge_entry":
                     self.entries_written += 1
@@ -120,6 +124,11 @@ class KnowledgeWriterAgent:
                 )
 
             messages.append({"role": "user", "content": tool_results})
+
+            # Check for stuck loops after processing all tool calls this turn
+            if detector.is_stuck():
+                logger.warning("KnowledgeWriter: loop detected, breaking")
+                break
 
         await self.convex.emit_event(
             self.client_id,

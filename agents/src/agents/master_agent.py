@@ -25,7 +25,7 @@ class MasterAgent:
         claude: AnthropicAdapter,
         gemini: GeminiAdapter,
         convex: ConvexClient,
-        google: GoogleWorkspaceClient,
+        google: GoogleWorkspaceClient | None,
         client_id: str,
         composio: ComposioIntegration | None = None,
         composio_user_prefix: str = "hackeurope26",
@@ -54,7 +54,7 @@ class MasterAgent:
             executor.register("read_sheet", self._tool_read_sheet)
         executor.register("check_forum", self._tool_check_forum)
         executor.register("write_to_forum", self._tool_write_forum)
-        # Sandbox tools
+        # Sandbox tools — let the explorer be creative with local processing
         executor.register("download_file", self._tool_download_file)
         executor.register("run_command", self._tool_run_command)
         executor.register("read_local_file", self._tool_read_local_file)
@@ -67,10 +67,10 @@ class MasterAgent:
         )
 
     def _get_explorer_tools(self) -> list[dict]:
-        """Get merged tool schemas for explorer agents."""
+        """Get merged tool schemas for explorer agents (includes sandbox tools)."""
         sandbox_schemas = [get_tool_schema(t) for t in SANDBOX_TOOLS]
         if self.composio:
-            # Use Composio Google tools + only custom non-Google tools
+            # Use Composio Google tools + only custom non-Google tools + sandbox
             custom_only = [
                 t for t in EXPLORER_TOOLS
                 if t.name not in ("list_gmail_messages", "list_drive_files", "read_sheet")
@@ -83,30 +83,30 @@ class MasterAgent:
     async def _tool_list_gmail(
         self, query: str = "", max_results: int = 20
     ) -> str:
-        try:
-            messages = self.google.list_gmail_messages(query, max_results)
-            return json.dumps(messages, indent=2)
-        except Exception as e:
-            return f"Error listing Gmail: {e}"
+        # Let exceptions propagate — ToolExecutor catches them and sets is_error=True
+        messages = self.google.list_gmail_messages(query, max_results)
+        return json.dumps(messages, indent=2)
 
     async def _tool_list_drive(
         self, folder_id: str | None = None, mime_type: str | None = None
     ) -> str:
-        try:
-            files = self.google.list_drive_files(folder_id, mime_type)
-            return json.dumps(files, indent=2)
-        except Exception as e:
-            return f"Error listing Drive: {e}"
+        files = self.google.list_drive_files(folder_id, mime_type)
+        return json.dumps(files, indent=2)
 
     async def _tool_read_sheet(self, spreadsheet_id: str, range: str) -> str:
-        try:
-            data = self.google.read_sheet(spreadsheet_id, range)
-            return json.dumps(data, indent=2)
-        except Exception as e:
-            return f"Error reading sheet: {e}"
+        data = self.google.read_sheet(spreadsheet_id, range)
+        return json.dumps(data, indent=2)
 
-    async def _tool_check_forum(self, query: str) -> str:
-        results = await self.convex.search_forum(query)
+    async def _tool_check_forum(
+        self,
+        query: str,
+        source_type: str | None = None,
+        phase: str | None = None,
+        file_type: str | None = None,
+    ) -> str:
+        results = await self.convex.search_forum(
+            query, source_type=source_type, phase=phase, file_type=file_type
+        )
         return json.dumps(results, indent=2) if results else "No forum entries found."
 
     async def _tool_write_forum(
@@ -115,9 +115,13 @@ class MasterAgent:
         category: str,
         content: str,
         tags: list[str] | None = None,
+        source_type: str | None = None,
+        phase: str | None = None,
+        file_type: str | None = None,
     ) -> str:
         await self.convex.create_forum_entry(
-            title, category, content, "explorer", tags or []
+            title, category, content, "explorer", tags or [],
+            source_type=source_type, phase=phase, file_type=file_type,
         )
         return "Forum entry created."
 
@@ -142,60 +146,53 @@ class MasterAgent:
     async def _tool_extract_content(
         self, file_id: str, extraction_prompt: str
     ) -> str:
-        try:
-            file_bytes = None
-            mime_type = "application/pdf"
+        file_bytes = None
+        mime_type = "application/pdf"
 
-            # Check if file already exists in workspace (downloaded via download_file)
-            if self.workspace:
-                workspace_files = self.file_manager.list_files(self.workspace)
-                for wf in workspace_files:
-                    # Match by file_id in filename (common pattern after download_file)
-                    if file_id in wf.get("path", ""):
-                        file_bytes = self.file_manager.read_file(wf["absolute_path"])
-                        mime_type = wf.get("mime_type", mime_type)
-                        break
+        # Check if file already exists in workspace (downloaded via download_file)
+        if self.workspace:
+            workspace_files = self.file_manager.list_files(self.workspace)
+            for wf in workspace_files:
+                # Match by file_id in filename (common pattern after download_file)
+                if file_id in wf.get("path", ""):
+                    file_bytes = self.file_manager.read_file(wf["absolute_path"])
+                    mime_type = wf.get("mime_type", mime_type)
+                    break
 
-            if file_bytes is None:
-                # Download file from Google Drive
-                file_bytes = self.google.read_drive_file(file_id)
-                # Get file metadata to determine mime type
-                files = self.google.list_drive_files()
-                for f in files:
-                    if f.get("id") == file_id:
-                        mime_type = f.get("mimeType", "application/pdf")
-                        break
+        if file_bytes is None:
+            # Download file from Google Drive
+            file_bytes = self.google.read_drive_file(file_id)
+            # Get file metadata to determine mime type
+            files = self.google.list_drive_files()
+            for f in files:
+                if f.get("id") == file_id:
+                    mime_type = f.get("mimeType", "application/pdf")
+                    break
 
-            # Use Gemini multimodal extraction
-            result = await self.gemini.extract_multimodal(
-                file_bytes, mime_type, extraction_prompt
-            )
-            return result
-        except Exception as e:
-            logger.error(f"Content extraction failed for {file_id}: {e}")
-            return f"Error extracting content: {e}"
+        # Use Gemini multimodal extraction
+        result = await self.gemini.extract_multimodal(
+            file_bytes, mime_type, extraction_prompt
+        )
+        return result
 
     async def _tool_classify_relevance(
         self, content: str, context: str
     ) -> str:
-        try:
-            prompt = (
-                f"Classify the relevance of the following content to a business knowledge base.\n\n"
-                f"Business context: {context}\n\n"
-                f"Content to classify:\n{content[:3000]}\n\n"
-                f"Respond with a JSON object containing:\n"
-                f'- "relevance": "high", "medium", or "low"\n'
-                f'- "category": the business category this belongs to\n'
-                f'- "key_facts": array of key facts extracted\n'
-                f'- "reasoning": brief explanation of relevance rating'
-            )
-            result = await self.claude.complete(
-                prompt,
-                system="You are a business data classifier. Respond only with valid JSON."
-            )
-            return result
-        except Exception as e:
-            return f"Error classifying relevance: {e}"
+        prompt = (
+            f"Classify the relevance of the following content to a business knowledge base.\n\n"
+            f"Business context: {context}\n\n"
+            f"Content to classify:\n{content[:3000]}\n\n"
+            f"Respond with a JSON object containing:\n"
+            f'- "relevance": "high", "medium", or "low"\n'
+            f'- "category": the business category this belongs to\n'
+            f'- "key_facts": array of key facts extracted\n'
+            f'- "reasoning": brief explanation of relevance rating'
+        )
+        result = await self.claude.complete(
+            prompt,
+            system="You are a business data classifier. Respond only with valid JSON."
+        )
+        return result
 
     async def _tool_add_contradiction(
         self,
@@ -237,9 +234,13 @@ class MasterAgent:
         category: str,
         content: str,
         tags: list[str] | None = None,
+        source_type: str | None = None,
+        phase: str | None = None,
+        file_type: str | None = None,
     ) -> str:
         await self.convex.create_forum_entry(
-            title, category, content, "structurer", tags or []
+            title, category, content, "structurer", tags or [],
+            source_type=source_type, phase=phase, file_type=file_type,
         )
         return "Forum entry created."
 
@@ -249,94 +250,81 @@ class MasterAgent:
         self, file_id: str, filename: str | None = None
     ) -> str:
         if not self.workspace:
-            return "Error: no workspace active"
-        try:
-            file_bytes = self.google.read_drive_file(file_id)
-            # Resolve filename from Drive if not provided
-            if not filename:
-                files = self.google.list_drive_files()
-                filename = file_id  # fallback
-                for f in files:
-                    if f.get("id") == file_id:
-                        filename = f.get("name", file_id)
-                        break
-            filepath = self.file_manager.stage_file(self.workspace, filename, file_bytes)
-            mime_type = self.file_manager.detect_mime(filepath)
-            return json.dumps({
-                "path": filepath,
-                "filename": filename,
-                "size_bytes": len(file_bytes),
-                "mime_type": mime_type,
-            })
-        except Exception as e:
-            logger.error(f"Failed to download file {file_id}: {e}")
-            return f"Error downloading file: {e}"
+            raise RuntimeError("No workspace active")
+        file_bytes = self.google.read_drive_file(file_id)
+        # Resolve filename from Drive if not provided
+        if not filename:
+            files = self.google.list_drive_files()
+            filename = file_id  # fallback
+            for f in files:
+                if f.get("id") == file_id:
+                    filename = f.get("name", file_id)
+                    break
+        filepath = self.file_manager.stage_file(self.workspace, filename, file_bytes)
+        mime_type = self.file_manager.detect_mime(filepath)
+        return json.dumps({
+            "path": filepath,
+            "filename": filename,
+            "size_bytes": len(file_bytes),
+            "mime_type": mime_type,
+        })
 
     async def _tool_run_command(
         self, command: str, timeout: int = 60
     ) -> str:
         if not self.workspace:
-            return "Error: no workspace active"
-        try:
-            result = await self.command_executor.run_command(
-                command, self.workspace, timeout
-            )
-            output = ""
-            if result["stdout"]:
-                output += result["stdout"]
-            if result["stderr"]:
-                output += f"\n[stderr] {result['stderr']}"
-            if not result["success"]:
-                output = f"[exit code {result['return_code']}] {output}"
-            # Truncate output to 10K chars
-            if len(output) > 10000:
-                output = output[:10000] + "\n... (truncated)"
-            return output.strip() or "(no output)"
-        except Exception as e:
-            return f"Error running command: {e}"
+            raise RuntimeError("No workspace active")
+        result = await self.command_executor.run_command(
+            command, self.workspace, timeout
+        )
+        output = ""
+        if result["stdout"]:
+            output += result["stdout"]
+        if result["stderr"]:
+            output += f"\n[stderr] {result['stderr']}"
+        if not result["success"]:
+            # Blocked commands (return_code -1) should be clear errors
+            if result["return_code"] == -1:
+                raise RuntimeError(f"Command blocked by sandbox: {result['stderr']}")
+            output = f"[exit code {result['return_code']}] {output}"
+        # Truncate output to 10K chars
+        if len(output) > 10000:
+            output = output[:10000] + "\n... (truncated)"
+        return output.strip() or "(no output)"
 
     async def _tool_read_local_file(
         self, filepath: str, max_chars: int = 50000
     ) -> str:
         if not self.workspace:
-            return "Error: no workspace active"
-        try:
-            # Resolve relative paths against workspace
-            if not os.path.isabs(filepath):
-                filepath = os.path.join(self.workspace, filepath)
-            # Validate path is inside workspace
-            if not self.file_manager.validate_path(filepath, self.workspace):
-                return "Error: filepath is outside the workspace"
-            content = self.file_manager.read_file_text(filepath, max_chars)
-            return content
-        except Exception as e:
-            return f"Error reading file: {e}"
+            raise RuntimeError("No workspace active")
+        # Resolve relative paths against workspace
+        if not os.path.isabs(filepath):
+            filepath = os.path.join(self.workspace, filepath)
+        # Validate path is inside workspace
+        if not self.file_manager.validate_path(filepath, self.workspace):
+            raise ValueError("Filepath is outside the workspace")
+        content = self.file_manager.read_file_text(filepath, max_chars)
+        return content
 
     async def _tool_list_workspace(self) -> str:
         if not self.workspace:
-            return "Error: no workspace active"
-        try:
-            files = self.file_manager.list_files(self.workspace)
-            if not files:
-                return "Workspace is empty."
-            return json.dumps(files, indent=2)
-        except Exception as e:
-            return f"Error listing workspace: {e}"
+            raise RuntimeError("No workspace active")
+        files = self.file_manager.list_files(self.workspace)
+        if not files:
+            return "Workspace is empty."
+        return json.dumps(files, indent=2)
 
     async def _tool_install_package(self, package: str) -> str:
         if not self.workspace:
-            return "Error: no workspace active"
-        try:
-            result = await self.command_executor.run_command(
-                f"uv pip install --system {package}",
-                self.workspace,
-                timeout=120,
-            )
-            if result["success"]:
-                return f"Successfully installed {package}"
-            return f"Failed to install {package}: {result['stderr']}"
-        except Exception as e:
-            return f"Error installing package: {e}"
+            raise RuntimeError("No workspace active")
+        result = await self.command_executor.run_command(
+            f"uv pip install --system {package}",
+            self.workspace,
+            timeout=120,
+        )
+        if result["success"]:
+            return f"Successfully installed {package}"
+        raise RuntimeError(f"Failed to install {package}: {result['stderr']}")
 
     # ── Knowledge writer tool executor ──────────────────────────────
 
@@ -354,20 +342,17 @@ class MasterAgent:
         confidence: float,
         source_ref: str = "",
     ) -> str:
-        try:
-            result = await self.convex.create_knowledge_entry(
-                client_id=self.client_id,
-                tree_node_id=tree_node_id,
-                title=title,
-                content=content,
-                source_ref=source_ref,
-                confidence=confidence,
-                verified=False,
-            )
-            entry_id = result.get("id", "unknown") if result else "unknown"
-            return f"Knowledge entry created: {entry_id}"
-        except Exception as e:
-            return f"Error writing knowledge entry: {e}"
+        result = await self.convex.create_knowledge_entry(
+            client_id=self.client_id,
+            tree_node_id=tree_node_id,
+            title=title,
+            content=content,
+            source_ref=source_ref,
+            confidence=confidence,
+            verified=False,
+        )
+        entry_id = result.get("id", "unknown") if result else "unknown"
+        return f"Knowledge entry created: {entry_id}"
 
     async def _tool_flag_contradiction(
         self,
@@ -407,6 +392,8 @@ class MasterAgent:
 
         executor = self._build_explorer_executor()
         tools = self._get_explorer_tools()
+        tool_names = [t["name"] for t in tools]
+        auth_mode = "Composio (OAuth)" if self.composio else "service account"
 
         # Create explorer agents
         explorers = []
@@ -419,6 +406,9 @@ class MasterAgent:
                 source_type=ds["type"],
                 source_label=ds["label"],
                 tools=tools,
+                tool_names=tool_names,
+                auth_mode=auth_mode,
+                workspace_path=self.workspace,
             )
             explorers.append(agent)
 

@@ -4,6 +4,7 @@ import json
 from ..llm.adapters import AnthropicAdapter, GeminiAdapter
 from ..tools.definitions import ToolCall, STRUCTURER_TOOLS, SANDBOX_TOOLS, get_tool_schema
 from ..tools.executor import ToolExecutor
+from ..tools.loop_detection import ToolLoopDetector
 from ..storage.convex_client import ConvexClient
 from ..storage.context import SubAgentReport
 
@@ -41,29 +42,30 @@ class StructurerAgent:
         file_summary = json.dumps(self.file_refs, indent=2, default=str)
 
         system = (
-            "You are a structurer agent responsible for extracting and classifying content from business files.\n"
-            "You have access to the following tools:\n"
+            "You are a structurer agent responsible for extracting and classifying content from business files.\n\n"
+
+            "## Primary Tools\n"
             "- extract_content: Use Gemini to extract text/data from files (PDFs, images, spreadsheets)\n"
             "- classify_relevance: Classify whether extracted content is relevant to the knowledge base\n"
             "- add_contradiction: Report contradictions found between data sources\n"
             "- message_master: Send findings or questions to the master agent\n"
             "- check_forum: Search the agent forum for relevant context\n"
             "- write_to_forum: Share discoveries with other agents\n\n"
-            "For each file:\n"
-            "1. Extract its content using extract_content\n"
-            "2. Classify its relevance using classify_relevance\n"
-            "3. If you find contradicting information between files, report it with add_contradiction\n"
-            "4. Share important discoveries on the forum\n"
-            "5. When done processing all files, send a summary to the master via message_master\n\n"
-            "Be thorough but efficient. Process each file and classify its relevance.\n\n"
-            "You also have sandbox tools available:\n"
+
+            "## Sandbox Tools (local file processing)\n"
             "- download_file: Download a file from Google Drive to the local workspace\n"
             "- run_command: Execute shell commands (ffmpeg, pdftotext, tesseract, python, etc.)\n"
             "- read_local_file: Read a file from the workspace\n"
             "- list_workspace: List files in the workspace\n"
             "- install_package: Install a Python package via uv\n\n"
-            "Use sandbox tools when you need to pre-process files locally before sending to Gemini "
-            "(e.g., convert video to audio, OCR an image, extract text from PDF with pdftotext)."
+
+            "## Workflow\n"
+            "For each file:\n"
+            "1. Extract its content using extract_content\n"
+            "2. Classify its relevance using classify_relevance\n"
+            "3. If you find contradicting information between files, report it with add_contradiction\n"
+            "4. Share important discoveries on the forum\n"
+            "5. When done processing all files, send a summary to the master via message_master"
         )
 
         messages = [
@@ -78,6 +80,8 @@ class StructurerAgent:
         ]
         tools = [get_tool_schema(t) for t in STRUCTURER_TOOLS] + [get_tool_schema(t) for t in SANDBOX_TOOLS]
         report = SubAgentReport(agent_name="structurer", source_type="mixed")
+
+        detector = ToolLoopDetector()
 
         for turn in range(self.max_turns):
             text, tool_calls_raw = await self.claude.complete_with_tools_messages(
@@ -109,6 +113,7 @@ class StructurerAgent:
             tool_results = []
             for tc in tool_calls_raw:
                 call = ToolCall(id=tc["id"], name=tc["name"], input=tc["input"])
+                detector.record(call.name, call.input)
 
                 # Intercept add_contradiction to capture in report
                 if call.name == "add_contradiction":
@@ -163,6 +168,11 @@ class StructurerAgent:
                     )
 
             messages.append({"role": "user", "content": tool_results})
+
+            # Check for stuck loops after processing all tool calls this turn
+            if detector.is_stuck():
+                logger.warning("Structurer: loop detected, breaking")
+                break
 
         await self.convex.emit_event(
             self.client_id,
