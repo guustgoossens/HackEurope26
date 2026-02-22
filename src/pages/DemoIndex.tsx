@@ -154,9 +154,11 @@ export default function DemoIndex({ clientId, onBack, onSwitchToLive }: DemoInde
     if (!client) return null;
 
     return (
-        <div className="landing h-screen flex flex-col overflow-hidden relative" style={{ background: 'hsl(220 20% 98%)' }}>
-            <div className="absolute inset-0 pointer-events-none z-0"
-                style={{ background: 'radial-gradient(ellipse at 50% 0%, hsl(217 71% 30% / 0.04), transparent 70%)' }} />
+        <div className="landing h-screen flex flex-col overflow-hidden relative" style={{ background: phase === 4 ? 'hsl(0 0% 100%)' : 'hsl(220 20% 98%)' }}>
+            {phase !== 4 && (
+                <>
+                    <div className="absolute inset-0 pointer-events-none z-0"
+                        style={{ background: 'radial-gradient(ellipse at 50% 0%, hsl(217 71% 30% / 0.04), transparent 70%)' }} />
 
             <TopNav
                 clientName={client.name}
@@ -168,6 +170,8 @@ export default function DemoIndex({ clientId, onBack, onSwitchToLive }: DemoInde
                 onBack={onBack}
                 onSwitchToLive={onSwitchToLive}
             />
+                </>
+            )}
 
             <main className="flex-1 relative overflow-hidden flex z-10 w-full">
 
@@ -310,7 +314,7 @@ export default function DemoIndex({ clientId, onBack, onSwitchToLive }: DemoInde
                 {/* ── Phase 4: Use / Pulse ── */}
                 {phase === 4 && (
                     <div className="flex w-full h-full">
-                        <UsePhase clientId={clientId} />
+                        <UsePhase clientId={clientId} onBack={onBack} />
                     </div>
                 )}
 
