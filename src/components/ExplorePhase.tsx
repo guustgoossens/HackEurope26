@@ -110,8 +110,9 @@ export default function ExplorePhase({ clientId, animationStep, onNextPhase, liv
         if (explorationBySourceId) {
             const exp = explorationBySourceId.get(source._id);
             if (exp) {
-                const m = exp.metrics;
-                return m.email_count ?? m.file_count ?? m.total_items ?? SOURCE_COUNTS[source.type] ?? 50;
+                const m = exp.metrics as Record<string, unknown>;
+                const val = (m.email_count ?? m.file_count ?? m.total_items) as number | undefined;
+                return val ?? SOURCE_COUNTS[source.type] ?? 50;
             }
         }
         return SOURCE_COUNTS[source.type] ?? 50;
@@ -121,7 +122,7 @@ export default function ExplorePhase({ clientId, animationStep, onNextPhase, liv
     const currentStep = effectiveAnimStep < 2 ? 1 : effectiveAnimStep < 4 ? 2 : 3;
 
     const liveTotal = liveData?.explorations?.reduce((sum, exp) => {
-        const m = exp.metrics;
+        const m = exp.metrics as Record<string, unknown>;
         return sum + ((m.email_count ?? m.file_count ?? m.total_items ?? 0) as number);
     }, 0) ?? 0;
     const totalItems = liveTotal > 0 ? liveTotal : sources.reduce((sum, s) => sum + getSourceCount(s), 0) || 1297;
