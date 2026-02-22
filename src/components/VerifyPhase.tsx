@@ -7,6 +7,7 @@ import {
     FolioAlertTriangle as AlertTriangle,
     FolioSparkles,
     FolioShield,
+    FolioArrowRight as ArrowRight,
 } from '@/components/icons/FolioIcons';
 import { cn } from '@/lib/utils';
 
@@ -14,10 +15,11 @@ interface Props {
     clientId: string;
     isComplete: boolean;
     onComplete: () => void;
+    onNextPhase?: () => void;
     respondedBy?: string;
 }
 
-export default function VerifyPhase({ clientId, isComplete, onComplete, respondedBy = 'demo' }: Props) {
+export default function VerifyPhase({ clientId, isComplete, onComplete, onNextPhase, respondedBy = 'demo' }: Props) {
     const { t } = useTranslation();
     const questionnaires = useQuery(api.questionnaires.listByClient, {
         clientId: clientId as Id<'clients'>,
@@ -75,6 +77,20 @@ export default function VerifyPhase({ clientId, isComplete, onComplete, responde
                         <FolioSparkles className="h-5 w-5" />
                         <span>{t('verify.kbOperational')}</span>
                     </div>
+                    {onNextPhase && (
+                        <button
+                            onClick={onNextPhase}
+                            className="flex items-center gap-2 px-6 py-3 btn-organic-pill text-sm font-semibold transition-all duration-300 hover:-translate-y-0.5 active:scale-[0.98]"
+                            style={{
+                                background: 'linear-gradient(145deg, hsl(152 55% 42%), hsl(152 65% 35%))',
+                                color: 'hsl(0 0% 100%)',
+                                boxShadow: '0 4px 20px hsl(152 55% 40% / 0.35), 0 1px 3px hsl(152 50% 25% / 0.2)',
+                            }}
+                        >
+                            {t('verify.goToDeploy')}
+                            <ArrowRight className="h-5 w-5" />
+                        </button>
+                    )}
                 </div>
             </div>
         );
