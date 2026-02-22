@@ -29,6 +29,7 @@ class MasterAgent:
         client_id: str,
         composio: ComposioIntegration | None = None,
         composio_user_prefix: str = "hackeurope26",
+        verify_timeout: int = 300,
     ):
         self.claude = claude
         self.gemini = gemini
@@ -39,13 +40,110 @@ class MasterAgent:
         self.composio_user_id = f"{composio_user_prefix}_{client_id}" if composio else ""
         self.state = PipelineState(client_id=client_id)
         self.max_turns = 20
+        self.verify_timeout = verify_timeout
         self.file_manager = SandboxFileManager()
         self.command_executor = CommandExecutor()
-        self.workspace: str | None = None
+
+    # ── Sandbox tool registration (workspace-isolated closures) ────
+
+    def _register_sandbox_tools(self, executor: ToolExecutor, workspace_path: str) -> None:
+        """Register sandbox tools as closures that capture a specific workspace path."""
+        file_manager = self.file_manager
+        command_executor = self.command_executor
+        google = self.google
+
+        async def download_file(file_id: str, filename: str | None = None) -> str:
+            file_bytes = google.read_drive_file(file_id)
+            if not filename:
+                files = google.list_drive_files()
+                filename = file_id
+                for f in files:
+                    if f.get("id") == file_id:
+                        filename = f.get("name", file_id)
+                        break
+            filepath = file_manager.stage_file(workspace_path, filename, file_bytes)
+            mime_type = file_manager.detect_mime(filepath)
+            return json.dumps({
+                "path": filepath, "filename": filename,
+                "size_bytes": len(file_bytes), "mime_type": mime_type,
+            })
+
+        async def run_command(command: str, timeout: int = 60) -> str:
+            result = await command_executor.run_command(command, workspace_path, timeout)
+            output = ""
+            if result["stdout"]:
+                output += result["stdout"]
+            if result["stderr"]:
+                output += f"\n[stderr] {result['stderr']}"
+            if not result["success"]:
+                if result["return_code"] == -1:
+                    raise RuntimeError(f"Command blocked by sandbox: {result['stderr']}")
+                output = f"[exit code {result['return_code']}] {output}"
+            if len(output) > 10000:
+                output = output[:10000] + "\n... (truncated)"
+            return output.strip() or "(no output)"
+
+        async def read_local_file(filepath: str, max_chars: int = 50000) -> str:
+            resolved = filepath
+            if not os.path.isabs(resolved):
+                resolved = os.path.join(workspace_path, resolved)
+            if not file_manager.validate_path(resolved, workspace_path):
+                raise ValueError("Filepath is outside the workspace")
+            return file_manager.read_file_text(resolved, max_chars)
+
+        async def list_workspace() -> str:
+            files = file_manager.list_files(workspace_path)
+            if not files:
+                return "Workspace is empty."
+            return json.dumps(files, indent=2)
+
+        async def install_package(package: str) -> str:
+            result = await command_executor.run_command(
+                f"uv pip install --system {package}", workspace_path, timeout=120,
+            )
+            if result["success"]:
+                return f"Successfully installed {package}"
+            raise RuntimeError(f"Failed to install {package}: {result['stderr']}")
+
+        executor.register("download_file", download_file)
+        executor.register("run_command", run_command)
+        executor.register("read_local_file", read_local_file)
+        executor.register("list_workspace", list_workspace)
+        executor.register("install_package", install_package)
+
+    def _make_extract_content(self, workspace_path: str):
+        """Factory returning a closure for the structurer's extract_content tool."""
+        file_manager = self.file_manager
+        google = self.google
+        gemini = self.gemini
+
+        async def extract_content(file_id: str, extraction_prompt: str) -> str:
+            file_bytes = None
+            mime_type = "application/pdf"
+
+            workspace_files = file_manager.list_files(workspace_path)
+            for wf in workspace_files:
+                if file_id in wf.get("path", ""):
+                    file_bytes = file_manager.read_file(wf["absolute_path"])
+                    mime_type = wf.get("mime_type", mime_type)
+                    break
+
+            if file_bytes is None:
+                file_bytes = google.read_drive_file(file_id)
+                files = google.list_drive_files()
+                for f in files:
+                    if f.get("id") == file_id:
+                        mime_type = f.get("mimeType", "application/pdf")
+                        break
+
+            result = await gemini.extract_multimodal(file_bytes, mime_type, extraction_prompt)
+            return result
+
+        return extract_content
 
     # ── Explorer tool executor ──────────────────────────────────────
 
-    def _build_explorer_executor(self) -> HybridToolExecutor:
+    def _build_explorer_executor(self, workspace_path: str) -> HybridToolExecutor:
         executor = ToolExecutor()
         # Only register custom Google tools if Composio is not active
         if not self.composio:
@@ -54,31 +152,29 @@ class MasterAgent:
             executor.register("read_sheet", self._tool_read_sheet)
         executor.register("check_forum", self._tool_check_forum)
         executor.register("write_to_forum", self._tool_write_forum)
-        # Sandbox tools — let the explorer be creative with local processing
-        executor.register("download_file", self._tool_download_file)
-        executor.register("run_command", self._tool_run_command)
-        executor.register("read_local_file", self._tool_read_local_file)
-        executor.register("list_workspace", self._tool_list_workspace)
-        executor.register("install_package", self._tool_install_package)
+        # Sandbox tools — isolated to this workspace
+        self._register_sandbox_tools(executor, workspace_path)
         return HybridToolExecutor(
             custom_executor=executor,
             composio=self.composio,
             composio_user_id=self.composio_user_id,
         )
 
-    def _get_explorer_tools(self) -> list[dict]:
-        """Get merged tool schemas for explorer agents (includes sandbox tools)."""
+    def _get_explorer_tools(self, executor: HybridToolExecutor, source_type: str) -> list[dict]:
+        """Get tool schemas for one explorer agent, scoped to its source type."""
         sandbox_schemas = [get_tool_schema(t) for t in SANDBOX_TOOLS]
         if self.composio:
-            # Use Composio Google tools + only custom non-Google tools + sandbox
             custom_only = [
                 t for t in EXPLORER_TOOLS
                 if t.name not in ("list_gmail_messages", "list_drive_files", "read_sheet")
             ]
             custom_schemas = [get_tool_schema(t) for t in custom_only] + sandbox_schemas
-            hybrid = self._build_explorer_executor()
-            return hybrid.get_merged_tools(custom_schemas)
-        return [get_tool_schema(t) for t in EXPLORER_TOOLS] + sandbox_schemas
+            return executor.get_tools_for_source(source_type, custom_schemas)
+        # Non-Composio path: include only the custom Google tool for this source
+        source_google_tool = {"gmail": "list_gmail_messages", "drive": "list_drive_files", "sheets": "read_sheet"}
+        relevant = source_google_tool.get(source_type)
+        tools = [t for t in EXPLORER_TOOLS if not t.name in ("list_gmail_messages", "list_drive_files", "read_sheet") or t.name == relevant]
+        return [get_tool_schema(t) for t in tools] + sandbox_schemas
 
     async def _tool_list_gmail(
         self, query: str = "", max_results: int = 20
@@ -127,53 +223,17 @@ class MasterAgent:
 
     # ── Structurer tool executor ────────────────────────────────────
 
-    def _build_structurer_executor(self) -> ToolExecutor:
+    def _build_structurer_executor(self, workspace_path: str) -> ToolExecutor:
         executor = ToolExecutor()
-        executor.register("extract_content", self._tool_extract_content)
+        executor.register("extract_content", self._make_extract_content(workspace_path))
         executor.register("classify_relevance", self._tool_classify_relevance)
         executor.register("add_contradiction", self._tool_add_contradiction)
         executor.register("message_master", self._tool_message_master)
         executor.register("check_forum", self._tool_check_forum)
         executor.register("write_to_forum", self._tool_write_forum_structurer)
-        # Sandbox tools
-        executor.register("download_file", self._tool_download_file)
-        executor.register("run_command", self._tool_run_command)
-        executor.register("read_local_file", self._tool_read_local_file)
-        executor.register("list_workspace", self._tool_list_workspace)
-        executor.register("install_package", self._tool_install_package)
+        # Sandbox tools — isolated to this workspace
+        self._register_sandbox_tools(executor, workspace_path)
         return executor
-
-    async def _tool_extract_content(
-        self, file_id: str, extraction_prompt: str
-    ) -> str:
-        file_bytes = None
-        mime_type = "application/pdf"
-
-        # Check if file already exists in workspace (downloaded via download_file)
-        if self.workspace:
-            workspace_files = self.file_manager.list_files(self.workspace)
-            for wf in workspace_files:
-                # Match by file_id in filename (common pattern after download_file)
-                if file_id in wf.get("path", ""):
-                    file_bytes = self.file_manager.read_file(wf["absolute_path"])
-                    mime_type = wf.get("mime_type", mime_type)
-                    break
-
-        if file_bytes is None:
-            # Download file from Google Drive
-            file_bytes = self.google.read_drive_file(file_id)
-            # Get file metadata to determine mime type
-            files = self.google.list_drive_files()
-            for f in files:
-                if f.get("id") == file_id:
-                    mime_type = f.get("mimeType", "application/pdf")
-                    break
-
-        # Use Gemini multimodal extraction
-        result = await self.gemini.extract_multimodal(
-            file_bytes, mime_type, extraction_prompt
-        )
-        return result
 
     async def _tool_classify_relevance(
         self, content: str, context: str
@@ -244,87 +304,6 @@ class MasterAgent:
         )
         return "Forum entry created."
 
-    # ── Sandbox tool handlers ────────────────────────────────────────
-
-    async def _tool_download_file(
-        self, file_id: str, filename: str | None = None
-    ) -> str:
-        if not self.workspace:
-            raise RuntimeError("No workspace active")
-        file_bytes = self.google.read_drive_file(file_id)
-        # Resolve filename from Drive if not provided
-        if not filename:
-            files = self.google.list_drive_files()
-            filename = file_id  # fallback
-            for f in files:
-                if f.get("id") == file_id:
-                    filename = f.get("name", file_id)
-                    break
-        filepath = self.file_manager.stage_file(self.workspace, filename, file_bytes)
-        mime_type = self.file_manager.detect_mime(filepath)
-        return json.dumps({
-            "path": filepath,
-            "filename": filename,
-            "size_bytes": len(file_bytes),
-            "mime_type": mime_type,
-        })
-
-    async def _tool_run_command(
-        self, command: str, timeout: int = 60
-    ) -> str:
-        if not self.workspace:
-            raise RuntimeError("No workspace active")
-        result = await self.command_executor.run_command(
-            command, self.workspace, timeout
-        )
-        output = ""
-        if result["stdout"]:
-            output += result["stdout"]
-        if result["stderr"]:
-            output += f"\n[stderr] {result['stderr']}"
-        if not result["success"]:
-            # Blocked commands (return_code -1) should be clear errors
-            if result["return_code"] == -1:
-                raise RuntimeError(f"Command blocked by sandbox: {result['stderr']}")
-            output = f"[exit code {result['return_code']}] {output}"
-        # Truncate output to 10K chars
-        if len(output) > 10000:
-            output = output[:10000] + "\n... (truncated)"
-        return output.strip() or "(no output)"
-
-    async def _tool_read_local_file(
-        self, filepath: str, max_chars: int = 50000
-    ) -> str:
-        if not self.workspace:
-            raise RuntimeError("No workspace active")
-        # Resolve relative paths against workspace
-        if not os.path.isabs(filepath):
-            filepath = os.path.join(self.workspace, filepath)
-        # Validate path is inside workspace
-        if not self.file_manager.validate_path(filepath, self.workspace):
-            raise ValueError("Filepath is outside the workspace")
-        content = self.file_manager.read_file_text(filepath, max_chars)
-        return content
-
-    async def _tool_list_workspace(self) -> str:
-        if not self.workspace:
-            raise RuntimeError("No workspace active")
-        files = self.file_manager.list_files(self.workspace)
-        if not files:
-            return "Workspace is empty."
-        return json.dumps(files, indent=2)
-
-    async def _tool_install_package(self, package: str) -> str:
-        if not self.workspace:
-            raise RuntimeError("No workspace active")
-        result = await self.command_executor.run_command(
-            f"uv pip install --system {package}",
-            self.workspace,
-            timeout=120,
-        )
-        if result["success"]:
-            return f"Successfully installed {package}"
-        raise RuntimeError(f"Failed to install {package}: {result['stderr']}")
 
     # ── Knowledge writer tool executor ──────────────────────────────
 
@@ -390,14 +369,16 @@ class MasterAgent:
             f"Starting explore phase with {len(data_sources)} data sources",
         )
 
-        executor = self._build_explorer_executor()
-        tools = self._get_explorer_tools()
-        tool_names = [t["name"] for t in tools]
         auth_mode = "Composio (OAuth)" if self.composio else "service account"
 
-        # Create explorer agents
+        # Create explorer agents, each with its own workspace and executor
         explorers = []
+        explorer_workspaces = []
         for ds in data_sources:
+            ws = self.file_manager.create_workspace(f"{self.client_id}_{ds['type']}")
+            explorer_workspaces.append(ws)
+            executor = self._build_explorer_executor(ws)
+            tools = self._get_explorer_tools(executor, ds["type"])
             agent = ExplorerAgent(
                 llm=self.claude,
                 executor=executor,
@@ -406,9 +387,9 @@ class MasterAgent:
                 source_type=ds["type"],
                 source_label=ds["label"],
                 tools=tools,
-                tool_names=tool_names,
+                tool_names=[t["name"] for t in tools],
                 auth_mode=auth_mode,
-                workspace_path=self.workspace,
+                workspace_path=ws,
             )
             explorers.append(agent)
 
@@ -421,6 +402,10 @@ class MasterAgent:
         reports = await asyncio.gather(
             *[e.run() for e in explorers], return_exceptions=True
         )
+
+        # Clean up per-explorer workspaces
+        for ws in explorer_workspaces:
+            self.file_manager.cleanup(ws)
 
         for report in reports:
             if isinstance(report, Exception):
@@ -609,8 +594,6 @@ class MasterAgent:
                 )
 
         if all_file_refs:
-            structurer_executor = self._build_structurer_executor()
-
             # Split files into batches for parallel processing
             batch_size = max(1, len(all_file_refs) // 3)
             batches = [
@@ -619,7 +602,11 @@ class MasterAgent:
             ]
 
             structurers = []
-            for batch in batches:
+            structurer_workspaces = []
+            for i, batch in enumerate(batches):
+                ws = self.file_manager.create_workspace(f"{self.client_id}_structurer_{i}")
+                structurer_workspaces.append(ws)
+                structurer_executor = self._build_structurer_executor(ws)
                 agent = StructurerAgent(
                     claude=self.claude,
                     gemini=self.gemini,
@@ -633,6 +620,10 @@ class MasterAgent:
             structurer_reports = await asyncio.gather(
                 *[s.run() for s in structurers], return_exceptions=True
             )
+
+            # Clean up per-structurer workspaces
+            for ws in structurer_workspaces:
+                self.file_manager.cleanup(ws)
 
             for report in structurer_reports:
                 if isinstance(report, Exception):
@@ -798,10 +789,10 @@ class MasterAgent:
                 "Waiting for human verification responses...",
             )
 
-            # Poll with exponential backoff: check every 5s, up to 30s total
+            # Poll with exponential backoff
             wait_interval = 5
             total_waited = 0
-            max_wait = 30
+            max_wait = self.verify_timeout
             responses = []
 
             while total_waited < max_wait:
@@ -921,13 +912,7 @@ class MasterAgent:
 
     async def run(self, data_sources: list[dict]):
         """Run the full pipeline."""
-        self.workspace = self.file_manager.create_workspace(self.client_id)
-        try:
-            await self.run_explore_phase(data_sources)
-            await self.run_structure_phase()
-            await self.run_verify_phase()
-            await self.run_use_phase()
-        finally:
-            if self.workspace:
-                self.file_manager.cleanup(self.workspace)
-                self.workspace = None
+        await self.run_explore_phase(data_sources)
+        await self.run_structure_phase()
+        await self.run_verify_phase()
+        await self.run_use_phase()
