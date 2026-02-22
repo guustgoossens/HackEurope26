@@ -27,7 +27,7 @@ export function NodeDetailPanel({ nodeId, nodeName, nodeReadme, nodeType, onClos
 
   return (
     <div
-      className="absolute right-0 top-0 h-full w-72 z-20 shadow-2xl overflow-y-auto"
+      className="absolute right-0 top-0 h-full w-72 z-20 shadow-2xl overflow-y-auto card-organic"
       style={{
         background: 'linear-gradient(180deg, hsl(217 20% 14%), hsl(220 20% 12%))',
         borderLeft: '1px solid hsl(217 20% 25%)',

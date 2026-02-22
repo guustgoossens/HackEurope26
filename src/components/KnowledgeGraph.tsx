@@ -329,7 +329,7 @@ export function KnowledgeGraph({ clientId, onSelectNode }: KnowledgeGraphProps) 
       {/* Loading overlay */}
       {treeNodes === undefined && (
         <div
-          className="absolute inset-0 flex items-center justify-center z-10 rounded-xl"
+          className="absolute inset-0 flex items-center justify-center z-10 card-organic"
           style={{ background: 'hsl(215 65% 97%)', border: '1px solid hsl(217 20% 91%)' }}
         >
           <div className="text-sm text-muted-foreground animate-pulse">Chargement du graphe…</div>
@@ -339,7 +339,7 @@ export function KnowledgeGraph({ clientId, onSelectNode }: KnowledgeGraphProps) 
       {/* Empty overlay */}
       {treeNodes?.length === 0 && (
         <div
-          className="absolute inset-0 flex items-center justify-center z-10 rounded-xl"
+          className="absolute inset-0 flex items-center justify-center z-10 card-organic"
           style={{ background: 'hsl(215 65% 97%)', border: '1px solid hsl(217 20% 91%)' }}
         >
           <div className="text-center space-y-1.5">
@@ -352,7 +352,7 @@ export function KnowledgeGraph({ clientId, onSelectNode }: KnowledgeGraphProps) 
       {/* Domain legend — top-left floating card (only with data) */}
       {legendNodes.length > 0 && (
         <div
-          className="absolute top-3 left-3 z-10 flex flex-col gap-1.5 rounded-2xl px-3 py-2.5"
+          className="absolute top-3 left-3 z-10 flex flex-col gap-1.5 card-organic px-3 py-2.5"
           style={{
             background: 'linear-gradient(135deg, rgba(255,255,255,0.94), hsl(215 50% 97% / 0.94))',
             backdropFilter: 'blur(12px)',
@@ -378,7 +378,7 @@ export function KnowledgeGraph({ clientId, onSelectNode }: KnowledgeGraphProps) 
       {/* Node count — bottom-right chip */}
       {visibleCount > 0 && (
         <div
-          className="absolute bottom-3 right-3 z-10 text-xs px-2.5 py-1 rounded-full font-medium"
+          className="absolute bottom-3 right-3 z-10 text-xs px-2.5 py-1 btn-organic-pill font-medium"
           style={{
             background: 'rgba(255,255,255,0.82)',
             backdropFilter: 'blur(8px)',
@@ -403,7 +403,7 @@ export function KnowledgeGraph({ clientId, onSelectNode }: KnowledgeGraphProps) 
       {/* Graph canvas — always rendered so refs are stable */}
       <div
         ref={containerRef}
-        className="w-full h-full rounded-xl overflow-hidden"
+        className="w-full h-full card-organic overflow-hidden"
         style={{ border: '1px solid hsl(215 20% 90%)' }}
       >
         <svg ref={svgRef} className="w-full h-full" />
