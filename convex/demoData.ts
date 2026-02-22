@@ -18,8 +18,82 @@
  * DELETE THIS FILE after the hackathon.
  */
 
-import { mutation } from './_generated/server';
+import { mutation, query } from './_generated/server';
 import { v } from 'convex/values';
+
+// ─── LIVE PIPELINE CLIENT ──────────────────────────────────────────────────────
+
+const clientValidator = v.object({
+  _id: v.id('clients'),
+  _creationTime: v.number(),
+  name: v.string(),
+  industry: v.string(),
+  phase: v.union(
+    v.literal('onboard'),
+    v.literal('explore'),
+    v.literal('structure'),
+    v.literal('verify'),
+    v.literal('use'),
+  ),
+  createdBy: v.string(),
+});
+
+/** Returns the live pipeline demo client (createdBy === "demo-live"), or null if not yet created. */
+export const getLiveClient = query({
+  args: {},
+  returns: v.union(clientValidator, v.null()),
+  handler: async (ctx) => {
+    return await ctx.db
+      .query('clients')
+      .withIndex('by_createdBy', (q) => q.eq('createdBy', 'demo-live'))
+      .first();
+  },
+});
+
+/** Creates a fresh live demo client in the onboard phase (no seeded data). */
+export const createLiveClient = mutation({
+  args: {},
+  returns: v.object({ clientId: v.id('clients') }),
+  handler: async (ctx) => {
+    const clientId = await ctx.db.insert('clients', {
+      name: 'Hartley & Associates LLP',
+      industry: 'Accountancy',
+      phase: 'onboard',
+      createdBy: 'demo-live',
+    });
+    return { clientId };
+  },
+});
+
+/** Resets the live demo client back to onboard: clears all related data. */
+export const resetLiveClient = mutation({
+  args: { clientId: v.id('clients') },
+  returns: v.null(),
+  handler: async (ctx, args) => {
+    const tables = [
+      'agent_events',
+      'pipeline_status',
+      'contradictions',
+      'knowledge_entries',
+      'knowledge_tree',
+      'explorations',
+      'data_sources',
+    ] as const;
+
+    for (const table of tables) {
+      const rows = await ctx.db
+        .query(table)
+        .withIndex('by_clientId', (q) => q.eq('clientId', args.clientId))
+        .collect();
+      for (const row of rows) {
+        await ctx.db.delete(row._id);
+      }
+    }
+
+    await ctx.db.patch(args.clientId, { phase: 'onboard' });
+    return null;
+  },
+});
 
 // ─── CREATE CLIENT ────────────────────────────────────────────────────────────
 
@@ -772,17 +846,8 @@ export const insertDemoClean = mutation({
   },
 });
 
-// ─── RESTRUCTURE TO CLEAN ─────────────────────────────────────────────────────
+// ─── RESTRUCTURE KNOWLEDGE (real DB transition: messy → clean) ───────────────
 
-/**
- * Real-time restructure: replaces the messy 46-node knowledge tree with the
- * clean 11-node hierarchy. Called by the "Structurer ▶" button in Phase 2.
- * Since Convex is reactive, `useQuery(api.knowledge.getTree)` in KnowledgeGraph
- * auto-updates — nodes animate out/in via D3 data join transitions.
- *
- * Does NOT touch: data_sources, explorations, contradictions (shown in Phase 3).
- * Adds structure agent events so AgentFeed updates live.
- */
 export const restructureKnowledge = mutation({
   args: { clientId: v.id('clients') },
   returns: v.null(),

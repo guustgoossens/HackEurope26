@@ -81,8 +81,21 @@ EXPLORER_TOOLS = [
                 "sheet_count": {"type": "integer", "description": "Number of spreadsheets found"},
                 "folder_structure": {"type": "string", "description": "Summary of folder structure"},
                 "summary": {"type": "string", "description": "Brief summary of findings"},
+                "discovered_files": {
+                    "type": "array",
+                    "description": "Resources discovered — include IDs and names for downstream processing",
+                    "items": {
+                        "type": "object",
+                        "properties": {
+                            "id": {"type": "string", "description": "Resource ID (Drive file ID, email message ID)"},
+                            "name": {"type": "string", "description": "Resource name or subject line"},
+                            "mimeType": {"type": "string", "description": "MIME type if known"},
+                        },
+                        "required": ["id", "name"],
+                    },
+                },
             },
-            "required": ["summary"],
+            "required": ["summary", "discovered_files"],
         },
     ),
     ToolDefinition(
@@ -90,7 +103,10 @@ EXPLORER_TOOLS = [
         description="Search the agent forum for relevant past experiences",
         parameters={
             "properties": {
-                "query": {"type": "string", "description": "Search query"},
+                "query": {"type": "string", "description": "Full-text search query"},
+                "source_type": {"type": "string", "description": "Filter by source (gmail, drive, sheets)"},
+                "phase": {"type": "string", "description": "Filter by phase (explore, structure, verify, use)"},
+                "file_type": {"type": "string", "description": "Filter by file type (spreadsheet, pdf, email, document)"},
             },
             "required": ["query"],
         },
@@ -104,6 +120,9 @@ EXPLORER_TOOLS = [
                 "category": {"type": "string", "description": "Category (e.g. 'gmail', 'drive', 'sheets', 'general')"},
                 "content": {"type": "string", "description": "Entry content"},
                 "tags": {"type": "array", "items": {"type": "string"}, "description": "Tags"},
+                "source_type": {"type": "string", "description": "Source type (gmail, drive, sheets)"},
+                "phase": {"type": "string", "description": "Pipeline phase (explore, structure, verify, use)"},
+                "file_type": {"type": "string", "description": "File type (spreadsheet, pdf, email, document)"},
             },
             "required": ["title", "category", "content"],
         },
@@ -162,7 +181,12 @@ STRUCTURER_TOOLS = [
         name="check_forum",
         description="Search the agent forum for relevant past experiences",
         parameters={
-            "properties": {"query": {"type": "string", "description": "Search query"}},
+            "properties": {
+                "query": {"type": "string", "description": "Full-text search query"},
+                "source_type": {"type": "string", "description": "Filter by source (gmail, drive, sheets)"},
+                "phase": {"type": "string", "description": "Filter by phase (explore, structure, verify, use)"},
+                "file_type": {"type": "string", "description": "Filter by file type (spreadsheet, pdf, email, document)"},
+            },
             "required": ["query"],
         },
     ),
@@ -171,10 +195,13 @@ STRUCTURER_TOOLS = [
         description="Write to the agent forum",
         parameters={
             "properties": {
-                "title": {"type": "string"},
-                "category": {"type": "string"},
-                "content": {"type": "string"},
-                "tags": {"type": "array", "items": {"type": "string"}},
+                "title": {"type": "string", "description": "Entry title"},
+                "category": {"type": "string", "description": "Category"},
+                "content": {"type": "string", "description": "Entry content"},
+                "tags": {"type": "array", "items": {"type": "string"}, "description": "Tags"},
+                "source_type": {"type": "string", "description": "Source type (gmail, drive, sheets)"},
+                "phase": {"type": "string", "description": "Pipeline phase (explore, structure, verify, use)"},
+                "file_type": {"type": "string", "description": "File type (spreadsheet, pdf, email, document)"},
             },
             "required": ["title", "category", "content"],
         },
@@ -237,6 +264,79 @@ MASTER_TOOLS = [
                 "reason": {"type": "string"},
             },
             "required": ["next_phase", "reason"],
+        },
+    ),
+]
+
+# Sandbox tools (available to explorer + structurer agents)
+SANDBOX_TOOLS = [
+    ToolDefinition(
+        name="download_file",
+        description="Download a file from Google Drive to the local sandbox workspace for processing",
+        parameters={
+            "properties": {
+                "file_id": {"type": "string", "description": "Google Drive file ID"},
+                "filename": {
+                    "type": "string",
+                    "description": "Filename to save as (optional, defaults to Drive filename)",
+                },
+            },
+            "required": ["file_id"],
+        },
+    ),
+    ToolDefinition(
+        name="run_command",
+        description=(
+            "Execute any shell command in the sandbox workspace (full /bin/sh, pipes and redirects work). "
+            "Use for file inspection, text extraction, format conversion, and local data processing. "
+            "Examples: 'ls -la', 'grep -r keyword .', 'pdftotext file.pdf -', "
+            "'python3 script.py', 'ffmpeg -i input.mp4 output.mp3', 'find . -name \"*.csv\"'. "
+            "Only truly destructive commands (rm -rf /, curl | bash, etc.) are blocked. "
+            "Do NOT use this to look for Google/OAuth credentials — use the Google Workspace tools directly."
+        ),
+        parameters={
+            "properties": {
+                "command": {"type": "string", "description": "Shell command to execute"},
+                "timeout": {
+                    "type": "integer",
+                    "description": "Timeout in seconds (default 60, max 300)",
+                    "default": 60,
+                },
+            },
+            "required": ["command"],
+        },
+    ),
+    ToolDefinition(
+        name="read_local_file",
+        description="Read a file from the sandbox workspace",
+        parameters={
+            "properties": {
+                "filepath": {"type": "string", "description": "Path to the file (relative to workspace or absolute)"},
+                "max_chars": {
+                    "type": "integer",
+                    "description": "Max characters to read (default 50000)",
+                    "default": 50000,
+                },
+            },
+            "required": ["filepath"],
+        },
+    ),
+    ToolDefinition(
+        name="list_workspace",
+        description="List all files in the current sandbox workspace with sizes and MIME types",
+        parameters={
+            "properties": {},
+            "required": [],
+        },
+    ),
+    ToolDefinition(
+        name="install_package",
+        description="Install a Python package via uv for use in subsequent commands",
+        parameters={
+            "properties": {
+                "package": {"type": "string", "description": "Package name (e.g. 'pandas', 'whisper')"},
+            },
+            "required": ["package"],
         },
     ),
 ]

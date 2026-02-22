@@ -9,9 +9,15 @@ class Settings(BaseSettings):
     CONVEX_AGENT_TOKEN: str
     COMPOSIO_API_KEY: str = ""
     COMPOSIO_USER_PREFIX: str = "hackeurope26"
+    COMPOSIO_GMAIL_AUTH_CONFIG_ID: str = ""
+    COMPOSIO_DRIVE_AUTH_CONFIG_ID: str = ""
+    COMPOSIO_SHEETS_AUTH_CONFIG_ID: str = ""
     CLAUDE_MODEL: str = "claude-sonnet-4-20250514"
     GEMINI_MODEL: str = "gemini-2.5-pro"
     MAX_AGENT_TURNS: int = 20
     AGENT_AUTH_TOKEN: str = ""
+    VERIFY_TIMEOUT: int = 300      # seconds (5 min) — max wait for human responses
+    CONVEX_TIMEOUT: int = 30       # seconds — HTTP timeout per Convex request
+    CONVEX_MAX_RETRIES: int = 3    # retry count for transient Convex errors
 
     model_config = {"env_file": ".env", "env_file_encoding": "utf-8"}

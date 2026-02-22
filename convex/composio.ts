@@ -2,11 +2,12 @@
 
 import { action } from './_generated/server';
 import { v } from 'convex/values';
+import { Composio } from '@composio/core';
 
-const COMPOSIO_TOOLKIT_MAP: Record<string, string> = {
-  gmail: 'gmail',
-  drive: 'googledrive',
-  sheets: 'googlesheets',
+const AUTH_CONFIG_ENV_MAP: Record<string, string> = {
+  gmail: 'COMPOSIO_GMAIL_AUTH_CONFIG_ID',
+  drive: 'COMPOSIO_DRIVE_AUTH_CONFIG_ID',
+  sheets: 'COMPOSIO_SHEETS_AUTH_CONFIG_ID',
 };
 
 export const initiateConnection = action({
@@ -17,41 +18,38 @@ export const initiateConnection = action({
   },
   returns: v.object({
     redirectUrl: v.string(),
-    entityId: v.string(),
+    userId: v.string(),
   }),
   handler: async (_ctx, args) => {
     const apiKey = process.env.COMPOSIO_API_KEY;
     if (!apiKey) {
-      throw new Error('COMPOSIO_API_KEY not configured');
+      throw new Error('COMPOSIO_API_KEY not configured. Set it in the Convex dashboard.');
     }
 
-    const toolkit = COMPOSIO_TOOLKIT_MAP[args.sourceType];
-    const entityId = `hackeurope26_${args.clientId}`;
+    const envVar = AUTH_CONFIG_ENV_MAP[args.sourceType];
+    const authConfigId = process.env[envVar];
+    if (!authConfigId) {
+      throw new Error(`${envVar} not configured. Set it in the Convex dashboard.`);
+    }
 
-    // Call Composio REST API to initiate OAuth connection
-    const response = await fetch('https://backend.composio.dev/api/v1/connectedAccounts', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'x-api-key': apiKey,
-      },
-      body: JSON.stringify({
-        integrationId: toolkit,
-        entityId,
-        redirectUri: args.redirectUrl,
-      }),
+    const composio = new Composio({ apiKey });
+    const userId = `hackeurope26_${args.clientId}`;
+
+    const connectionRequest = await composio.connectedAccounts.initiate(userId, authConfigId, {
+      callbackUrl: args.redirectUrl,
+      allowMultiple: true,
     });
 
-    if (!response.ok) {
-      const errorText = await response.text();
-      throw new Error(`Composio connection failed: ${errorText}`);
+    console.log('Composio connectionRequest:', JSON.stringify(connectionRequest.toJSON()));
+
+    const redirectUrl = connectionRequest.redirectUrl;
+    if (!redirectUrl) {
+      throw new Error(`Composio returned no redirect URL. Status: ${connectionRequest.status}, ID: ${connectionRequest.id}`);
     }
 
-    const result = await response.json();
-
     return {
-      redirectUrl: result.redirectUrl ?? result.connectionUrl ?? '',
-      entityId,
+      redirectUrl,
+      userId,
     };
   },
 });

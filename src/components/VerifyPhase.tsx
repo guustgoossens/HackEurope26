@@ -16,9 +16,10 @@ interface Props {
     isComplete: boolean;
     onComplete: () => void;
     onNextPhase?: () => void;
+    respondedBy?: string;
 }
 
-export default function VerifyPhase({ clientId, isComplete, onComplete, onNextPhase }: Props) {
+export default function VerifyPhase({ clientId, isComplete, onComplete, onNextPhase, respondedBy = 'demo' }: Props) {
     const { t } = useTranslation();
     const questionnaires = useQuery(api.questionnaires.listByClient, {
         clientId: clientId as Id<'clients'>,
@@ -128,7 +129,7 @@ export default function VerifyPhase({ clientId, isComplete, onComplete, onNextPh
             questionnaireId: questionnaire._id,
             questionId: currentQ.id,
             selectedOption: optionText,
-            respondedBy: 'demo',
+            respondedBy,
         });
     };
 

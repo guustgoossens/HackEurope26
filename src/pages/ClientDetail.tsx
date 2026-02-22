@@ -1,19 +1,28 @@
-import { useQuery, useMutation, useAction } from 'convex/react';
+import { useQuery, useMutation } from 'convex/react';
 import { api } from '../../convex/_generated/api';
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { ArrowLeft, Plus, Play, Mail, HardDrive, Sheet, Loader2 } from 'lucide-react';
+import { ArrowLeft, Loader2, Play } from 'lucide-react';
 import { useAuth } from '@workos-inc/authkit-react';
 import { PhaseIndicator } from '@/components/PhaseIndicator';
 import { AgentEventFeed } from '@/components/AgentEventFeed';
 import { ExploreMetrics } from '@/components/ExploreMetrics';
+import { ExploreVisualization } from '@/components/ExploreVisualization';
 import { KnowledgeTree } from '@/components/KnowledgeTree';
 import { ContradictionsList } from '@/components/ContradictionsList';
-import { QuestionCard } from '@/components/QuestionCard';
 import { KnowledgeEntryList } from '@/components/KnowledgeEntry';
 import { VisualizationGraph } from '@/components/VisualizationGraph';
 import { useComposioConnect } from '@/hooks/useComposioConnect';
-import { ExploreVisualization } from '@/components/ExploreVisualization';
+import ExplorePhase from '@/components/ExplorePhase';
+import type { LiveExploreData } from '@/components/ExplorePhase';
+import VerifyPhase from '@/components/VerifyPhase';
+import { cn } from '@/lib/utils';
+import {
+  FolioMail as Mail,
+  FolioHardDrive as HardDrive,
+  FolioFileSpreadsheet as Sheet,
+  FolioCheckCircle2 as CheckCircle2,
+} from '@/components/icons/FolioIcons';
 import type { Id } from '../../convex/_generated/dataModel';
 
 interface ClientDetailProps {
@@ -21,28 +30,32 @@ interface ClientDetailProps {
   onBack: () => void;
 }
 
-const sourceTypes = ['gmail', 'drive', 'sheets'] as const;
+// Safe useAuth wrapper for dev bypass environments
+function useAuthSafe() {
+  try {
+    return useAuth();
+  } catch {
+    return { user: null };
+  }
+}
 
 export function ClientDetail({ clientId, onBack }: ClientDetailProps) {
   const { t } = useTranslation();
   const client = useQuery(api.clients.get, { id: clientId as Id<'clients'> });
-  const dataSources = useQuery(api.dataSources.listByClient, { clientId: clientId as Id<'clients'> });
-  const createDataSource = useMutation(api.dataSources.create);
-  const triggerPipeline = useAction(api.triggerPipeline.start);
+  const updatePhase = useMutation(api.clients.updatePhase);
 
-  const [showAddSource, setShowAddSource] = useState(false);
-  const [sourceType, setSourceType] = useState<(typeof sourceTypes)[number]>('gmail');
-  const [sourceLabel, setSourceLabel] = useState('');
-  const [creating, setCreating] = useState(false);
   const [pipelineStarting, setPipelineStarting] = useState(false);
+  const [pipelineError, setPipelineError] = useState<string | null>(null);
 
   if (client === undefined) {
     return (
-      <div className="p-8">
-        <div className="animate-pulse space-y-4">
-          <div className="h-6 bg-slate-700 rounded w-32" />
-          <div className="h-10 bg-slate-700 rounded w-64" />
-          <div className="h-48 bg-slate-800 rounded-xl" />
+      <div className="landing min-h-full">
+        <div className="p-8">
+          <div className="animate-pulse space-y-4">
+            <div className="h-6 rounded w-32" style={{ background: 'hsl(217 20% 90%)' }} />
+            <div className="h-10 rounded w-64" style={{ background: 'hsl(217 20% 92%)' }} />
+            <div className="h-48 rounded-2xl" style={{ background: 'hsl(217 20% 94%)' }} />
+          </div>
         </div>
       </div>
     );
@@ -50,85 +63,85 @@ export function ClientDetail({ clientId, onBack }: ClientDetailProps) {
 
   if (client === null) {
     return (
-      <div className="p-8">
-        <button onClick={onBack} className="flex items-center gap-2 text-slate-400 hover:text-white transition-colors mb-6">
-          <ArrowLeft className="w-4 h-4" />
-          {t('client.backToDashboard')}
-        </button>
-        <p className="text-slate-400">{t('client.clientNotFound')}</p>
+      <div className="landing min-h-full">
+        <div className="p-8">
+          <button onClick={onBack} className="flex items-center gap-2 text-muted-foreground hover:text-foreground transition-colors mb-6 text-sm">
+            <ArrowLeft className="w-4 h-4" />
+            {t('client.backToDashboard')}
+          </button>
+          <p className="text-muted-foreground">{t('client.clientNotFound')}</p>
+        </div>
       </div>
     );
   }
 
-  const handleAddSource = async () => {
-    if (!sourceLabel.trim()) return;
-    setCreating(true);
-    try {
-      await createDataSource({
-        clientId: clientId as Id<'clients'>,
-        type: sourceType,
-        label: sourceLabel.trim(),
-      });
-      setSourceLabel('');
-      setShowAddSource(false);
-    } finally {
-      setCreating(false);
-    }
-  };
-
   const handleStartExplore = async () => {
     setPipelineStarting(true);
+    setPipelineError(null);
     try {
-      await triggerPipeline({ clientId: clientId as Id<'clients'> });
+      await updatePhase({ id: clientId as Id<'clients'>, phase: 'explore' });
+
+      const agentUrl = import.meta.env.VITE_AGENT_SERVER_URL ?? 'http://localhost:8000';
+      const res = await fetch(`${agentUrl}/api/pipeline/start`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          client_id: clientId,
+          auth_token: import.meta.env.VITE_AGENT_AUTH_TOKEN ?? '',
+        }),
+      });
+
+      if (!res.ok) {
+        const text = await res.text();
+        throw new Error(`Agent server ${res.status}: ${text}`);
+      }
+    } catch (e) {
+      const msg = e instanceof Error ? e.message : String(e);
+      setPipelineError(msg);
+      console.error('Pipeline start failed:', msg);
     } finally {
       setPipelineStarting(false);
     }
   };
 
   return (
-    <div className="p-8">
-      {/* Header */}
-      <button
-        onClick={onBack}
-        className="flex items-center gap-2 text-slate-400 hover:text-white transition-colors mb-6 text-sm"
-      >
-        <ArrowLeft className="w-4 h-4" />
-        {t('client.backToDashboard')}
-      </button>
+    <div className="landing min-h-full">
+      <div className="p-8">
+        {/* Header */}
+        <button
+          onClick={onBack}
+          className="flex items-center gap-2 text-muted-foreground hover:text-foreground transition-colors mb-6 text-sm"
+        >
+          <ArrowLeft className="w-4 h-4" />
+          {t('client.backToDashboard')}
+        </button>
 
-      <div className="flex items-start justify-between mb-6">
-        <div>
-          <h1 className="text-2xl font-bold text-white">{client.name}</h1>
-          <p className="text-slate-400 mt-1">{client.industry}</p>
+        <div className="flex items-start justify-between mb-6">
+          <div>
+            <h1 className="text-2xl font-semibold text-foreground" style={{ fontFamily: "'Newsreader', serif" }}>{client.name}</h1>
+            <p className="text-muted-foreground mt-1 text-sm">{client.industry}</p>
+          </div>
         </div>
-      </div>
 
-      {/* Phase indicator */}
-      <div className="mb-8">
-        <PhaseIndicator currentPhase={client.phase} />
-      </div>
+        {/* Phase indicator */}
+        <div className="mb-8">
+          <PhaseIndicator currentPhase={client.phase} />
+        </div>
 
-      {/* Phase-specific content */}
-      {client.phase === 'onboard' && (
-        <OnboardPanel clientId={clientId} onStartExplore={() => void handleStartExplore()} pipelineStarting={pipelineStarting} />
-      )}
-      {client.phase === 'explore' && (
-        <ExplorePanel
-          clientId={clientId}
-          dataSources={dataSources}
-          showAddSource={showAddSource}
-          setShowAddSource={setShowAddSource}
-          sourceType={sourceType}
-          setSourceType={setSourceType}
-          sourceLabel={sourceLabel}
-          setSourceLabel={setSourceLabel}
-          creating={creating}
-          onAddSource={() => void handleAddSource()}
-        />
-      )}
-      {client.phase === 'structure' && <StructurePanel clientId={clientId} />}
-      {client.phase === 'verify' && <VerifyPanel clientId={clientId} />}
-      {client.phase === 'use' && <UsePanel clientId={clientId} />}
+        {/* Phase-specific content */}
+        {client.phase === 'onboard' && (
+          <OnboardPanel
+            clientId={clientId}
+            onStartExplore={() => void handleStartExplore()}
+            pipelineStarting={pipelineStarting}
+            pipelineError={pipelineError}
+          />
+        )}
+        {client.phase === 'explore' && <LiveExplorePanel clientId={clientId} />}
+        {client.phase === 'structure' && <StructurePanel clientId={clientId} />}
+        {client.phase === 'verify' && <VerifyWrapper clientId={clientId} />}
+        {client.phase === 'use' && <UsePanel clientId={clientId} />}
+      </div>
     </div>
   );
 }
@@ -137,15 +150,15 @@ function OnboardPanel({
   clientId,
   onStartExplore,
   pipelineStarting,
+  pipelineError,
 }: {
   clientId: string;
   onStartExplore: () => void;
   pipelineStarting: boolean;
+  pipelineError: string | null;
 }) {
   const dataSources = useQuery(api.dataSources.listByClient, { clientId: clientId as Id<'clients'> });
-  const { connect, connecting } = useComposioConnect({
-    clientId: clientId as Id<'clients'>,
-  });
+  const { connect, connecting } = useComposioConnect({ clientId: clientId as Id<'clients'> });
 
   const connectedTypes = new Set(
     dataSources?.filter((ds) => ds.connectionStatus === 'connected').map((ds) => ds.type) ?? [],
@@ -153,22 +166,29 @@ function OnboardPanel({
 
   const { t } = useTranslation();
   const sourceButtons = [
-    { type: 'gmail' as const, label: t('client.connectGmail'), icon: Mail, color: 'bg-red-500/10 border-red-500/30 hover:bg-red-500/20 text-red-400' },
-    { type: 'drive' as const, label: t('client.connectDrive'), icon: HardDrive, color: 'bg-green-500/10 border-green-500/30 hover:bg-green-500/20 text-green-400' },
-    { type: 'sheets' as const, label: t('client.connectSheets'), icon: Sheet, color: 'bg-purple-500/10 border-purple-500/30 hover:bg-purple-500/20 text-purple-400' },
+    { type: 'gmail' as const, label: t('client.connectGmail'), icon: Mail },
+    { type: 'drive' as const, label: t('client.connectDrive'), icon: HardDrive },
+    { type: 'sheets' as const, label: t('client.connectSheets'), icon: Sheet },
   ];
 
   return (
     <div className="space-y-6">
-      <div className="bg-slate-800 border border-slate-700 rounded-xl p-6">
-        <h3 className="text-lg font-medium text-white mb-2">{t('client.welcome')}</h3>
-        <p className="text-sm text-slate-400 mb-6">
-          {t('client.welcomeP')}
-        </p>
+      <div
+        className="rounded-2xl p-6"
+        style={{
+          background: 'linear-gradient(135deg, hsl(0 0% 100%), hsl(217 30% 97%))',
+          border: '1px solid hsl(217 20% 91%)',
+          boxShadow: '0 2px 8px hsl(217 30% 70% / 0.06)',
+        }}
+      >
+        <h3 className="text-lg font-semibold text-foreground mb-2" style={{ fontFamily: "'Newsreader', serif" }}>
+          {t('client.welcome')}
+        </h3>
+        <p className="text-sm text-muted-foreground mb-6">{t('client.welcomeP')}</p>
 
         {/* Connect buttons */}
         <div className="grid grid-cols-3 gap-3 mb-6">
-          {sourceButtons.map(({ type, label, icon: Icon, color }) => {
+          {sourceButtons.map(({ type, label, icon: Icon }) => {
             const isConnected = connectedTypes.has(type);
             const isConnecting = connecting === type;
 
@@ -177,15 +197,31 @@ function OnboardPanel({
                 key={type}
                 onClick={() => void connect(type)}
                 disabled={isConnected || isConnecting}
-                className={`flex flex-col items-center gap-2 p-4 rounded-lg border transition-colors ${
+                className={cn(
+                  'flex flex-col items-center gap-2 p-4 rounded-2xl transition-all duration-200 disabled:opacity-70',
+                  !isConnected && !isConnecting && 'btn-organic',
+                )}
+                style={
                   isConnected
-                    ? 'bg-emerald-500/10 border-emerald-500/30 text-emerald-400 cursor-default'
-                    : isConnecting
-                      ? 'bg-slate-700 border-slate-600 text-slate-400 cursor-wait'
-                      : color
-                } disabled:opacity-70`}
+                    ? {
+                        background: 'hsl(152 40% 96%)',
+                        border: '1px solid hsl(152 35% 85%)',
+                        color: 'hsl(152 50% 32%)',
+                      }
+                    : {
+                        background: 'linear-gradient(135deg, hsl(217 55% 96%), hsl(217 45% 93%))',
+                        border: '1px solid hsl(217 35% 85%)',
+                        color: 'hsl(217 60% 45%)',
+                      }
+                }
               >
-                {isConnecting ? <Loader2 className="w-6 h-6 animate-spin" /> : <Icon className="w-6 h-6" />}
+                {isConnecting ? (
+                  <Loader2 className="w-6 h-6 animate-spin" />
+                ) : isConnected ? (
+                  <CheckCircle2 className="w-6 h-6" />
+                ) : (
+                  <Icon className="w-6 h-6" />
+                )}
                 <span className="text-xs font-medium">{isConnected ? t('common.connected') : label}</span>
               </button>
             );
@@ -196,12 +232,21 @@ function OnboardPanel({
         {dataSources && dataSources.length > 0 && (
           <div className="space-y-2 mb-6">
             {dataSources.map((ds) => (
-              <div key={ds._id} className="flex items-center justify-between p-3 bg-slate-900 rounded-lg">
+              <div
+                key={ds._id}
+                className="flex items-center justify-between p-3 rounded-xl"
+                style={{ background: 'hsl(217 20% 97%)', border: '1px solid hsl(217 20% 93%)' }}
+              >
                 <div className="flex items-center gap-3">
-                  <span className="text-xs bg-slate-700 text-slate-300 px-2 py-0.5 rounded capitalize">{ds.type}</span>
-                  <span className="text-sm text-white">{ds.label}</span>
+                  <span
+                    className="text-xs px-2 py-0.5 rounded-lg capitalize font-medium"
+                    style={{ background: 'hsl(217 30% 92%)', color: 'hsl(217 50% 40%)' }}
+                  >
+                    {ds.type}
+                  </span>
+                  <span className="text-sm text-foreground">{ds.label}</span>
                 </div>
-                <StatusBadge status={ds.connectionStatus} />
+                <ConnectionBadge status={ds.connectionStatus} />
               </div>
             ))}
           </div>
@@ -212,7 +257,11 @@ function OnboardPanel({
           <button
             onClick={onStartExplore}
             disabled={pipelineStarting}
-            className="flex items-center gap-2 text-sm px-5 py-2.5 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors disabled:opacity-50"
+            className="btn-organic flex items-center gap-2 text-sm px-5 py-2.5 text-white font-medium disabled:opacity-50"
+            style={{
+              background: 'linear-gradient(135deg, hsl(217 65% 52%), hsl(217 75% 43%))',
+              boxShadow: '0 4px 16px hsl(217 60% 50% / 0.3)',
+            }}
           >
             {pipelineStarting ? (
               <>
@@ -227,165 +276,63 @@ function OnboardPanel({
             )}
           </button>
         )}
+
+        {pipelineError && (
+          <p
+            className="mt-3 text-sm rounded-xl px-4 py-2"
+            style={{
+              background: 'hsl(0 80% 97%)',
+              border: '1px solid hsl(0 50% 88%)',
+              color: 'hsl(0 60% 40%)',
+            }}
+          >
+            {pipelineError}
+          </p>
+        )}
       </div>
     </div>
   );
 }
 
-interface ExplorePanelProps {
-  clientId: string;
-  dataSources:
-    | Array<{
-        _id: string;
-        type: string;
-        label: string;
-        connectionStatus: string;
-      }>
-    | undefined;
-  showAddSource: boolean;
-  setShowAddSource: (v: boolean) => void;
-  sourceType: 'gmail' | 'drive' | 'sheets';
-  setSourceType: (v: 'gmail' | 'drive' | 'sheets') => void;
-  sourceLabel: string;
-  setSourceLabel: (v: string) => void;
-  creating: boolean;
-  onAddSource: () => void;
-}
+function LiveExplorePanel({ clientId }: { clientId: string }) {
+  const agentEvents = useQuery(api.agentEvents.listByClient, { clientId: clientId as Id<'clients'> });
+  const explorations = useQuery(api.explorations.listByClient, { clientId: clientId as Id<'clients'> });
 
-function ExplorePanel({
-  clientId,
-  dataSources,
-  showAddSource,
-  setShowAddSource,
-  sourceType,
-  setSourceType,
-  sourceLabel,
-  setSourceLabel,
-  creating,
-  onAddSource,
-}: ExplorePanelProps) {
-  const { t } = useTranslation();
-  const [viewMode, setViewMode] = useState<'list' | 'graph'>('list');
-  
+  const liveData: LiveExploreData = {
+    explorations: explorations?.map(e => ({
+      dataSourceId: e.dataSourceId,
+      metrics: (e.metrics as Record<string, number>) ?? {},
+      status: e.status,
+    })),
+    agentEvents: agentEvents?.map(e => ({
+      message: e.message,
+      agentName: e.agentName,
+      _creationTime: e._creationTime,
+    })),
+  };
+
   return (
     <div className="space-y-6">
-      {/* Source visualisation */}
+      {/* Animated 3-step narrative: connection → exploration → bilan */}
+      <div
+        className="rounded-2xl overflow-hidden"
+        style={{
+          height: '540px',
+          border: '1px solid hsl(217 20% 91%)',
+          boxShadow: '0 2px 8px hsl(217 30% 70% / 0.06)',
+        }}
+      >
+        <ExplorePhase clientId={clientId} liveData={liveData} />
+      </div>
+
+      {/* Real-time per-source extraction counts */}
       <ExploreVisualization clientId={clientId} />
 
-      {/* Metrics */}
+      {/* Pipeline status: phase progress, active agents, last activity */}
       <ExploreMetrics clientId={clientId} />
 
-      {/* View mode toggle */}
-      <div className="flex gap-2">
-        <button
-          onClick={() => setViewMode('list')}
-          className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
-            viewMode === 'list'
-              ? 'bg-blue-600 text-white'
-              : 'bg-slate-700 text-slate-300 hover:text-white'
-          }`}
-        >
-          {t('client.listView')}
-        </button>
-        <button
-          onClick={() => setViewMode('graph')}
-          className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
-            viewMode === 'graph'
-              ? 'bg-blue-600 text-white'
-              : 'bg-slate-700 text-slate-300 hover:text-white'
-          }`}
-        >
-          {t('client.graphView')}
-        </button>
-      </div>
-
-      {viewMode === 'graph' ? (
-        <div className="bg-slate-800 border border-slate-700 rounded-xl overflow-hidden" style={{ height: '600px' }}>
-          <VisualizationGraph clientId={clientId as Id<'clients'>} type="exploration" />
-        </div>
-      ) : (
-        <>
-          {/* Data Sources section */}
-          <div className="bg-slate-800 border border-slate-700 rounded-xl p-4">
-            <div className="flex items-center justify-between mb-4">
-              <h3 className="text-sm font-medium text-slate-300">{t('client.dataSources')}</h3>
-              <div className="flex items-center gap-2">
-                <button
-                  onClick={() => setShowAddSource(!showAddSource)}
-                  className="flex items-center gap-1.5 text-xs px-3 py-1.5 bg-slate-700 text-slate-300 hover:text-white rounded-lg transition-colors"
-                >
-                  <Plus className="w-3.5 h-3.5" />
-                  {t('client.addSource')}
-                </button>
-                <StartExploreButton clientId={clientId} />
-              </div>
-            </div>
-
-        {/* Add source form */}
-        {showAddSource && (
-          <div className="mb-4 p-3 bg-slate-900 border border-slate-600 rounded-lg">
-            <div className="flex gap-3">
-              <select
-                value={sourceType}
-                onChange={(e) => setSourceType(e.target.value as 'gmail' | 'drive' | 'sheets')}
-                className="px-3 py-2 bg-slate-800 border border-slate-600 rounded-lg text-sm text-white focus:outline-none focus:border-blue-500"
-              >
-                <option value="gmail">Gmail</option>
-                <option value="drive">Google Drive</option>
-                <option value="sheets">Google Sheets</option>
-              </select>
-              <input
-                type="text"
-                placeholder={t('client.labelPlaceholder')}
-                value={sourceLabel}
-                onChange={(e) => setSourceLabel(e.target.value)}
-                className="flex-1 px-3 py-2 bg-slate-800 border border-slate-600 rounded-lg text-sm text-white placeholder-slate-500 focus:outline-none focus:border-blue-500"
-                onKeyDown={(e) => {
-                  if (e.key === 'Enter') onAddSource();
-                }}
-                autoFocus
-              />
-              <button
-                onClick={onAddSource}
-                disabled={creating || !sourceLabel.trim()}
-                className="px-4 py-2 bg-blue-600 text-white rounded-lg text-sm font-medium hover:bg-blue-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-              >
-                {creating ? t('common.adding') : t('common.add')}
-              </button>
-            </div>
-          </div>
-        )}
-
-        {/* Data source list */}
-        {dataSources === undefined ? (
-          <div className="animate-pulse space-y-2">
-            {[1, 2].map((i) => (
-              <div key={i} className="h-10 bg-slate-700 rounded" />
-            ))}
-          </div>
-        ) : dataSources.length === 0 ? (
-          <p className="text-xs text-slate-500 text-center py-4">{t('client.noDataSources')}</p>
-        ) : (
-          <div className="space-y-2">
-            {dataSources.map((source) => (
-              <div key={source._id} className="flex items-center justify-between p-3 bg-slate-900 rounded-lg">
-                <div className="flex items-center gap-3">
-                  <span className="text-xs bg-slate-700 text-slate-300 px-2 py-0.5 rounded capitalize">
-                    {source.type}
-                  </span>
-                  <span className="text-sm text-white">{source.label}</span>
-                </div>
-                <StatusBadge status={source.connectionStatus} />
-              </div>
-            ))}
-          </div>
-        )}
-      </div>
-
-      {/* Agent Event Feed */}
+      {/* Live agent event log */}
       <AgentEventFeed clientId={clientId} />
-        </>
-      )}
     </div>
   );
 }
@@ -397,38 +344,50 @@ function StructurePanel({ clientId }: { clientId: string }) {
 
   return (
     <div className="space-y-6">
+      {/* Pipeline status */}
       <ExploreMetrics clientId={clientId} />
 
       {/* View mode toggle */}
       <div className="flex gap-2">
         <button
           onClick={() => setViewMode('tree')}
-          className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
+          className={cn(
+            'px-4 py-2 rounded-xl text-sm font-medium transition-all duration-200',
+            viewMode === 'tree' ? 'text-white btn-organic' : 'text-muted-foreground hover:text-foreground',
+          )}
+          style={
             viewMode === 'tree'
-              ? 'bg-blue-600 text-white'
-              : 'bg-slate-700 text-slate-300 hover:text-white'
-          }`}
+              ? { background: 'linear-gradient(135deg, hsl(217 65% 52%), hsl(217 75% 43%))', boxShadow: '0 2px 8px hsl(217 60% 50% / 0.25)' }
+              : { background: 'hsl(217 20% 97%)', border: '1px solid hsl(217 20% 91%)' }
+          }
         >
           {t('client.treeView')}
         </button>
         <button
           onClick={() => setViewMode('graph')}
-          className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
+          className={cn(
+            'px-4 py-2 rounded-xl text-sm font-medium transition-all duration-200',
+            viewMode === 'graph' ? 'text-white btn-organic' : 'text-muted-foreground hover:text-foreground',
+          )}
+          style={
             viewMode === 'graph'
-              ? 'bg-blue-600 text-white'
-              : 'bg-slate-700 text-slate-300 hover:text-white'
-          }`}
+              ? { background: 'linear-gradient(135deg, hsl(217 65% 52%), hsl(217 75% 43%))', boxShadow: '0 2px 8px hsl(217 60% 50% / 0.25)' }
+              : { background: 'hsl(217 20% 97%)', border: '1px solid hsl(217 20% 91%)' }
+          }
         >
           {t('client.graphView')}
         </button>
       </div>
 
       {viewMode === 'graph' ? (
-        <div className="bg-slate-800 border border-slate-700 rounded-xl overflow-hidden h-[600px]">
+        <div
+          className="rounded-2xl overflow-hidden"
+          style={{ height: '600px', border: '1px solid hsl(217 20% 91%)', boxShadow: '0 2px 8px hsl(217 30% 70% / 0.06)' }}
+        >
           <VisualizationGraph clientId={clientId as Id<'clients'>} type="knowledge" />
         </div>
       ) : (
-        <>
+        <div className="space-y-6">
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
             <KnowledgeTree clientId={clientId} onSelectNode={setSelectedNodeId} selectedNodeId={selectedNodeId} />
             <ContradictionsList clientId={clientId} />
@@ -436,11 +395,11 @@ function StructurePanel({ clientId }: { clientId: string }) {
 
           {selectedNodeId && (
             <div>
-              <h3 className="text-sm font-medium text-slate-300 mb-3">{t('client.entries')}</h3>
+              <h3 className="text-sm font-medium text-muted-foreground mb-3">{t('client.entries')}</h3>
               <KnowledgeEntryList treeNodeId={selectedNodeId} />
             </div>
           )}
-        </>
+        </div>
       )}
 
       <AgentEventFeed clientId={clientId} />
@@ -448,137 +407,35 @@ function StructurePanel({ clientId }: { clientId: string }) {
   );
 }
 
-function VerifyPanel({ clientId }: { clientId: string }) {
-  const { t } = useTranslation();
-  const { user } = useAuth();
-  const [viewMode, setViewMode] = useState<'questionnaire' | 'graph'>('questionnaire');
-  const questionnaires = useQuery(api.questionnaires.listByClient, {
-    clientId: clientId as Id<'clients'>,
-  });
-
-  const latestQuestionnaire = questionnaires?.[questionnaires.length - 1];
+function VerifyWrapper({ clientId }: { clientId: string }) {
+  const [isComplete, setIsComplete] = useState(false);
+  const { user } = useAuthSafe();
 
   return (
     <div className="space-y-6">
+      {/* Pipeline status */}
       <ExploreMetrics clientId={clientId} />
 
-      {/* View mode toggle */}
-      <div className="flex gap-2">
-        <button
-          onClick={() => setViewMode('questionnaire')}
-          className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
-            viewMode === 'questionnaire'
-              ? 'bg-blue-600 text-white'
-              : 'bg-slate-700 text-slate-300 hover:text-white'
-          }`}
-        >
-          {t('client.questionnaire')}
-        </button>
-        <button
-          onClick={() => setViewMode('graph')}
-          className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
-            viewMode === 'graph'
-              ? 'bg-blue-600 text-white'
-              : 'bg-slate-700 text-slate-300 hover:text-white'
-          }`}
-        >
-          {t('client.contradictionsGraph')}
-        </button>
-      </div>
-
-      {viewMode === 'graph' ? (
-        <div className="bg-slate-800 border border-slate-700 rounded-xl overflow-hidden h-[600px]">
+      <div
+        className="rounded-2xl overflow-hidden flex"
+        style={{
+          height: '600px',
+          border: '1px solid hsl(217 20% 91%)',
+          boxShadow: '0 2px 8px hsl(217 30% 70% / 0.06)',
+        }}
+      >
+        <div className="flex-1">
           <VisualizationGraph clientId={clientId as Id<'clients'>} type="contradictions" />
         </div>
-      ) : (
-        <>
-          {!questionnaires || questionnaires.length === 0 ? (
-            <div className="bg-slate-800 border border-slate-700 rounded-xl p-6 text-center">
-              <p className="text-sm text-slate-400">{t('client.waitingQuestionnaire')}</p>
-            </div>
-          ) : latestQuestionnaire ? (
-            <QuestionnaireView
-              questionnaireId={latestQuestionnaire._id}
-              respondedBy={user?.email ?? 'anonymous'}
-            />
-          ) : null}
-        </>
-      )}
-
-      <ContradictionsList clientId={clientId} />
-      <AgentEventFeed clientId={clientId} />
-    </div>
-  );
-}
-
-function QuestionnaireView({
-  questionnaireId,
-  respondedBy,
-}: {
-  questionnaireId: string;
-  respondedBy: string;
-}) {
-  const { t } = useTranslation();
-  const data = useQuery(api.questionnaires.getWithResponses, {
-    id: questionnaireId as Id<'questionnaires'>,
-  });
-
-  if (!data) {
-    return (
-      <div className="animate-pulse space-y-3">
-        {[1, 2, 3].map((i) => (
-          <div key={i} className="h-32 bg-slate-800 rounded-xl" />
-        ))}
-      </div>
-    );
-  }
-
-  const { questionnaire, responses } = data;
-  const responseMap = new Map(responses.map((r) => [r.questionId, r.selectedOption]));
-  const answeredCount = responses.length;
-  const totalCount = questionnaire.questions.length;
-
-  return (
-    <div>
-      <div className="flex items-center justify-between mb-3">
-        <h3 className="text-lg font-medium text-white">{questionnaire.title}</h3>
-        <span className="text-xs text-slate-400">
-          {t('client.answeredCount', { answered: answeredCount, total: totalCount })}
-        </span>
-      </div>
-
-      {/* Progress bar */}
-      <div className="h-1.5 bg-slate-700 rounded-full mb-6 overflow-hidden">
-        <div
-          className="h-full rounded-full transition-all duration-500 ease-out"
-          style={{
-            width: `${totalCount > 0 ? (answeredCount / totalCount) * 100 : 0}%`,
-            background: 'linear-gradient(90deg, hsl(217, 55%, 60%), hsl(152, 55%, 42%))',
-          }}
+        <VerifyPhase
+          clientId={clientId}
+          isComplete={isComplete}
+          onComplete={() => setIsComplete(true)}
+          respondedBy={user?.email ?? 'anonymous'}
         />
       </div>
-
-      {answeredCount === totalCount && totalCount > 0 ? (
-        <div className="bg-emerald-500/10 border border-emerald-500/30 rounded-xl p-8 text-center">
-          <div className="w-12 h-12 rounded-full bg-emerald-500/20 flex items-center justify-center mx-auto mb-3">
-            <span className="text-emerald-400 text-xl">✓</span>
-          </div>
-          <h4 className="text-white font-semibold mb-1">{t('client.allAnswered')}</h4>
-          <p className="text-sm text-slate-400">{t('client.allAnsweredP')}</p>
-        </div>
-      ) : (
-        <div className="space-y-4">
-          {questionnaire.questions.map((q) => (
-            <QuestionCard
-              key={q.id}
-              questionnaireId={questionnaireId}
-              question={q}
-              existingResponse={responseMap.get(q.id)}
-              respondedBy={respondedBy}
-            />
-          ))}
-        </div>
-      )}
+      <ContradictionsList clientId={clientId} />
+      <AgentEventFeed clientId={clientId} />
     </div>
   );
 }
@@ -586,68 +443,91 @@ function QuestionnaireView({
 function UsePanel({ clientId }: { clientId: string }) {
   const { t } = useTranslation();
   const [selectedNodeId, setSelectedNodeId] = useState<string | null>(null);
+  const [viewMode, setViewMode] = useState<'graph' | 'tree'>('graph');
 
   return (
     <div className="space-y-6">
+      {/* Pipeline status */}
       <ExploreMetrics clientId={clientId} />
 
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        <div className="lg:col-span-1">
-          <KnowledgeTree clientId={clientId} onSelectNode={setSelectedNodeId} selectedNodeId={selectedNodeId} />
-        </div>
-        <div className="lg:col-span-2">
-          {selectedNodeId ? (
-            <KnowledgeEntryList treeNodeId={selectedNodeId} />
-          ) : (
-            <div className="bg-slate-800 border border-slate-700 rounded-xl p-6 text-center">
-              <p className="text-sm text-slate-400">{t('client.selectNode')}</p>
-            </div>
+      {/* View mode toggle */}
+      <div className="flex gap-2">
+        <button
+          onClick={() => setViewMode('graph')}
+          className={cn(
+            'px-4 py-2 rounded-xl text-sm font-medium transition-all duration-200',
+            viewMode === 'graph' ? 'text-white btn-organic' : 'text-muted-foreground hover:text-foreground',
           )}
-        </div>
+          style={
+            viewMode === 'graph'
+              ? { background: 'linear-gradient(135deg, hsl(217 65% 52%), hsl(217 75% 43%))', boxShadow: '0 2px 8px hsl(217 60% 50% / 0.25)' }
+              : { background: 'hsl(217 20% 97%)', border: '1px solid hsl(217 20% 91%)' }
+          }
+        >
+          {t('client.graphView')}
+        </button>
+        <button
+          onClick={() => setViewMode('tree')}
+          className={cn(
+            'px-4 py-2 rounded-xl text-sm font-medium transition-all duration-200',
+            viewMode === 'tree' ? 'text-white btn-organic' : 'text-muted-foreground hover:text-foreground',
+          )}
+          style={
+            viewMode === 'tree'
+              ? { background: 'linear-gradient(135deg, hsl(217 65% 52%), hsl(217 75% 43%))', boxShadow: '0 2px 8px hsl(217 60% 50% / 0.25)' }
+              : { background: 'hsl(217 20% 97%)', border: '1px solid hsl(217 20% 91%)' }
+          }
+        >
+          {t('client.treeView')}
+        </button>
       </div>
+
+      {viewMode === 'graph' ? (
+        <div
+          className="rounded-2xl overflow-hidden"
+          style={{ height: '600px', border: '1px solid hsl(217 20% 91%)', boxShadow: '0 2px 8px hsl(217 30% 70% / 0.06)' }}
+        >
+          <VisualizationGraph clientId={clientId as Id<'clients'>} type="knowledge" />
+        </div>
+      ) : (
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+          <div className="lg:col-span-1">
+            <KnowledgeTree clientId={clientId} onSelectNode={setSelectedNodeId} selectedNodeId={selectedNodeId} />
+          </div>
+          <div className="lg:col-span-2">
+            {selectedNodeId ? (
+              <KnowledgeEntryList treeNodeId={selectedNodeId} />
+            ) : (
+              <div
+                className="rounded-2xl p-6 text-center"
+                style={{
+                  background: 'linear-gradient(135deg, hsl(0 0% 100%), hsl(217 30% 97%))',
+                  border: '1px solid hsl(217 20% 91%)',
+                }}
+              >
+                <p className="text-sm text-muted-foreground">{t('client.selectNode')}</p>
+              </div>
+            )}
+          </div>
+        </div>
+      )}
 
       <AgentEventFeed clientId={clientId} />
     </div>
   );
 }
 
-function StartExploreButton({ clientId }: { clientId: string }) {
+function ConnectionBadge({ status }: { status: string }) {
   const { t } = useTranslation();
-  const triggerPipeline = useAction(api.triggerPipeline.start);
-  const [starting, setStarting] = useState(false);
-
-  const handleStart = async () => {
-    setStarting(true);
-    try {
-      await triggerPipeline({ clientId: clientId as Id<'clients'> });
-    } finally {
-      setStarting(false);
-    }
-  };
-
-  return (
-    <button
-      onClick={() => void handleStart()}
-      disabled={starting}
-      className="flex items-center gap-1.5 text-xs px-3 py-1.5 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors disabled:opacity-50"
-    >
-      {starting ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Play className="w-3.5 h-3.5" />}
-      {starting ? t('client.starting') : t('client.startExplore')}
-    </button>
-  );
-}
-
-function StatusBadge({ status }: { status: string }) {
-  const { t } = useTranslation();
-  const styles: Record<string, string> = {
-    pending: 'bg-amber-500/10 text-amber-400 border-amber-500/20',
-    connected: 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20',
-    error: 'bg-red-500/10 text-red-400 border-red-500/20',
+  const styles: Record<string, React.CSSProperties> = {
+    pending: { background: 'hsl(38 80% 96%)', border: '1px solid hsl(38 40% 86%)', color: 'hsl(38 70% 32%)' },
+    connected: { background: 'hsl(152 40% 96%)', border: '1px solid hsl(152 35% 85%)', color: 'hsl(152 50% 32%)' },
+    error: { background: 'hsl(0 80% 97%)', border: '1px solid hsl(0 50% 88%)', color: 'hsl(0 60% 40%)' },
   };
   const label = t(`client.status_${status}` as 'client.status_pending');
 
   return (
-    <span className={`text-xs px-2 py-0.5 rounded-full border ${styles[status] ?? styles.pending}`}>
+    <span className="text-xs px-2.5 py-1 rounded-lg font-medium" style={styles[status] ?? styles.pending}>
       {label}
     </span>
   );

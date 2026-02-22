@@ -75,6 +75,12 @@ async def pipeline_status(client_id: str):
     return {"status": "idle"}
 
 
+@app.get("/api/workspace/{client_id}/files")
+async def workspace_files(client_id: str):
+    """Debug endpoint: workspace files are managed by MasterAgent internally."""
+    return {"status": "no_workspace", "files": []}
+
+
 @app.get("/health")
 async def health():
     return {"status": "ok"}

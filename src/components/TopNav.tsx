@@ -12,6 +12,7 @@ interface TopNavProps {
     onPhaseChange: (phase: number) => void;
     onTogglePlay: () => void;
     onBack: () => void;
+    onSwitchToLive?: () => void;
 }
 
 const PHASE_KEYS = ['explorer', 'structurer', 'verifier', 'deployer'] as const;
@@ -20,9 +21,11 @@ export default function TopNav({
     clientName,
     currentPhase,
     isPlaying,
+    isComplete,
     onPhaseChange,
     onTogglePlay,
     onBack,
+    onSwitchToLive,
 }: TopNavProps) {
     const { t } = useTranslation();
     const PHASES = PHASE_KEYS.map((key, i) => ({ id: i + 1, label: t(`topNav.${key}`) }));
@@ -58,7 +61,7 @@ export default function TopNav({
             {/* Phase navigation */}
             <div className="flex items-center gap-1">
                 <button
-                    className="h-8 w-8 flex items-center justify-center text-muted-foreground hover:text-foreground transition-colors btn-organic-secondary disabled:opacity-30"
+                    className="h-8 w-8 flex items-center justify-center text-muted-foreground hover:text-foreground transition-colors rounded-md disabled:opacity-30"
                     onClick={() => onPhaseChange(Math.max(1, currentPhase - 1))}
                     disabled={currentPhase === 1}
                 >
@@ -136,7 +139,7 @@ export default function TopNav({
 
                 <button
                     onClick={onTogglePlay}
-                    className="flex items-center gap-1.5 h-8 px-3 text-xs font-medium btn-organic-pill transition-all duration-300 text-primary"
+                    className="flex items-center gap-1.5 h-8 px-3 text-xs font-medium rounded-full transition-all duration-300 text-primary"
                     style={{
                         background: 'linear-gradient(135deg, hsl(217 50% 97%), hsl(217 40% 94%))',
                         border: '1px solid hsl(217 30% 88%)',
@@ -149,14 +152,27 @@ export default function TopNav({
 
                 <div className="w-px h-5 mx-1.5" style={{ background: 'hsl(217 20% 88%)' }} />
 
+                {onSwitchToLive && (
+                    <button
+                        onClick={onSwitchToLive}
+                        className="flex items-center gap-1.5 h-8 px-3 text-xs font-medium rounded-full transition-all duration-300 text-white"
+                        style={{
+                            background: 'linear-gradient(135deg, hsl(217 65% 52%), hsl(217 75% 43%))',
+                            boxShadow: '0 1px 4px hsl(217 60% 50% / 0.3)',
+                        }}
+                    >
+                        Pipeline réel →
+                    </button>
+                )}
+
                 <LanguageSwitcher
-                    className="h-8 px-3 text-xs font-medium btn-organic-pill border transition-colors text-muted-foreground hover:text-foreground hover:border-primary/30"
+                    className="h-8 px-3 text-xs font-medium rounded-full border transition-colors text-muted-foreground hover:text-foreground hover:border-primary/30"
                     style={{ borderColor: 'hsl(217 30% 88%)' }}
                 />
 
                 <button
                     onClick={onBack}
-                    className="flex items-center gap-1 h-8 px-3 text-xs text-muted-foreground hover:text-foreground btn-organic-pill transition-colors ml-1"
+                    className="flex items-center gap-1 h-8 px-3 text-xs text-muted-foreground hover:text-foreground rounded-full transition-colors ml-1"
                 >
                     <ArrowLeft className="h-6 w-6" />
                     <span className="hidden sm:inline">{t('topNav.home')}</span>

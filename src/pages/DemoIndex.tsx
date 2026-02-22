@@ -15,9 +15,10 @@ import { FolioDatabase, FolioLink, FolioSparkles } from '@/components/icons/Foli
 interface DemoIndexProps {
     clientId: string;
     onBack: () => void;
+    onSwitchToLive?: () => void;
 }
 
-export default function DemoIndex({ clientId, onBack }: DemoIndexProps) {
+export default function DemoIndex({ clientId, onBack, onSwitchToLive }: DemoIndexProps) {
     const { t } = useTranslation();
     const client = useQuery(api.clients.get, { id: clientId as Id<'clients'> });
     const treeNodes = useQuery(api.knowledge.getTree, { clientId: clientId as Id<'clients'> });
@@ -29,7 +30,6 @@ export default function DemoIndex({ clientId, onBack }: DemoIndexProps) {
         3: { title: t('demo.phase3Title'), subtitle: t('demo.phase3Subtitle') },
         4: { title: t('demo.phase4Title'), subtitle: t('demo.phase4Subtitle') },
     }), [t]);
-
     const RESTRUCTURE_LINES = useMemo(() => [
         t('demo.restructure1'),
         t('demo.restructure2'),
@@ -39,12 +39,11 @@ export default function DemoIndex({ clientId, onBack }: DemoIndexProps) {
     const [phase, setPhase] = useState(1);
     const [isPlaying, setIsPlaying] = useState(false);
     const [exploreStep, setExploreStep] = useState(5);
+    const [visibleNodeCount, setVisibleNodeCount] = useState(0);
     const [isVerifyComplete, setIsVerifyComplete] = useState(false);
 
-    // Phase 2: real-time restructure state
-    // hasRestructured = true means the Convex mutation was triggered.
-    // From that point, useQuery(api.knowledge.getTree) auto-updates the graph.
-    const [hasRestructured, setHasRestructured] = useState(false);
+    // Phase 2: dirty → clean transition
+    const [cleanMode, setCleanMode] = useState(false);
     const [isRestructuring, setIsRestructuring] = useState(false);
     const [restructureLine, setRestructureLine] = useState(0);
 
@@ -60,20 +59,17 @@ export default function DemoIndex({ clientId, onBack }: DemoIndexProps) {
         setSelectedNodeType(type ?? null);
     }, []);
 
-    // Derive stats reactively from Convex data
     const totalNodes = treeNodes?.length ?? 0;
-    const domainCount = treeNodes?.filter(n => !n.parentId).length ?? 0;
     const visibleEdgeCount = useMemo(() => {
         if (!treeNodes) return 0;
-        const ids = new Set(treeNodes.map(n => n._id));
-        return treeNodes.filter(n => n.parentId && ids.has(n.parentId)).length;
-    }, [treeNodes]);
+        const visNodes = treeNodes.slice(0, visibleNodeCount);
+        const visIds = new Set(visNodes.map(n => n._id));
+        return visNodes.filter(n => n.parentId && visIds.has(n.parentId)).length;
+    }, [treeNodes, visibleNodeCount]);
 
-    // Show animation overlay, then call the real Convex mutation.
-    // When mutation completes, useQuery(api.knowledge.getTree) auto-updates →
-    // KnowledgeGraph transitions via D3 data join (old nodes exit, new nodes enter).
+    // Trigger the restructure animation then flip cleanMode
     const handleRestructure = useCallback(() => {
-        if (isRestructuring || hasRestructured) return;
+        if (isRestructuring || cleanMode) return;
         setIsRestructuring(true);
         setRestructureLine(0);
         let lineIdx = 0;
@@ -84,12 +80,12 @@ export default function DemoIndex({ clientId, onBack }: DemoIndexProps) {
                 clearInterval(lineInterval);
                 setTimeout(() => {
                     void restructureKnowledge({ clientId: clientId as Id<'clients'> });
-                    setHasRestructured(true);
+                    setCleanMode(true);
                     setIsRestructuring(false);
                 }, 400);
             }
         }, 750);
-    }, [isRestructuring, hasRestructured, RESTRUCTURE_LINES.length, restructureKnowledge, clientId]);
+    }, [isRestructuring, cleanMode, RESTRUCTURE_LINES.length, restructureKnowledge, clientId]);
 
     // Manual phase change
     const handlePhaseChange = useCallback((p: number) => {
@@ -98,18 +94,22 @@ export default function DemoIndex({ clientId, onBack }: DemoIndexProps) {
         setSelectedNodeId(null);
         if (p === 1) {
             setExploreStep(5);
-            setHasRestructured(false);
+            setCleanMode(false);
             setIsRestructuring(false);
         }
-    }, []);
+        if (p >= 2 && totalNodes > 0) {
+            setVisibleNodeCount(totalNodes);
+        }
+    }, [totalNodes]);
 
     // Auto-play toggle
     const handleTogglePlay = useCallback(() => {
         if (isPlaying) { setIsPlaying(false); return; }
         setPhase(1);
         setExploreStep(0);
+        setVisibleNodeCount(0);
         setIsVerifyComplete(false);
-        setHasRestructured(false);
+        setCleanMode(false);
         setIsRestructuring(false);
         setSelectedNodeId(null);
         setIsPlaying(true);
@@ -124,14 +124,19 @@ export default function DemoIndex({ clientId, onBack }: DemoIndexProps) {
             if (exploreStep < 5) {
                 timer = setTimeout(() => setExploreStep(s => s + 1), 700);
             } else {
-                timer = setTimeout(() => setPhase(2), 2500);
+                timer = setTimeout(() => {
+                    setPhase(2);
+                    setVisibleNodeCount(0);
+                }, 2500);
             }
-        } else if (phase === 2) {
-            if (!hasRestructured && !isRestructuring) {
-                // Wait 3s so the user sees the messy graph, then auto-restructure
-                timer = setTimeout(() => handleRestructure(), 3000);
-            } else if (hasRestructured) {
-                // Convex data has updated; wait 2s then advance to Phase 3
+        } else if (phase === 2 && treeNodes) {
+            if (!cleanMode && !isRestructuring) {
+                if (visibleNodeCount < treeNodes.length) {
+                    timer = setTimeout(() => setVisibleNodeCount(c => c + 1), 300);
+                } else {
+                    timer = setTimeout(() => handleRestructure(), 2000);
+                }
+            } else if (cleanMode) {
                 timer = setTimeout(() => {
                     setPhase(3);
                     setIsPlaying(false);
@@ -140,9 +145,11 @@ export default function DemoIndex({ clientId, onBack }: DemoIndexProps) {
         }
 
         return () => clearTimeout(timer);
-    }, [isPlaying, phase, exploreStep, hasRestructured, isRestructuring, handleRestructure]);
+    }, [isPlaying, phase, exploreStep, visibleNodeCount, treeNodes, cleanMode, isRestructuring, handleRestructure]);
 
     const info = phaseInfo[phase];
+    const messyNodeCount = treeNodes?.length ?? 46;
+    const cleanNodeCount = treeNodes?.filter(n => n.type === 'domain' || n.type === 'skill').length ?? 12;
 
     if (!client) return null;
 
@@ -159,6 +166,7 @@ export default function DemoIndex({ clientId, onBack }: DemoIndexProps) {
                 onPhaseChange={handlePhaseChange}
                 onTogglePlay={handleTogglePlay}
                 onBack={onBack}
+                onSwitchToLive={onSwitchToLive}
             />
 
             <main className="flex-1 relative overflow-hidden flex z-10 w-full">
@@ -176,12 +184,10 @@ export default function DemoIndex({ clientId, onBack }: DemoIndexProps) {
                 {phase === 2 && (
                     <div className="flex w-full h-full">
                         <div className="flex-1 relative">
-                            {/* KnowledgeGraph reacts to treeNodes changes in real-time.
-                                After restructureKnowledge mutation runs, Convex pushes
-                                updated data → D3 data join animates old nodes out, new in. */}
                             <KnowledgeGraph
                                 clientId={clientId}
                                 onSelectNode={handleSelectNode}
+                                cleanMode={cleanMode}
                             />
 
                             {/* Restructure animation overlay */}
@@ -214,9 +220,9 @@ export default function DemoIndex({ clientId, onBack }: DemoIndexProps) {
                                 </div>
                             )}
 
-                            {/* Stats bar bottom-left — driven by reactive treeNodes */}
+                            {/* Stats bar bottom-left */}
                             <div
-                                className="absolute bottom-4 left-4 flex items-center gap-3 text-xs card-organic px-4 py-2.5"
+                                className="absolute bottom-4 left-4 flex items-center gap-3 text-xs rounded-xl px-4 py-2.5"
                                 style={{
                                     background: 'linear-gradient(135deg, hsl(0 0% 100% / 0.88), hsl(217 30% 97% / 0.88))',
                                     backdropFilter: 'blur(12px)',
@@ -224,31 +230,31 @@ export default function DemoIndex({ clientId, onBack }: DemoIndexProps) {
                                     boxShadow: '0 2px 8px hsl(217 30% 70% / 0.08)',
                                 }}
                             >
-                                {hasRestructured ? (
+                                {cleanMode ? (
                                     <>
                                         <FolioSparkles className="h-5 w-5 text-emerald-500" />
                                         <span className="font-medium text-emerald-600">
-                                            {totalNodes} {t('demo.nodes')} · {domainCount} {t('demo.domains')} · 0 {t('demo.contradiction')}
+                                            {cleanNodeCount} nœuds · 4 domaines · 0 contradiction
                                         </span>
                                     </>
                                 ) : (
                                     <>
                                         <FolioDatabase className="h-5 w-5 text-primary" />
                                         <span style={{ color: 'hsl(217 20% 55%)' }}>
-                                            {totalNodes || 46} {t('demo.nodes')} · {t('demo.duplicatesDetected')} · 7 {t('demo.contradictions')}
+                                            {messyNodeCount} nœuds · doublons détectés · 7 contradictions
                                         </span>
                                         <span style={{ color: 'hsl(217 20% 82%)' }}>·</span>
                                         <button
                                             onClick={handleRestructure}
                                             disabled={isRestructuring}
-                                            className="flex items-center gap-1 px-2.5 py-1 btn-organic text-xs font-medium transition-all duration-200 hover:-translate-y-0.5 disabled:opacity-50"
+                                            className="flex items-center gap-1 px-2.5 py-1 rounded-lg text-xs font-medium transition-all duration-200 hover:-translate-y-0.5 disabled:opacity-50"
                                             style={{
                                                 background: 'linear-gradient(135deg, hsl(217 65% 52%), hsl(217 75% 43%))',
                                                 color: 'hsl(0 0% 100%)',
                                                 boxShadow: '0 2px 8px hsl(217 60% 50% / 0.25)',
                                             }}
                                         >
-                                            {t('demo.structureBtn')}
+                                            Structurer ▶
                                         </button>
                                     </>
                                 )}
@@ -256,7 +262,7 @@ export default function DemoIndex({ clientId, onBack }: DemoIndexProps) {
 
                             {/* Link counter bottom-right */}
                             <div
-                                className="absolute bottom-4 right-4 flex gap-2 items-center text-xs card-organic px-3 py-2"
+                                className="absolute bottom-4 right-4 flex gap-2 items-center text-xs rounded-xl px-3 py-2"
                                 style={{
                                     background: 'linear-gradient(135deg, hsl(0 0% 100% / 0.85), hsl(217 30% 97% / 0.85))',
                                     backdropFilter: 'blur(12px)',
@@ -265,7 +271,7 @@ export default function DemoIndex({ clientId, onBack }: DemoIndexProps) {
                                 }}
                             >
                                 <FolioLink className="h-5 w-5 text-primary" />
-                                <span style={{ color: 'hsl(217 20% 55%)' }}>{visibleEdgeCount} {t('demo.links')}</span>
+                                <span style={{ color: 'hsl(217 20% 55%)' }}>{visibleEdgeCount} liens</span>
                             </div>
                         </div>
 
@@ -280,6 +286,7 @@ export default function DemoIndex({ clientId, onBack }: DemoIndexProps) {
                             <KnowledgeGraph
                                 clientId={clientId}
                                 onSelectNode={handleSelectNode}
+                                cleanMode={cleanMode}
                             />
                             {selectedNodeId && (
                                 <NodeDetailPanel

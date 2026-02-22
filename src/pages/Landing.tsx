@@ -143,7 +143,7 @@ function BubbleChart() {
 
 function HierarchyVisual() {
   const { t } = useTranslation();
-  const { ref, isInView } = useInView(0.2);
+  const { isInView } = useInView(0.2);
   const lines = [
     <div key="root" className="flex items-center gap-2">
       <span className="w-3 h-3 rounded-full" style={{ background: 'hsl(var(--primary))' }} />
@@ -170,7 +170,7 @@ function HierarchyVisual() {
   ];
 
   return (
-    <div ref={ref} className="rounded-xl border p-5 font-mono text-sm shadow-sm" style={{ background: 'hsl(var(--card))', borderColor: 'hsl(var(--border))' }}>
+    <div className="rounded-xl border p-5 font-mono text-sm shadow-sm" style={{ background: 'hsl(var(--card))', borderColor: 'hsl(var(--border))' }}>
       {lines.map((line, i) => (
         <div
           key={i}
@@ -479,8 +479,7 @@ export default function Landing({ onSignIn, authLoading = false }: LandingProps)
                 <div className={cn('grid md:grid-cols-2 gap-12 items-center', s.flip && 'direction-rtl')}>
                   <div className={cn(s.flip && 'md:order-2')} style={{ direction: 'ltr' }}>
                     <div className="flex items-center gap-2 text-xs font-mono mb-3" style={{ color: 'hsl(var(--primary))' }}>
-                      <span className="step-icon-organic">{s.icon}</span>
-                      {s.n} — {s.name}
+                      {s.icon}{s.n} — {s.name}
                     </div>
                     <p className="text-lg leading-relaxed" style={{ color: 'hsl(var(--muted-foreground))' }}>{s.text}</p>
                   </div>

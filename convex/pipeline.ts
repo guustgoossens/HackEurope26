@@ -1,5 +1,6 @@
 import { query, internalMutation, internalQuery } from './_generated/server';
 import { v } from 'convex/values';
+import type { Id } from './_generated/dataModel';
 
 const pipelineDocValidator = v.object({
   _id: v.id('pipeline_status'),
@@ -63,6 +64,7 @@ export const update = internalMutation({
       .withIndex('by_clientId', (q) => q.eq('clientId', args.clientId))
       .first();
 
+    let id: Id<'pipeline_status'>;
     if (existing) {
       await ctx.db.patch(existing._id, {
         currentPhase: args.currentPhase,
@@ -70,16 +72,20 @@ export const update = internalMutation({
         activeAgents: args.activeAgents,
         lastActivity: now,
       });
-      return existing._id;
+      id = existing._id;
+    } else {
+      id = await ctx.db.insert('pipeline_status', {
+        clientId: args.clientId,
+        currentPhase: args.currentPhase,
+        phaseProgress: args.phaseProgress,
+        activeAgents: args.activeAgents,
+        lastActivity: now,
+      });
     }
 
-    const id = await ctx.db.insert('pipeline_status', {
-      clientId: args.clientId,
-      currentPhase: args.currentPhase,
-      phaseProgress: args.phaseProgress,
-      activeAgents: args.activeAgents,
-      lastActivity: now,
-    });
+    // Atomically sync client phase so the UI renders the correct panel
+    await ctx.db.patch(args.clientId, { phase: args.currentPhase });
+
     return id;
   },
 });

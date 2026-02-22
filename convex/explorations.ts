@@ -1,6 +1,28 @@
 import { query, internalMutation } from './_generated/server';
 import { v } from 'convex/values';
 
+export const listByClient = query({
+  args: {
+    clientId: v.id('clients'),
+  },
+  returns: v.array(
+    v.object({
+      _id: v.id('explorations'),
+      _creationTime: v.number(),
+      clientId: v.id('clients'),
+      dataSourceId: v.id('data_sources'),
+      metrics: v.any(),
+      status: v.union(v.literal('running'), v.literal('completed'), v.literal('failed')),
+    }),
+  ),
+  handler: async (ctx, args) => {
+    return await ctx.db
+      .query('explorations')
+      .withIndex('by_clientId_and_dataSourceId', (q) => q.eq('clientId', args.clientId))
+      .collect();
+  },
+});
+
 export const upsert = internalMutation({
   args: {
     clientId: v.id('clients'),

@@ -1,114 +1,84 @@
-# Project Context: Agent-Ready Data Infrastructure for SMEs
+# HackEurope26 — Documentation
 
-## Vision
+Agent-ready data infrastructure for SMEs. Connects scattered business data (Gmail, Drive, Sheets) and organizes it into a structured, verified, AI-navigable knowledge base.
 
-**Long-term:** Build the infrastructure layer that makes any company agent-ready. 
-Today, SMEs and traditional businesses have chaotic, fragmented data — Excel files, 
-forgotten Airtables, emails, cloud systems built by external contractors they don't 
-control. When an agentic workforce arrives (and it's arriving now), these companies 
-will be paralyzed: no context, no organizational memory, no navigable structure. 
-We build the layer that fixes that.
+---
 
-**Short-term (hackathon focus):** Prove the concept on French accounting firms 
-(cabinets d'expertise comptable). 19,500 firms in France, 70% are TPEs (<10 people), 
-all facing AI disruption, all with fragmented data across multiple tools. 
-Perfect beachhead market.
+## Navigation
 
-## The Core Problem
+| Section | What |
+|---------|------|
+| [getting-started/](./getting-started/README.md) | Quick start, environment setup, all env vars, commands |
+| [architecture/](./architecture/README.md) | System diagram, data model, HTTP API, auth, real-time flow |
+| [agent-pipeline/](./agent-pipeline/README.md) | 5-phase pipeline, sub-agents, tools, loop detection, Composio |
+| [patterns/](./patterns/README.md) | 5 design patterns with source inspirations and code references |
+| [convex/](./convex/README.md) | Convex schema, all 32 functions, forum deep-dive |
+| [frontend/](./frontend/README.md) | React components, routing, phase panels |
+| [decisions/](./decisions/README.md) | 10 architectural decisions with rationale |
+| [product/](./product/pitch.md) | Pitch script, Q&A, demo flow |
 
-AI agents fail in enterprise environments not because models are bad, but because 
-company data is unstructured and unnavigable. A new agent arriving at an SME is 
-like a consultant on day one — zero context, zero access, zero efficiency.
+---
 
-The solution is not better RAG. It's a **hierarchical, verified knowledge base** 
-that any agent can navigate precisely, built by AI agents with human verification 
-in the loop.
+## What It Does
 
-## Three Core Primitives
+**5-phase pipeline:**
 
-1. **Skill-Based Knowledge Base (Static)** — hierarchical folder structure where 
-every level has a README explaining what's inside, why it matters, dependencies, 
-and usage guidelines. Progressive disclosure from overview to detail. 
-Outperforms flat vector stores on complex document-heavy domains.
+```
+Onboard → Explore → Structure → Verify → Use
+```
 
-2. **Agent Forum (Dynamic)** — structured wiki of action guides that agents 
-write to and read from. When an agent figures out how to connect a data source 
-or resolve a format ambiguity, it writes that as a reusable guide. 
-Living documentation that improves with every engagement. The data moat.
+1. **Onboard** — connect Gmail, Drive, Sheets
+2. **Explore** — concurrent agents crawl each source, write operational guides to the [agent forum](./patterns/03-agent-forum.md)
+3. **Structure** — Claude designs a knowledge tree, structurer agents extract and classify content, flag contradictions
+4. **Verify** — human answers a structured questionnaire to resolve ambiguities (see [verification questionnaire pattern](./patterns/04-verification-questionnaire.md))
+5. **Use** — knowledge writer populates the verified KB; any future agent can navigate it hierarchically
 
-3. **Human-in-the-Loop Verification** — AI builds draft KB structure, 
-surfaces ambiguities as structured questionnaires. 
-Examples: "This column 'Ref' — is it invoice reference, client code, or internal ID?" 
-Human corrects the shape. Output: verified, paradox-free knowledge base.
+**Output:** a hierarchical, verified knowledge base with confidence scores and source references — any agent can navigate it precisely without brute-force RAG.
 
-## 5-Phase Product Flow
+---
 
-1. **Onboard** — connect data sources (Google Drive, OneDrive, Gmail, Outlook)
-2. **Explore** — agents crawl and discover, data visualization of what exists
-3. **Structure** — AI builds hierarchical KB with READMEs and cross-references
-4. **Verify** — human answers structured questionnaire to resolve ambiguities
-5. **Use** — any agent can navigate the KB; build domain agents on top
+## Key Design Patterns
+
+→ [patterns/README.md](./patterns/README.md) — full summary table
+
+- **Capabilities-focused prompts** (ClawdBot/OpenClaw) — environment-descriptive system prompts, not rule-based
+- **Mechanical loop detection** (OpenClaw) — hash-based stuck-agent prevention
+- **Agent forum** (Moltbook) — agents as posters solve cross-engagement cold-start
+- **Verification questionnaire** — human-in-the-loop for ambiguous data
+- **Navigable knowledge tree** — skill distillation as external hierarchical library
+
+---
+
+## Current Status (Feb 2026)
+
+- Core pipeline: working end-to-end (explore → structure → verify → use)
+- Loop detection: working; known gap with semantic variants
+- Composio Google Workspace: debugging (agent ignores pre-connected tools, see [agent-pipeline/composio.md](./agent-pipeline/composio.md))
+- Forum with metadata filters: working
+
+---
 
 ## Tech Stack
 
-- **Gemini** — multimodal data processing (PDFs, images, spreadsheets, emails)
-- **Claude** — agent orchestration, KB structuring, README generation, 
-  contradiction reasoning
-- **Convex** — real-time reactive backend (UI updates live as agents work)
-- **React + Vite + Tailwind** — frontend
-- **Google APIs + Microsoft Graph API** — data source connectors
-- **react-force-graph** — knowledge graph visualization (Obsidian-style)
-- **Recharts** — data landscape visualization (treemap/bubble charts)
-- Paid.ai — agentic payment visualisation
-   
+| Layer | Stack |
+|-------|-------|
+| Frontend | React 19 + Vite 7 + Tailwind CSS 4 |
+| Backend | Convex (real-time reactive BaaS) |
+| Auth | WorkOS AuthKit |
+| Agent pipeline | Python 3.12 + uv + anthropic + httpx |
+| LLMs | Claude (orchestration) + Gemini (multimodal extraction) |
+| Integrations | Composio (Google Workspace) |
 
-## Hackathon Scope (12 hours total: ~8h today + 4h tomorrow morning)
+---
 
-**Demo narrative:** One French accounting firm, messy real-world data, 
-watch the system explore → structure → ask for verification → produce navigable KB.
+## Previous Flat Docs
 
-**Focus on phases 2 + 3 + 4 only.** Phase 5 shown as pre-built result.
-
-**Two key visualizations:**
-- Data landscape view (Phase 2): bubble/treemap showing data volume by source and type
-- Knowledge graph (Phase 3): force-directed graph showing KB hierarchy + cross-references
-
-Use **synthetic but realistic** accounting firm data for the demo.
-
-## Team & Roles
-
-- **Emeric** — product design, frontend, pitch & demo ownership
-- **Emily** — data, data visualization
-- **Guust + Elie** — ML, agentic tech, backend dev
-
-## Competitive Landscape
-
-Existing tools (Pennylane, Dext, Cegid, Inqom, Agiris) all do the same thing: 
-automate accounting data entry and production. Level 1.
-
-**Nobody is building the organizational knowledge layer.** 
-That's the gap. Not processing client accounting data — 
-structuring the firm's own operational knowledge to support agents.
-
-## Key Differentiators
-
-- Hierarchical KB outperforms flat RAG on complex document-heavy domains
-- Human verification loop produces paradox-free output (not best-guess)
-- Agent Forum creates cross-company operational intelligence moat
-- RGPD/data sovereignty angle is a real selling point for French accounting firms
-
-## Constraints & Principles
-
-- Data never leaves the client environment (important for accounting firms + RGPD)
-- Human judgment is not optional — it's a feature, not a fallback
-- Start with the concrete accounting case, open to "this works for any company" later
-- Don't over-pitch the vision upfront — anchor on the specific problem first
-
-## What "Done" Looks Like for the Hackathon
-
-A live demo showing:
-1. Chaotic input data (emails + Drive docs + Excel) from a fictional accounting firm
-2. Agent exploring and mapping what exists (data landscape viz)
-3. Agent building a structured KB (knowledge graph appearing in real-time via Convex)
-4. Verification questionnaire surfacing 3-4 ambiguities for human input
-5. Final navigable KB — and a domain agent answering a precise question using it
+The original flat docs remain for reference:
+- `docs/README.md` — this file (updated)
+- `docs/architecture.md` — superseded by [architecture/](./architecture/README.md)
+- `docs/agent_pipeline.md` — superseded by [agent-pipeline/](./agent-pipeline/README.md)
+- `docs/DECISIONS.md` — superseded by [decisions/DECISIONS.md](./decisions/DECISIONS.md)
+- `docs/tech_stack.md` — superseded by [getting-started/setup.md](./getting-started/setup.md)
+- `docs/built.md` — superseded by [convex/functions.md](./convex/functions.md) + [frontend/components.md](./frontend/components.md)
+- `docs/DAG_choices.md` — superseded by [decisions/knowledge-base-structure.md](./decisions/knowledge-base-structure.md)
+- `docs/Pitch_notes_Emeric.md` — superseded by [product/pitch.md](./product/pitch.md)

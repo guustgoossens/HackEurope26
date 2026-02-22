@@ -1,8 +1,20 @@
-import { useState, useMemo } from 'react';
+import { useState } from 'react';
 import { useQuery } from 'convex/react';
-import { useTranslation } from 'react-i18next';
 import { api } from '../../convex/_generated/api';
 import type { Id } from '../../convex/_generated/dataModel';
+
+export interface LiveExploreData {
+    explorations?: Array<{
+        dataSourceId: Id<'data_sources'>;
+        metrics: Record<string, number>;
+        status: 'running' | 'completed' | 'failed';
+    }> | null;
+    agentEvents?: Array<{
+        message: string;
+        agentName: string;
+        _creationTime: number;
+    }> | null;
+}
 import {
     FolioMail as Mail,
     FolioHardDrive as HardDrive,
@@ -43,49 +55,100 @@ const SCAN_LOG = [
     { icon: '📄', name: 'invoice_acme_march.pdf', path: 'Drive / Misc' },
 ];
 
+const FINDINGS = [
+    { label: 'Fichiers PDF', count: 124 },
+    { label: 'Feuilles Excel', count: 47 },
+    { label: 'Emails', count: 847 },
+    { label: 'Présentations', count: 23 },
+];
+
+const FLAGGED = [
+    { label: 'Données manquantes', count: 12 },
+    { label: 'Contradictions', count: 7 },
+    { label: 'Doublons potentiels', count: 8 },
+];
+
+const STEPS = [
+    { id: 1, label: 'Connexion', desc: "Accès sécurisé aux sources" },
+    { id: 2, label: 'Exploration', desc: 'Cartographie des données' },
+    { id: 3, label: 'Bilan', desc: "Vue d'ensemble" },
+];
 
 interface Props {
     clientId: string;
-    animationStep: number;
+    animationStep?: number;
     onNextPhase?: () => void;
+    liveData?: LiveExploreData;
 }
 
-export default function ExplorePhase({ clientId, animationStep, onNextPhase }: Props) {
-    const { t, i18n } = useTranslation();
+export default function ExplorePhase({ clientId, animationStep, onNextPhase, liveData }: Props) {
     const dataSources = useQuery(api.dataSources.listByClient, {
         clientId: clientId as Id<'clients'>,
     });
     const [connectError, setConnectError] = useState<string | null>(null);
-
-    const STEPS = useMemo(() => [
-        { id: 1, label: t('explore.step1Label'), desc: t('explore.step1Desc') },
-        { id: 2, label: t('explore.step2Label'), desc: t('explore.step2Desc') },
-        { id: 3, label: t('explore.step3Label'), desc: t('explore.step3Desc') },
-    ], [t]);
-
-    const FINDINGS = useMemo(() => [
-        { label: t('explore.findingPDF'), count: 124 },
-        { label: t('explore.findingExcel'), count: 47 },
-        { label: t('explore.findingEmails'), count: 847 },
-        { label: t('explore.findingPresentations'), count: 23 },
-    ], [t]);
-
-    const FLAGGED = useMemo(() => [
-        { label: t('explore.flaggedMissing'), count: 12 },
-        { label: t('explore.flaggedContradictions'), count: 7 },
-        { label: t('explore.flaggedDuplicates'), count: 8 },
-    ], [t]);
     const { connect, connecting } = useComposioConnect({
         clientId: clientId as Id<'clients'>,
         onError: (err) => setConnectError(err),
         onSuccess: () => setConnectError(null),
     });
 
+    // Derive effective animation step from live data when provided
+    const effectiveAnimStep = (() => {
+        if (!liveData) return animationStep ?? 0;
+        const exps = liveData.explorations ?? [];
+        if (exps.some(e => e.status === 'running')) return 3;
+        if (exps.length > 0 && exps.every(e => e.status !== 'running')) return 5;
+        return 1;
+    })();
+
+    // Build exploration lookup by dataSourceId for live count overrides
+    const explorationBySourceId: Map<string, NonNullable<LiveExploreData['explorations']>[0]> | null = liveData?.explorations
+        ? new Map(liveData.explorations.map(e => [e.dataSourceId as string, e]))
+        : null;
+
+    const getSourceCount = (source: { _id: Id<'data_sources'>; type: string }): number => {
+        if (explorationBySourceId) {
+            const exp = explorationBySourceId.get(source._id);
+            if (exp) {
+                const m = exp.metrics;
+                return m.email_count ?? m.file_count ?? m.total_items ?? SOURCE_COUNTS[source.type] ?? 50;
+            }
+        }
+        return SOURCE_COUNTS[source.type] ?? 50;
+    };
+
     const sources = dataSources ?? [];
-    const currentStep = animationStep < 2 ? 1 : animationStep < 4 ? 2 : 3;
-    const totalItems = sources.reduce((sum, s) => sum + (SOURCE_COUNTS[s.type] ?? 50), 0) || 1297;
+    const currentStep = effectiveAnimStep < 2 ? 1 : effectiveAnimStep < 4 ? 2 : 3;
+
+    const liveTotal = liveData?.explorations?.reduce((sum, exp) => {
+        const m = exp.metrics;
+        return sum + ((m.email_count ?? m.file_count ?? m.total_items ?? 0) as number);
+    }, 0) ?? 0;
+    const totalItems = liveTotal > 0 ? liveTotal : sources.reduce((sum, s) => sum + getSourceCount(s), 0) || 1297;
     const animatedTotal = useCountUp(totalItems, 1800, currentStep === 3);
-    const maxCount = Math.max(...sources.map((s) => SOURCE_COUNTS[s.type] ?? 50), 1);
+    const maxCount = Math.max(...sources.map((s) => getSourceCount(s)), 1);
+
+    // Scan log: use live agent events when available
+    const effectiveScanLog = liveData?.agentEvents
+        ? liveData.agentEvents.slice(0, 10).map(e => ({ icon: '📧', name: e.message, path: e.agentName }))
+        : SCAN_LOG;
+
+    // Findings: aggregate from live metrics when available
+    const effectiveFindings = (() => {
+        if (!liveData?.explorations || liveData.explorations.length === 0) return FINDINGS;
+        const totals: Record<string, number> = {};
+        for (const exp of liveData.explorations) {
+            for (const [k, v] of Object.entries(exp.metrics)) {
+                if (typeof v === 'number') totals[k] = (totals[k] ?? 0) + v;
+            }
+        }
+        const found: Array<{ label: string; count: number }> = [
+            totals.email_count ? { label: 'Emails', count: totals.email_count } : null,
+            totals.file_count ? { label: 'Fichiers', count: totals.file_count } : null,
+            totals.total_items ? { label: 'Éléments totaux', count: totals.total_items } : null,
+        ].filter(Boolean) as Array<{ label: string; count: number }>;
+        return found.length > 0 ? found : FINDINGS;
+    })();
 
     return (
         <div className="h-full w-full flex overflow-hidden">
@@ -102,7 +165,7 @@ export default function ExplorePhase({ clientId, animationStep, onNextPhase }: P
                             <div className="flex flex-col items-center">
                                 <div
                                     className={cn(
-                                        'w-8 h-8 step-dot-organic flex items-center justify-center text-xs font-semibold shrink-0 transition-all duration-500',
+                                        'w-7 h-7 step-dot-organic flex items-center justify-center text-xs font-semibold shrink-0 transition-all duration-500',
                                         isDone ? 'bg-primary text-primary-foreground' : 'text-muted-foreground/40',
                                     )}
                                     style={
@@ -118,14 +181,14 @@ export default function ExplorePhase({ clientId, animationStep, onNextPhase }: P
                                                 : { border: '1.5px solid hsl(217 20% 85%)' }
                                     }
                                 >
-                                    {isDone ? <CheckCircle2 className="h-4 w-4" /> : step.id}
+                                    {isDone ? <CheckCircle2 className="h-5 w-5" /> : step.id}
                                 </div>
                                 {i < STEPS.length - 1 && (
                                     <div
                                         className="w-px transition-all duration-700 my-1.5"
                                         style={{
                                             height: '40px',
-                                            background: isDone ? 'linear-gradient(180deg, hsl(217 50% 72%), hsl(217 45% 85%))' : 'linear-gradient(180deg, hsl(217 22% 88%), hsl(217 20% 92%))',
+                                            background: isDone ? 'hsl(217 50% 70%)' : 'hsl(217 20% 88%)',
                                         }}
                                     />
                                 )}
@@ -156,18 +219,18 @@ export default function ExplorePhase({ clientId, animationStep, onNextPhase }: P
                     <div className="max-w-xl w-full space-y-6" style={{ animation: 'fade-in 0.4s ease-out' }}>
                         <div>
                             <h2 className="text-xl font-semibold text-foreground mb-1" style={{ fontFamily: "'Newsreader', serif" }}>
-                                {t('explore.step1Title')}
+                                Connexion des sources
                             </h2>
                             <p className="text-sm text-muted-foreground">
-                                {t('explore.step1Sub')}
+                                Folio accède à vos outils existants sans migration. Vos données restent chez vous.
                             </p>
                         </div>
 
                         <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
                             {sources.map((source, i) => {
                                 const Icon = SOURCE_TYPE_ICONS[source.type] ?? FileText;
-                                const count = SOURCE_COUNTS[source.type] ?? 50;
-                                const visible = animationStep > i;
+                                const count = getSourceCount(source);
+                                const visible = effectiveAnimStep > i;
                                 const isConnected = source.connectionStatus === 'connected';
                                 const isConnecting = connecting === source.type;
 
@@ -177,7 +240,7 @@ export default function ExplorePhase({ clientId, animationStep, onNextPhase }: P
                                         className={cn('transition-all duration-500', visible ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-4')}
                                     >
                                         <div
-                                            className="card-organic p-4 flex flex-col gap-3 h-full"
+                                            className="card-organic-elevated p-4 flex flex-col gap-3 h-full"
                                             style={{
                                                 background: 'linear-gradient(135deg, hsl(0 0% 100%), hsl(217 30% 97%))',
                                                 border: isConnected ? '1px solid hsl(152 40% 78%)' : '1px solid hsl(217 20% 91%)',
@@ -185,26 +248,26 @@ export default function ExplorePhase({ clientId, animationStep, onNextPhase }: P
                                             }}
                                         >
                                             <div className="flex items-center gap-2.5">
-                                                <div className="w-9 h-9 rounded-lg flex items-center justify-center shrink-0" style={{ background: 'hsl(217 60% 95%)' }}>
+                                                <div className="w-9 h-9 step-icon-organic flex items-center justify-center shrink-0" style={{ background: 'hsl(217 60% 95%)' }}>
                                                     <Icon className="h-5 w-5 text-primary" />
                                                 </div>
                                                 <div className="min-w-0">
                                                     <p className="text-sm font-medium text-foreground capitalize truncate">{source.label}</p>
-                                                    <p className="text-xs text-muted-foreground">{count.toLocaleString(i18n.language === 'fr' ? 'fr-FR' : 'en-US')} {t('explore.elements')}</p>
+                                                    <p className="text-xs text-muted-foreground">{count.toLocaleString('fr-FR')} éléments</p>
                                                 </div>
                                             </div>
 
                                             {isConnected ? (
-                                                <div className="flex items-center gap-1.5 text-xs text-emerald-600 bg-emerald-50 card-organic px-2.5 py-1.5">
+                                                <div className="flex items-center gap-1.5 text-xs text-emerald-600 bg-emerald-50 rounded-lg px-2.5 py-1.5">
                                                     <CheckCircle2 className="h-4 w-4 shrink-0" />
-                                                    <span>{t('explore.connected')}</span>
+                                                    <span>Connecté</span>
                                                 </div>
                                             ) : (
                                                 <button
                                                     onClick={() => void connect(source.type)}
                                                     disabled={isConnecting}
                                                     className={cn(
-                                                        'flex items-center gap-1.5 text-xs px-3 py-1.5 btn-organic-secondary transition-all duration-200 w-full justify-center font-medium',
+                                                        'flex items-center gap-1.5 text-xs px-3 py-1.5 rounded-lg transition-all duration-200 w-full justify-center font-medium',
                                                         isConnecting ? 'opacity-60 cursor-not-allowed' : 'hover:-translate-y-0.5',
                                                     )}
                                                     style={{
@@ -216,12 +279,12 @@ export default function ExplorePhase({ clientId, animationStep, onNextPhase }: P
                                                     {isConnecting ? (
                                                         <>
                                                             <span className="w-3 h-3 rounded-full border border-current border-t-transparent animate-spin" />
-                                                            {t('explore.connecting')}
+                                                            Connexion…
                                                         </>
                                                     ) : (
                                                         <>
                                                             <FolioZap className="h-4 w-4" />
-                                                            {t('explore.connectVia')}
+                                                            Connecter via Composio
                                                         </>
                                                     )}
                                                 </button>
@@ -233,13 +296,13 @@ export default function ExplorePhase({ clientId, animationStep, onNextPhase }: P
                         </div>
 
                         {connectError && (
-                            <p className="text-xs text-amber-600 bg-amber-50 card-organic px-3 py-2 border border-amber-100">
+                            <p className="text-xs text-amber-600 bg-amber-50 rounded-lg px-3 py-2 border border-amber-100">
                                 {connectError}
                             </p>
                         )}
 
                         <p className="text-xs text-muted-foreground/50 text-center">
-                            {t('explore.oauthNote')}
+                            Connexion OAuth · Lecture seule · Aucune donnée modifiée
                         </p>
                     </div>
                 )}
@@ -249,19 +312,19 @@ export default function ExplorePhase({ clientId, animationStep, onNextPhase }: P
                     <div className="max-w-xl w-full space-y-5" style={{ animation: 'fade-in 0.4s ease-out' }}>
                         <div>
                             <h2 className="text-xl font-semibold text-foreground mb-1" style={{ fontFamily: "'Newsreader', serif" }}>
-                                {t('explore.step2Title')}
+                                Exploration en cours
                             </h2>
                             <p className="text-sm text-muted-foreground">
-                                {t('explore.step2Sub')}
+                                L'agent cartographie vos données sans en modifier une seule ligne.
                             </p>
                         </div>
 
                         {/* Progress per source */}
                         <div className="space-y-3">
                             {sources.map((source) => {
-                                const count = SOURCE_COUNTS[source.type] ?? 50;
+                                const count = getSourceCount(source);
                                 const pct = Math.round((count / maxCount) * 100);
-                                const active = animationStep >= 3;
+                                const active = effectiveAnimStep >= 3;
                                 return (
                                     <div key={source._id} className="flex items-center gap-3">
                                         <span className="text-xs w-28 text-muted-foreground capitalize truncate">{source.label}</span>
@@ -278,7 +341,7 @@ export default function ExplorePhase({ clientId, animationStep, onNextPhase }: P
                                                 }}
                                             />
                                         </div>
-                                        <span className="text-xs font-medium w-10 text-right tabular-nums" style={{ color: 'hsl(217 20% 55%)' }}>{count}</span>
+                                        <span className="text-xs font-medium w-10 text-right tabular-nums" style={{ color: 'hsl(217 20% 55%)' }}>{count.toLocaleString('fr-FR')}</span>
                                     </div>
                                 );
                             })}
@@ -304,10 +367,10 @@ export default function ExplorePhase({ clientId, animationStep, onNextPhase }: P
                                         animation: 'pulse 1.5s ease-in-out infinite',
                                     }}
                                 />
-                                {t('explore.discovering')}
+                                Découverte de fichiers…
                             </div>
                             <div className="divide-y" style={{ borderColor: 'hsl(217 20% 95%)' }}>
-                                {SCAN_LOG.slice(0, animationStep >= 3 ? SCAN_LOG.length : 4).map((item, i) => (
+                                {effectiveScanLog.slice(0, effectiveAnimStep >= 3 ? effectiveScanLog.length : 4).map((item, i) => (
                                     <div
                                         key={i}
                                         className="px-4 py-2 flex items-center justify-between"
@@ -329,72 +392,63 @@ export default function ExplorePhase({ clientId, animationStep, onNextPhase }: P
                 {currentStep === 3 && (
                     <div className="max-w-xl w-full space-y-6" style={{ animation: 'fade-in 0.4s ease-out' }}>
                         <div>
-                            <h2 className="text-xl font-semibold text-foreground mb-1.5" style={{ fontFamily: "'Newsreader', serif", letterSpacing: '-0.01em' }}>
-                                {t('explore.step3Title')}
+                            <h2 className="text-xl font-semibold text-foreground mb-1" style={{ fontFamily: "'Newsreader', serif" }}>
+                                Bilan de l'exploration
                             </h2>
-                            <p className="text-sm text-muted-foreground leading-relaxed">
-                                {t('explore.step3Sub')}
+                            <p className="text-sm text-muted-foreground">
+                                Base de départ identifiée. L'agent peut maintenant construire la structure.
                             </p>
                         </div>
 
                         {/* Big number — count-up animation */}
-                        <div className="text-center py-4">
-                            <div
-                                className="text-6xl font-bold tracking-tight tabular-nums"
-                                style={{ fontFamily: "'Newsreader', serif", color: 'hsl(217 45% 28%)', letterSpacing: '-0.02em' }}
-                            >
-                                {animatedTotal.toLocaleString(i18n.language === 'fr' ? 'fr-FR' : 'en-US')}
+                        <div className="text-center py-2">
+                            <div className="text-6xl font-bold text-foreground tracking-tight" style={{ fontFamily: "'Newsreader', serif" }}>
+                                {animatedTotal.toLocaleString('fr-FR')}
                             </div>
-                            <p className="text-sm text-muted-foreground mt-2 font-medium">{t('explore.totalAnalyzed')}</p>
+                            <p className="text-sm text-muted-foreground mt-1">éléments analysés</p>
                         </div>
 
                         {/* Two mini-cards */}
                         <div className="grid sm:grid-cols-2 gap-4">
                             <div
-                                className="card-organic card-organic-elevated p-5"
+                                className="card-organic-elevated p-5"
                                 style={{
-                                    background: 'linear-gradient(160deg, hsl(0 0% 100%), hsl(217 28% 98%))',
-                                    border: '1px solid hsl(217 22% 90%)',
+                                    background: 'linear-gradient(135deg, hsl(0 0% 100%), hsl(217 30% 97%))',
+                                    border: '1px solid hsl(217 20% 91%)',
+                                    boxShadow: '0 2px 8px hsl(217 30% 70% / 0.06)',
                                 }}
                             >
-                                <div className="flex items-center gap-2.5 mb-4">
-                                    <span className="step-icon-organic">
-                                        <FolioEye className="h-5 w-5 text-primary" />
-                                    </span>
-                                    <h3 className="text-sm font-semibold text-foreground" style={{ fontFamily: "'Newsreader', serif" }}>
-                                        {t('explore.discoveredTitle')}
-                                    </h3>
-                                </div>
-                                <div className="space-y-2.5">
-                                    {FINDINGS.map((f, i) => (
-                                        <div key={i} className="flex items-center justify-between text-sm py-0.5">
+                                <h3 className="text-sm font-semibold mb-3 text-foreground flex items-center gap-2">
+                                    <FolioEye className="h-6 w-6 text-primary" />
+                                    Éléments découverts
+                                </h3>
+                                <div className="space-y-2">
+                                    {effectiveFindings.map((f, i) => (
+                                        <div key={i} className="flex items-center justify-between text-sm">
                                             <span className="text-muted-foreground">{f.label}</span>
-                                            <span className="font-semibold tabular-nums text-foreground">{f.count}</span>
+                                            <span className="font-medium text-foreground">{f.count}</span>
                                         </div>
                                     ))}
                                 </div>
                             </div>
 
                             <div
-                                className="card-organic card-organic-elevated p-5"
+                                className="card-organic-elevated p-5"
                                 style={{
-                                    background: 'linear-gradient(160deg, hsl(38 85% 98%), hsl(38 65% 96%))',
-                                    border: '1px solid hsl(38 45% 88%)',
+                                    background: 'linear-gradient(135deg, hsl(38 80% 98%), hsl(38 60% 95%))',
+                                    border: '1px solid hsl(38 40% 88%)',
+                                    boxShadow: '0 2px 8px hsl(38 30% 70% / 0.08)',
                                 }}
                             >
-                                <div className="flex items-center gap-2.5 mb-4">
-                                    <span className="step-icon-organic" style={{ background: 'hsl(38 70% 92%)' }}>
-                                        <AlertTriangle className="h-5 w-5" style={{ color: 'hsl(38, 60%, 38%)' }} />
-                                    </span>
-                                    <h3 className="text-sm font-semibold" style={{ fontFamily: "'Newsreader', serif", color: 'hsl(38, 70%, 32%)' }}>
-                                        {t('explore.flaggedTitle')}
-                                    </h3>
-                                </div>
-                                <div className="space-y-2.5">
+                                <h3 className="text-sm font-semibold mb-3 flex items-center gap-2" style={{ color: 'hsl(38, 70%, 35%)' }}>
+                                    <AlertTriangle className="h-6 w-6" />
+                                    Signalés par l'agent
+                                </h3>
+                                <div className="space-y-2">
                                     {FLAGGED.map((f, i) => (
-                                        <div key={i} className="flex items-center justify-between text-sm py-0.5">
-                                            <span style={{ color: 'hsl(38, 45%, 38%)' }}>{f.label}</span>
-                                            <span className="font-semibold tabular-nums" style={{ color: 'hsl(38, 55%, 28%)' }}>{f.count}</span>
+                                        <div key={i} className="flex items-center justify-between text-sm">
+                                            <span style={{ color: 'hsl(38, 50%, 35%)' }}>{f.label}</span>
+                                            <span className="font-medium" style={{ color: 'hsl(38, 60%, 25%)' }}>{f.count}</span>
                                         </div>
                                     ))}
                                 </div>
@@ -403,17 +457,17 @@ export default function ExplorePhase({ clientId, animationStep, onNextPhase }: P
 
                         {/* CTA */}
                         {onNextPhase && (
-                            <div className="flex justify-center pt-4">
+                            <div className="flex justify-center pt-1">
                                 <button
                                     onClick={onNextPhase}
-                                    className="flex items-center gap-2 px-8 py-3.5 btn-organic-pill text-sm font-semibold transition-all duration-300 hover:-translate-y-0.5 active:scale-[0.98]"
+                                    className="flex items-center gap-2 px-6 py-3 btn-organic-pill text-sm font-medium transition-all duration-300 hover:-translate-y-0.5 active:scale-[0.98]"
                                     style={{
-                                        background: 'linear-gradient(145deg, hsl(217 65% 50%), hsl(217 72% 42%))',
+                                        background: 'linear-gradient(135deg, hsl(217 65% 52%), hsl(217 75% 43%))',
                                         color: 'hsl(0 0% 100%)',
-                                        boxShadow: '0 4px 20px hsl(217 60% 45% / 0.35), 0 1px 3px hsl(217 50% 30% / 0.2)',
+                                        boxShadow: '0 4px 16px hsl(217 60% 50% / 0.3)',
                                     }}
                                 >
-                                    {t('explore.goToStructure')}
+                                    Passer à la structuration
                                     <ArrowRight className="h-5 w-5" />
                                 </button>
                             </div>

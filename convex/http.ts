@@ -79,8 +79,13 @@ http.route({
       return errorResponse('Unauthorized', 401);
     }
     const body = await request.json();
-    const id = await ctx.runMutation(internal.knowledge.createNode, body);
-    return jsonResponse({ id });
+    try {
+      const id = await ctx.runMutation(internal.knowledge.createNode, body);
+      return jsonResponse({ id });
+    } catch (e) {
+      console.error('knowledge/node error:', String(e), 'body:', JSON.stringify(body));
+      return errorResponse(String(e), 500);
+    }
   }),
 });
 
@@ -94,8 +99,13 @@ http.route({
       return errorResponse('Unauthorized', 401);
     }
     const body = await request.json();
-    const id = await ctx.runMutation(internal.knowledge.createEntry, body);
-    return jsonResponse({ id });
+    try {
+      const id = await ctx.runMutation(internal.knowledge.createEntry, body);
+      return jsonResponse({ id });
+    } catch (e) {
+      console.error('knowledge/entry error:', String(e), 'body:', JSON.stringify(body));
+      return errorResponse(String(e), 500);
+    }
   }),
 });
 

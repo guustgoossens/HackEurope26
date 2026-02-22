@@ -89,7 +89,8 @@ export default defineSchema({
     verified: v.boolean(),
   })
     .index('by_clientId', ['clientId'])
-    .index('by_treeNodeId', ['treeNodeId']),
+    .index('by_treeNodeId', ['treeNodeId'])
+    .index('by_clientId_and_treeNodeId', ['clientId', 'treeNodeId']),
 
   forum_entries: defineTable({
     title: v.string(),
@@ -98,9 +99,16 @@ export default defineSchema({
     authorAgent: v.string(),
     tags: v.array(v.string()),
     upvotes: v.number(),
+    sourceType: v.optional(v.string()),
+    phase: v.optional(v.string()),
+    fileType: v.optional(v.string()),
   })
     .index('by_category', ['category'])
-    .searchIndex('search_content', { searchField: 'content' }),
+    .index('by_authorAgent', ['authorAgent'])
+    .searchIndex('search_content', {
+      searchField: 'content',
+      filterFields: ['sourceType', 'phase', 'fileType', 'category'],
+    }),
 
   pipeline_status: defineTable({
     clientId: v.id('clients'),
@@ -127,36 +135,7 @@ export default defineSchema({
     ),
     message: v.string(),
     metadata: v.optional(v.any()),
-  }).index('by_clientId', ['clientId']),
-
-  // Raw discovered data items (files, emails, etc) before processing into knowledge
-  data_items: defineTable({
-    clientId: v.id('clients'),
-    dataSourceId: v.id('data_sources'),
-    name: v.string(),
-    path: v.optional(v.string()),
-    fileType: v.union(
-      v.literal('pdf'),
-      v.literal('spreadsheet'),
-      v.literal('document'),
-      v.literal('email'),
-      v.literal('image'),
-      v.literal('presentation'),
-      v.literal('other'),
-    ),
-    size: v.optional(v.number()),
-    mimeType: v.optional(v.string()),
-    processingStatus: v.union(
-      v.literal('discovered'),
-      v.literal('processing'),
-      v.literal('processed'),
-      v.literal('error'),
-    ),
-    processedAt: v.optional(v.number()),
-    errorMessage: v.optional(v.string()),
-    metadata: v.optional(v.any()),
   })
     .index('by_clientId', ['clientId'])
-    .index('by_dataSourceId', ['dataSourceId'])
-    .index('by_clientId_and_status', ['clientId', 'processingStatus']),
+    .index('by_clientId_and_eventType', ['clientId', 'eventType']),
 });
