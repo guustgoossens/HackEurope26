@@ -54,17 +54,19 @@ export function Layout({ children, onNavigateHome, onToggleForum, forumOpen }: L
           <div className="flex items-center justify-between">
             <div className="min-w-0 flex-1">
               <p className="text-sm font-medium text-white truncate">
-                {user?.firstName} {user?.lastName}
+                {user ? `${user.firstName ?? ''} ${user.lastName ?? ''}`.trim() || user.email : 'Demo'}
               </p>
-              <p className="text-xs text-slate-400 truncate">{user?.email}</p>
+              <p className="text-xs text-slate-400 truncate">{user?.email ?? 'demo@demo'}</p>
             </div>
-            <button
-              onClick={() => signOut()}
-              className="ml-3 p-2 text-slate-400 hover:text-white hover:bg-slate-700 rounded-lg transition-colors"
-              title="Sign out"
-            >
-              <LogOut className="w-4 h-4" />
-            </button>
+            {user && (
+              <button
+                onClick={() => signOut()}
+                className="ml-3 p-2 text-slate-400 hover:text-white hover:bg-slate-700 rounded-lg transition-colors"
+                title="Sign out"
+              >
+                <LogOut className="w-4 h-4" />
+              </button>
+            )}
           </div>
         </div>
       </aside>

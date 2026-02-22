@@ -1,6 +1,6 @@
 import { useQuery, useMutation } from 'convex/react';
 import { api } from '../../convex/_generated/api';
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Plus, Building2, ChevronRight } from 'lucide-react';
 import { useAuth as useAuthKit } from '@workos-inc/authkit-react';
 import clsx from 'clsx';
@@ -49,6 +49,13 @@ export function Dashboard({ onSelectClient, devBypassUser }: DashboardProps) {
       setCreating(false);
     }
   };
+
+  // When there's exactly one client, go straight to it (demo page); otherwise show list
+  useEffect(() => {
+    if (clients && clients.length === 1) {
+      onSelectClient(clients[0]._id);
+    }
+  }, [clients, onSelectClient]);
 
   if (clients === undefined) {
     return (
