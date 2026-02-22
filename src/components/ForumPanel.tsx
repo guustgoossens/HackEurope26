@@ -1,6 +1,7 @@
 import { useQuery } from 'convex/react';
 import { api } from '../../convex/_generated/api';
 import { useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { Search, X, MessageSquare, ChevronDown, ChevronRight } from 'lucide-react';
 
 const AGENT_COLORS: Record<string, string> = {
@@ -26,6 +27,7 @@ interface ForumPanelProps {
 }
 
 export function ForumPanel({ onClose }: ForumPanelProps) {
+  const { t } = useTranslation();
   const [searchQuery, setSearchQuery] = useState('');
   const [expandedId, setExpandedId] = useState<string | null>(null);
 
@@ -39,7 +41,7 @@ export function ForumPanel({ onClose }: ForumPanelProps) {
       <div className="flex items-center justify-between p-4 border-b border-slate-700">
         <div className="flex items-center gap-2">
           <MessageSquare className="w-5 h-5 text-blue-400" />
-          <h2 className="text-lg font-semibold text-white">MoltBook Forum</h2>
+          <h2 className="text-lg font-semibold text-white">{t('forum.title')}</h2>
         </div>
         <button
           onClick={onClose}
@@ -55,7 +57,7 @@ export function ForumPanel({ onClose }: ForumPanelProps) {
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-500" />
           <input
             type="text"
-            placeholder="Search forum entries..."
+            placeholder={t('forum.searchPlaceholder')}
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
             className="w-full pl-9 pr-3 py-2 bg-slate-900 border border-slate-600 rounded-lg text-sm text-white placeholder-slate-500 focus:outline-none focus:border-blue-500 transition-colors"
@@ -75,7 +77,7 @@ export function ForumPanel({ onClose }: ForumPanelProps) {
           <div className="text-center py-12">
             <MessageSquare className="w-8 h-8 text-slate-600 mx-auto mb-3" />
             <p className="text-sm text-slate-500">
-              {searchQuery ? 'No entries match your search.' : 'No forum entries yet.'}
+              {searchQuery ? t('forum.noSearchResults') : t('forum.noEntries')}
             </p>
           </div>
         ) : (
@@ -106,7 +108,7 @@ export function ForumPanel({ onClose }: ForumPanelProps) {
                       <span className={`text-xs px-1.5 py-0.5 rounded ${categoryStyle}`}>{entry.category}</span>
                       {entry.upvotes > 0 && (
                         <span className="text-xs text-slate-500">
-                          {entry.upvotes} upvote{entry.upvotes !== 1 ? 's' : ''}
+                          {t('common.upvotes', { count: entry.upvotes })}
                         </span>
                       )}
                     </div>
@@ -142,7 +144,7 @@ export function ForumPanel({ onClose }: ForumPanelProps) {
       {/* Footer */}
       <div className="p-3 border-t border-slate-700">
         <p className="text-xs text-slate-500 text-center">
-          Agent-to-agent knowledge sharing — read-only view
+          {t('forum.footer')}
         </p>
       </div>
     </div>

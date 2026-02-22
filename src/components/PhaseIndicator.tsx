@@ -1,12 +1,8 @@
 import { Search, GitBranch, ClipboardCheck, Zap, Check } from 'lucide-react';
+import { useTranslation } from 'react-i18next';
 import clsx from 'clsx';
 
-const phases = [
-  { key: 'explore', label: 'Explore', icon: Search },
-  { key: 'structure', label: 'Structure', icon: GitBranch },
-  { key: 'verify', label: 'Verify', icon: ClipboardCheck },
-  { key: 'use', label: 'Use', icon: Zap },
-] as const;
+const phaseKeys = ['explore', 'structure', 'verify', 'use'] as const;
 
 type Phase = 'onboard' | 'explore' | 'structure' | 'verify' | 'use';
 
@@ -14,21 +10,24 @@ interface PhaseIndicatorProps {
   currentPhase: Phase;
 }
 
+const icons = [Search, GitBranch, ClipboardCheck, Zap];
+
 export function PhaseIndicator({ currentPhase }: PhaseIndicatorProps) {
+  const { t } = useTranslation();
   const phaseOrder: Phase[] = ['onboard', 'explore', 'structure', 'verify', 'use'];
   const currentIndex = phaseOrder.indexOf(currentPhase);
 
   return (
     <div className="flex items-center gap-2">
-      {phases.map((phase, i) => {
-        const phaseIndex = phaseOrder.indexOf(phase.key);
-        const isCurrent = phase.key === currentPhase;
+      {phaseKeys.map((key, i) => {
+        const phaseIndex = phaseOrder.indexOf(key);
+        const isCurrent = key === currentPhase;
         const isPast = phaseIndex < currentIndex;
         const isFuture = phaseIndex > currentIndex;
-        const Icon = phase.icon;
+        const Icon = icons[i];
 
         return (
-          <div key={phase.key} className="flex items-center gap-2">
+          <div key={key} className="flex items-center gap-2">
             {i > 0 && (
               <div
                 className={clsx('w-8 h-0.5 rounded-full', isPast || isCurrent ? 'bg-blue-500' : 'bg-slate-700')}
@@ -52,7 +51,7 @@ export function PhaseIndicator({ currentPhase }: PhaseIndicatorProps) {
               >
                 {isPast ? <Check className="w-3.5 h-3.5" /> : <Icon className="w-3.5 h-3.5" />}
               </div>
-              <span className="hidden sm:inline">{phase.label}</span>
+              <span className="hidden sm:inline">{t(`phase.${key}`)}</span>
             </div>
           </div>
         );

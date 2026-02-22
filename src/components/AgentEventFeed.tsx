@@ -1,6 +1,7 @@
 import { useQuery } from 'convex/react';
 import { api } from '../../convex/_generated/api';
 import { useEffect, useRef } from 'react';
+import { useTranslation } from 'react-i18next';
 import { Info, TrendingUp, AlertTriangle, XCircle, CheckCircle2, Radio } from 'lucide-react';
 import clsx from 'clsx';
 import type { Id } from '../../convex/_generated/dataModel';
@@ -18,6 +19,7 @@ interface AgentEventFeedProps {
 }
 
 export function AgentEventFeed({ clientId }: AgentEventFeedProps) {
+  const { t } = useTranslation();
   const events = useQuery(api.agentEvents.listByClient, {
     clientId: clientId as Id<'clients'>,
   });
@@ -32,7 +34,7 @@ export function AgentEventFeed({ clientId }: AgentEventFeedProps) {
   if (events === undefined) {
     return (
       <div className="bg-slate-800 border border-slate-700 rounded-xl p-4">
-        <h3 className="text-sm font-medium text-slate-300 mb-3">Agent Activity</h3>
+        <h3 className="text-sm font-medium text-slate-300 mb-3">{t('agentFeed.title')}</h3>
         <div className="animate-pulse space-y-2">
           {[1, 2, 3].map((i) => (
             <div key={i} className="h-10 bg-slate-700 rounded" />
@@ -45,11 +47,11 @@ export function AgentEventFeed({ clientId }: AgentEventFeedProps) {
   return (
     <div className="bg-slate-800 border border-slate-700 rounded-xl p-4">
       <div className="flex items-center justify-between mb-3">
-        <h3 className="text-sm font-medium text-slate-300">Agent Activity</h3>
+        <h3 className="text-sm font-medium text-slate-300">{t('agentFeed.title')}</h3>
         {events.length > 0 && (
           <div className="flex items-center gap-1.5 text-xs text-emerald-400">
             <Radio className="w-3 h-3 animate-pulse" />
-            Live
+            {t('agentFeed.live')}
           </div>
         )}
       </div>

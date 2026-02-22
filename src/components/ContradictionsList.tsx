@@ -1,5 +1,6 @@
 import { useQuery, useMutation } from 'convex/react';
 import { api } from '../../convex/_generated/api';
+import { useTranslation } from 'react-i18next';
 import { AlertTriangle, CheckCircle2, XCircle, ArrowRightLeft } from 'lucide-react';
 import clsx from 'clsx';
 import type { Id } from '../../convex/_generated/dataModel';
@@ -20,6 +21,7 @@ const statusConfig = {
 };
 
 export function ContradictionsList({ clientId }: ContradictionsListProps) {
+  const { t } = useTranslation();
   const contradictions = useQuery(api.contradictions.listByClient, {
     clientId: clientId as Id<'clients'>,
   });
@@ -29,7 +31,7 @@ export function ContradictionsList({ clientId }: ContradictionsListProps) {
   if (contradictions === undefined) {
     return (
       <div className="bg-slate-800 border border-slate-700 rounded-xl p-4">
-        <h3 className="text-sm font-medium text-slate-300 mb-3">Contradictions</h3>
+        <h3 className="text-sm font-medium text-slate-300 mb-3">{t('contradictions.title')}</h3>
         <div className="animate-pulse space-y-2">
           {[1, 2].map((i) => (
             <div key={i} className="h-20 bg-slate-700 rounded" />
@@ -44,10 +46,10 @@ export function ContradictionsList({ clientId }: ContradictionsListProps) {
   return (
     <div className="bg-slate-800 border border-slate-700 rounded-xl p-4">
       <div className="flex items-center justify-between mb-3">
-        <h3 className="text-sm font-medium text-slate-300">Contradictions</h3>
+        <h3 className="text-sm font-medium text-slate-300">{t('contradictions.title')}</h3>
         {openCount > 0 && (
           <span className="text-xs bg-amber-500/10 text-amber-400 border border-amber-500/20 px-2 py-0.5 rounded-full">
-            {openCount} open
+            {t('contradictions.openCount', { count: openCount })}
           </span>
         )}
       </div>
@@ -55,7 +57,7 @@ export function ContradictionsList({ clientId }: ContradictionsListProps) {
       {contradictions.length === 0 ? (
         <div className="text-center py-6">
           <ArrowRightLeft className="w-8 h-8 text-slate-600 mx-auto mb-3" />
-          <p className="text-sm text-slate-500">No contradictions found yet.</p>
+          <p className="text-sm text-slate-500">{t('contradictions.noContradictions')}</p>
         </div>
       ) : (
         <div className="space-y-2">
@@ -71,32 +73,32 @@ export function ContradictionsList({ clientId }: ContradictionsListProps) {
                     <p className="text-sm text-white mb-1">{c.description}</p>
                     <div className="flex items-center gap-4 text-xs">
                       <div>
-                        <span className="text-slate-500">Source A:</span>{' '}
+                        <span className="text-slate-500">{t('client.sourceA')}</span>{' '}
                         <span className="text-slate-300">{c.sourceA}</span>
                         <span className="text-slate-500 ml-1">= </span>
                         <span className="text-blue-300">{c.valueA}</span>
                       </div>
                       <div>
-                        <span className="text-slate-500">Source B:</span>{' '}
+                        <span className="text-slate-500">{t('client.sourceB')}</span>{' '}
                         <span className="text-slate-300">{c.sourceB}</span>
                         <span className="text-slate-500 ml-1">= </span>
                         <span className="text-purple-300">{c.valueB}</span>
                       </div>
                     </div>
-                    {c.resolution && <p className="text-xs text-emerald-400 mt-1">Resolution: {c.resolution}</p>}
+                    {c.resolution && <p className="text-xs text-emerald-400 mt-1">{t('client.resolution')} {c.resolution}</p>}
                     {c.status === 'open' && (
                       <div className="flex gap-2 mt-2">
                         <button
-                          onClick={() => void resolve({ id: c._id, resolution: 'Manually resolved' })}
+                          onClick={() => void resolve({ id: c._id, resolution: t('client.manuallyResolved') })}
                           className="text-xs px-2 py-1 bg-emerald-600/20 text-emerald-400 rounded hover:bg-emerald-600/30 transition-colors"
                         >
-                          Resolve
+                          {t('client.resolveButton')}
                         </button>
                         <button
                           onClick={() => void dismiss({ id: c._id })}
                           className="text-xs px-2 py-1 bg-slate-600/20 text-slate-400 rounded hover:bg-slate-600/30 transition-colors"
                         >
-                          Dismiss
+                          {t('client.dismissButton')}
                         </button>
                       </div>
                     )}
