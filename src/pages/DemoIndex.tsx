@@ -9,6 +9,7 @@ import { KnowledgeGraph } from '@/components/KnowledgeGraph';
 import AgentFeed from '@/components/AgentFeed';
 import { NodeDetailPanel } from '@/components/NodeDetailPanel';
 import VerifyPhase from '@/components/VerifyPhase';
+import UsePhase from '@/components/UsePhase';
 import { FolioDatabase, FolioLink, FolioSparkles } from '@/components/icons/FolioIcons';
 
 interface DemoIndexProps {
@@ -26,6 +27,7 @@ export default function DemoIndex({ clientId, onBack }: DemoIndexProps) {
         1: { title: t('demo.phase1Title'), subtitle: t('demo.phase1Subtitle') },
         2: { title: t('demo.phase2Title'), subtitle: t('demo.phase2Subtitle') },
         3: { title: t('demo.phase3Title'), subtitle: t('demo.phase3Subtitle') },
+        4: { title: t('demo.phase4Title'), subtitle: t('demo.phase4Subtitle') },
     }), [t]);
 
     const RESTRUCTURE_LINES = useMemo(() => [
@@ -293,12 +295,20 @@ export default function DemoIndex({ clientId, onBack }: DemoIndexProps) {
                             clientId={clientId}
                             isComplete={isVerifyComplete}
                             onComplete={() => setIsVerifyComplete(true)}
+                            onNextPhase={() => handlePhaseChange(4)}
                         />
                     </div>
                 )}
 
+                {/* ── Phase 4: Use / Pulse ── */}
+                {phase === 4 && (
+                    <div className="flex w-full h-full">
+                        <UsePhase clientId={clientId} />
+                    </div>
+                )}
+
                 {/* Phase subtitle — only for phases 2 + 3 */}
-                {phase > 1 && (
+                {phase > 1 && phase < 4 && (
                     <div
                         className="absolute top-4 left-1/2 -translate-x-1/2 text-center pointer-events-none z-20"
                         key={phase}

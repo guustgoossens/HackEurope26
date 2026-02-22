@@ -187,6 +187,7 @@
     "explorer": "Explorateur",
     "structurer": "Structureur",
     "verifier": "Vérificateur",
+    "deployer": "Déploiement",
     "pause": "Pause",
     "demo": "Démo",
     "home": "Accueil"
@@ -222,6 +223,8 @@
     "restructure1": "Suppression des doublons…",
     "restructure2": "Regroupement par domaine…",
     "restructure3": "Validation des liens…",
+    "phase4Title": "Déploiement",
+    "phase4Subtitle": "Votre base est en ligne et prête pour vos agents",
     "nodes": "nœuds",
     "domains": "domaines",
     "contradiction": "contradiction",
@@ -272,6 +275,29 @@
     "contradictionDetected": "Contradiction détectée",
     "questionOf": "Question {{current}} sur {{total}}",
     "sourceA": "Source A",
-    "sourceB": "Source B"
+    "sourceB": "Source B",
+    "goToDeploy": "Passer au déploiement"
+  },
+  "use": {
+    "recapTitle": "Onboarding terminé",
+    "stat1": "1 297 éléments structurés",
+    "stat2": "3 contradictions résolues",
+    "stat3": "Base vérifiée · prête pour les agents",
+    "recapCTA": "Accéder au tableau de bord",
+    "pulseTitle": "Pulse",
+    "live": "En direct",
+    "kbTitle": "Base de connaissances",
+    "agents": "Agents actifs",
+    "mcp": "Connexions MCP",
+    "agentActive": "Actif",
+    "agentIdle": "En veille",
+    "askPlaceholder": "Posez une question…",
+    "suggestions": "Suggestions",
+    "q1": "Acme — dernière facture?",
+    "q2": "TVA Q2 2024?",
+    "q3": "Rapport annuel 2023?",
+    "connected": "Connecté",
+    "pending": "En attente",
+    "hintText": "Posez une question à votre base de connaissances."
   }
 }
