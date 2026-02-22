@@ -52,40 +52,60 @@ class ExplorerAgent:
             if n not in google_tools and n not in sandbox_tools
         ]
 
-        tool_section = ""
-        if google_tools:
-            tool_section += "Google Workspace (auth pre-configured):\n"
-            for t in google_tools:
-                tool_section += f"  - {t}\n"
-            tool_section += "\n"
-        if sandbox_tools:
-            tool_section += "Sandbox (local file processing):\n"
-            for t in sandbox_tools:
-                tool_section += f"  - {t}\n"
-            tool_section += "\n"
-        if utility_tools:
-            tool_section += "Utility:\n"
-            for t in utility_tools:
-                tool_section += f"  - {t}\n"
-            tool_section += "\n"
+        workspace_line = f"\nWorkspace path: {self._workspace_path}" if self._workspace_path else ""
 
-        workspace_line = f" | workspace: {self._workspace_path}" if self._workspace_path else ""
+        if google_tools:
+            google_section = (
+                "## Google Workspace Tools (USE THESE FIRST)\n"
+                "These tools are **already authenticated** via OAuth — call them directly, they will work immediately.\n"
+                "Do NOT attempt to install google libraries, look for token.json, check env vars for credentials,\n"
+                "or write Python scripts to access Google APIs. The tools below ARE your Google access.\n\n"
+                + "\n".join(f"  - {t}" for t in google_tools)
+                + "\n"
+            )
+        else:
+            google_section = ""
+
+        if sandbox_tools:
+            sandbox_section = (
+                "\n## Sandbox Tools (for local file processing)\n"
+                "Full shell available via run_command — pipes, grep, env, find, curl, python3, etc. all work.\n"
+                "Use sandbox tools to process files you've downloaded or to inspect your local workspace.\n\n"
+                + "\n".join(f"  - {t}" for t in sandbox_tools)
+                + "\n"
+            )
+        else:
+            sandbox_section = ""
+
+        if utility_tools:
+            utility_section = (
+                "\n## Utility Tools\n"
+                + "\n".join(f"  - {t}" for t in utility_tools)
+                + "\n"
+            )
+        else:
+            utility_section = ""
 
         return (
             f'You are an explorer agent investigating a {self.source_type} data source '
-            f'labeled "{self.source_label}".\n\n'
+            f'labeled "{self.source_label}".\n'
+            f"Auth mode: {self._auth_mode}{workspace_line}\n\n"
 
             f"## Goal\n"
-            f"Discover what data is available, understand its structure, report findings via report_metrics.\n\n"
+            f"Discover what data is available in this source, understand its structure and contents, "
+            f"then call report_metrics with a summary of your findings.\n\n"
 
-            f"## Environment\n"
-            f"auth: {self._auth_mode}{workspace_line} | sandbox: allowlisted commands\n"
-            f"Google Workspace access is pre-configured — the Google tools below have authentication handled.\n\n"
+            f"{google_section}"
+            f"{sandbox_section}"
+            f"{utility_section}\n"
 
-            f"## Available Tools\n"
-            f"{tool_section}"
+            f"## Strategy\n"
+            f"1. If Google Workspace tools are listed above, call them immediately — they are live and authenticated.\n"
+            f"2. Use sandbox tools (run_command, read_local_file) for processing files locally.\n"
+            f"3. Check the forum for known patterns before spending time on hard problems.\n"
+            f"4. When you have enough information, call report_metrics to finish.\n\n"
 
-            f"When done, call report_metrics with a summary of what you found."
+            f"Do NOT spend turns trying to set up authentication — it is already done."
         )
 
     async def run(self) -> SubAgentReport:
@@ -107,6 +127,7 @@ class ExplorerAgent:
             }
         ]
         tools = self._tools or [get_tool_schema(t) for t in EXPLORER_TOOLS]
+        logger.info(f"[{self.source_type}] tool list: {[t['name'] for t in tools]}")
         report = SubAgentReport(
             agent_name=f"explorer-{self.source_type}", source_type=self.source_type
         )
@@ -117,6 +138,16 @@ class ExplorerAgent:
             text, tool_calls_raw = await self.llm.complete_with_tools_messages(
                 messages, tools, system
             )
+
+            if text:
+                logger.info(f"[{self.source_type}] turn={turn} text: {text[:300]}")
+            if tool_calls_raw:
+                logger.info(
+                    f"[{self.source_type}] turn={turn} tool calls: "
+                    + ", ".join(
+                        f"{tc['name']}({str(tc['input'])[:80]})" for tc in tool_calls_raw
+                    )
+                )
 
             if not tool_calls_raw:
                 break
