@@ -185,7 +185,7 @@ export default function DemoIndex({ clientId, onBack }: DemoIndexProps) {
                             {/* Restructure animation overlay */}
                             {isRestructuring && (
                                 <div
-                                    className="absolute inset-0 flex items-center justify-center z-10 rounded-xl"
+                                    className="absolute inset-0 flex items-center justify-center z-10 card-organic"
                                     style={{
                                         background: 'hsl(220 20% 98% / 0.88)',
                                         backdropFilter: 'blur(6px)',
@@ -214,7 +214,7 @@ export default function DemoIndex({ clientId, onBack }: DemoIndexProps) {
 
                             {/* Stats bar bottom-left — driven by reactive treeNodes */}
                             <div
-                                className="absolute bottom-4 left-4 flex items-center gap-3 text-xs rounded-xl px-4 py-2.5"
+                                className="absolute bottom-4 left-4 flex items-center gap-3 text-xs card-organic px-4 py-2.5"
                                 style={{
                                     background: 'linear-gradient(135deg, hsl(0 0% 100% / 0.88), hsl(217 30% 97% / 0.88))',
                                     backdropFilter: 'blur(12px)',
@@ -226,27 +226,27 @@ export default function DemoIndex({ clientId, onBack }: DemoIndexProps) {
                                     <>
                                         <FolioSparkles className="h-5 w-5 text-emerald-500" />
                                         <span className="font-medium text-emerald-600">
-                                            {totalNodes} nœuds · {domainCount} domaines · 0 contradiction
+                                            {totalNodes} {t('demo.nodes')} · {domainCount} {t('demo.domains')} · 0 {t('demo.contradiction')}
                                         </span>
                                     </>
                                 ) : (
                                     <>
                                         <FolioDatabase className="h-5 w-5 text-primary" />
                                         <span style={{ color: 'hsl(217 20% 55%)' }}>
-                                            {totalNodes || 46} nœuds · doublons détectés · 7 contradictions
+                                            {totalNodes || 46} {t('demo.nodes')} · {t('demo.duplicatesDetected')} · 7 {t('demo.contradictions')}
                                         </span>
                                         <span style={{ color: 'hsl(217 20% 82%)' }}>·</span>
                                         <button
                                             onClick={handleRestructure}
                                             disabled={isRestructuring}
-                                            className="flex items-center gap-1 px-2.5 py-1 rounded-lg text-xs font-medium transition-all duration-200 hover:-translate-y-0.5 disabled:opacity-50"
+                                            className="flex items-center gap-1 px-2.5 py-1 btn-organic text-xs font-medium transition-all duration-200 hover:-translate-y-0.5 disabled:opacity-50"
                                             style={{
                                                 background: 'linear-gradient(135deg, hsl(217 65% 52%), hsl(217 75% 43%))',
                                                 color: 'hsl(0 0% 100%)',
                                                 boxShadow: '0 2px 8px hsl(217 60% 50% / 0.25)',
                                             }}
                                         >
-                                            Structurer ▶
+                                            {t('demo.structureBtn')}
                                         </button>
                                     </>
                                 )}
@@ -254,7 +254,7 @@ export default function DemoIndex({ clientId, onBack }: DemoIndexProps) {
 
                             {/* Link counter bottom-right */}
                             <div
-                                className="absolute bottom-4 right-4 flex gap-2 items-center text-xs rounded-xl px-3 py-2"
+                                className="absolute bottom-4 right-4 flex gap-2 items-center text-xs card-organic px-3 py-2"
                                 style={{
                                     background: 'linear-gradient(135deg, hsl(0 0% 100% / 0.85), hsl(217 30% 97% / 0.85))',
                                     backdropFilter: 'blur(12px)',
@@ -263,7 +263,7 @@ export default function DemoIndex({ clientId, onBack }: DemoIndexProps) {
                                 }}
                             >
                                 <FolioLink className="h-5 w-5 text-primary" />
-                                <span style={{ color: 'hsl(217 20% 55%)' }}>{visibleEdgeCount} liens</span>
+                                <span style={{ color: 'hsl(217 20% 55%)' }}>{visibleEdgeCount} {t('demo.links')}</span>
                             </div>
                         </div>
 

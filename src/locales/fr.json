@@ -206,7 +206,8 @@
   },
   "agentFeed": {
     "title": "Activité agent",
-    "live": "En direct"
+    "live": "En direct",
+    "waiting": "En attente des premières activités…"
   },
   "demo": {
     "loading": "Chargement de la démo…",
@@ -220,6 +221,57 @@
     "phase3Subtitle": "Validation des ambiguïtés détectées",
     "restructure1": "Suppression des doublons…",
     "restructure2": "Regroupement par domaine…",
-    "restructure3": "Validation des liens…"
+    "restructure3": "Validation des liens…",
+    "nodes": "nœuds",
+    "domains": "domaines",
+    "contradiction": "contradiction",
+    "duplicatesDetected": "doublons détectés",
+    "contradictions": "contradictions",
+    "links": "liens",
+    "structureBtn": "Structurer ▶"
+  },
+  "explore": {
+    "step1Label": "Connexion",
+    "step1Desc": "Accès sécurisé aux sources",
+    "step2Label": "Exploration",
+    "step2Desc": "Cartographie des données",
+    "step3Label": "Bilan",
+    "step3Desc": "Vue d'ensemble",
+    "step1Title": "Connexion des sources",
+    "step1Sub": "Folio accède à vos outils existants sans migration. Vos données restent chez vous.",
+    "step2Title": "Exploration en cours",
+    "step2Sub": "L'agent cartographie vos données sans en modifier une seule ligne.",
+    "step3Title": "Bilan de l'exploration",
+    "step3Sub": "Base de départ identifiée. L'agent peut maintenant construire la structure.",
+    "elements": "éléments",
+    "connected": "Connecté",
+    "connecting": "Connexion…",
+    "connectVia": "Connecter via Composio",
+    "discovering": "Découverte de fichiers…",
+    "totalAnalyzed": "éléments analysés",
+    "discoveredTitle": "Éléments découverts",
+    "flaggedTitle": "Signalés par l'agent",
+    "findingPDF": "Fichiers PDF",
+    "findingExcel": "Feuilles Excel",
+    "findingEmails": "Emails",
+    "findingPresentations": "Présentations",
+    "flaggedMissing": "Données manquantes",
+    "flaggedContradictions": "Contradictions",
+    "flaggedDuplicates": "Doublons potentiels",
+    "goToStructure": "Passer à la structuration",
+    "oauthNote": "Connexion OAuth · Lecture seule · Aucune donnée modifiée"
+  },
+  "verify": {
+    "title": "Vérification humaine",
+    "subtitle": "L'agent a détecté des ambiguïtés. Vos réponses finaliseront la base.",
+    "generating": "Génération du questionnaire de vérification…",
+    "baseVerified": "Base vérifiée",
+    "allResolved": "Toutes les ambiguïtés résolues.",
+    "readyForAgents": "Prête pour les agents.",
+    "kbOperational": "Base de connaissances opérationnelle",
+    "contradictionDetected": "Contradiction détectée",
+    "questionOf": "Question {{current}} sur {{total}}",
+    "sourceA": "Source A",
+    "sourceB": "Source B"
   }
 }

@@ -1,4 +1,5 @@
 import { useQuery, useMutation } from 'convex/react';
+import { useTranslation } from 'react-i18next';
 import { api } from '../../convex/_generated/api';
 import type { Id } from '../../convex/_generated/dataModel';
 import {
@@ -16,6 +17,7 @@ interface Props {
 }
 
 export default function VerifyPhase({ clientId, isComplete, onComplete }: Props) {
+    const { t } = useTranslation();
     const questionnaires = useQuery(api.questionnaires.listByClient, {
         clientId: clientId as Id<'clients'>,
     });
@@ -55,14 +57,14 @@ export default function VerifyPhase({ clientId, isComplete, onComplete }: Props)
                     </div>
                     <div>
                         <h3 className="text-lg font-semibold text-foreground mb-1" style={{ fontFamily: "'Newsreader', serif" }}>
-                            Base vérifiée
+                            {t('verify.baseVerified')}
                         </h3>
                         <p className="text-sm text-muted-foreground">
-                            Toutes les ambiguïtés résolues.<br />Prête pour les agents.
+                            {t('verify.allResolved')}<br />{t('verify.readyForAgents')}
                         </p>
                     </div>
                     <div
-                        className="flex items-center gap-2 px-4 py-2 rounded-xl text-xs"
+                        className="flex items-center gap-2 px-4 py-2 card-organic text-xs"
                         style={{
                             background: 'hsl(152 40% 96%)',
                             border: '1px solid hsl(152 35% 85%)',
@@ -70,7 +72,7 @@ export default function VerifyPhase({ clientId, isComplete, onComplete }: Props)
                         }}
                     >
                         <FolioSparkles className="h-5 w-5" />
-                        <span>Base de connaissances opérationnelle</span>
+                        <span>{t('verify.kbOperational')}</span>
                     </div>
                 </div>
             </div>
@@ -82,7 +84,7 @@ export default function VerifyPhase({ clientId, isComplete, onComplete }: Props)
             <div className="h-full flex flex-col w-96 shrink-0" style={panelStyle}>
                 <div className="flex-1 flex items-center justify-center px-6">
                     <p className="text-sm text-muted-foreground text-center">
-                        Génération du questionnaire de vérification…
+                        {t('verify.generating')}
                     </p>
                 </div>
             </div>
@@ -121,11 +123,11 @@ export default function VerifyPhase({ clientId, isComplete, onComplete }: Props)
                 <div className="flex items-center gap-2 mb-1.5">
                     <FolioShield className="h-5 w-5 text-primary shrink-0" />
                     <span className="text-sm font-semibold text-foreground" style={{ fontFamily: "'Newsreader', serif" }}>
-                        Vérification humaine
+                        {t('verify.title')}
                     </span>
                 </div>
                 <p className="text-xs text-muted-foreground mb-3">
-                    L'agent a détecté des ambiguïtés. Vos réponses finaliseront la base.
+                    {t('verify.subtitle')}
                 </p>
                 {/* Progress bar */}
                 <div className="flex items-center gap-2">
@@ -148,7 +150,7 @@ export default function VerifyPhase({ clientId, isComplete, onComplete }: Props)
                     {/* Contradiction badge */}
                     {contradiction && (
                         <div
-                            className="flex items-center gap-1.5 text-xs px-3 py-1.5 rounded-lg mb-3 font-medium"
+                            className="flex items-center gap-1.5 text-xs px-3 py-1.5 card-organic mb-3 font-medium"
                             style={{
                                 background: 'hsl(38 80% 96%)',
                                 border: '1px solid hsl(38 40% 86%)',
@@ -156,7 +158,7 @@ export default function VerifyPhase({ clientId, isComplete, onComplete }: Props)
                             }}
                         >
                             <AlertTriangle className="h-4 w-4 shrink-0" />
-                            Contradiction détectée
+                            {t('verify.contradictionDetected')}
                         </div>
                     )}
 
@@ -171,8 +173,8 @@ export default function VerifyPhase({ clientId, isComplete, onComplete }: Props)
                     {/* Source context blocks */}
                     {contradiction && (
                         <div className="space-y-2 mb-4">
-                            <SourceBlock label="Source A" filename={contradiction.sourceA} value={contradiction.valueA} />
-                            <SourceBlock label="Source B" filename={contradiction.sourceB} value={contradiction.valueB} />
+                            <SourceBlock label={t('verify.sourceA')} filename={contradiction.sourceA} value={contradiction.valueA} />
+                            <SourceBlock label={t('verify.sourceB')} filename={contradiction.sourceB} value={contradiction.valueB} />
                         </div>
                     )}
 
@@ -185,7 +187,7 @@ export default function VerifyPhase({ clientId, isComplete, onComplete }: Props)
                                     key={i}
                                     onClick={() => void handleAnswer(opt)}
                                     className={cn(
-                                        'w-full text-left py-2.5 px-4 text-sm rounded-xl transition-all duration-200 flex items-start gap-2.5',
+                                        'w-full text-left py-2.5 px-4 text-sm card-organic transition-all duration-200 flex items-start gap-2.5',
                                         isSelected ? 'text-primary font-medium' : 'text-foreground hover:-translate-y-0.5',
                                     )}
                                     style={
@@ -223,7 +225,7 @@ export default function VerifyPhase({ clientId, isComplete, onComplete }: Props)
                 className="px-5 py-3 shrink-0 text-xs text-muted-foreground text-center"
                 style={{ borderTop: '1px solid hsl(217 20% 92%)' }}
             >
-                Question {questionIndex + 1} sur {total}
+                {t('verify.questionOf', { current: questionIndex + 1, total })}
             </div>
         </div>
     );
@@ -232,7 +234,7 @@ export default function VerifyPhase({ clientId, isComplete, onComplete }: Props)
 function SourceBlock({ label, filename, value }: { label: string; filename: string; value: string }) {
     return (
         <div
-            className="rounded-xl px-3 py-2.5 text-xs space-y-0.5"
+            className="card-organic px-3 py-2.5 text-xs space-y-0.5"
             style={{
                 background: 'hsl(217 30% 97%)',
                 border: '1px solid hsl(217 20% 91%)',
