@@ -13,15 +13,32 @@ import { VisualizationGraph } from './components/VisualizationGraph';
 
 const convex = new ConvexReactClient(import.meta.env.VITE_CONVEX_URL);
 
-// The messy demo client (42 nodes, 4 contradictions)
-const DEMO_CLIENT_ID = 'kn721r3ty78a9hxjwr3vp438w581kb94' as Id<'clients'>;
-
 type GraphType = 'knowledge' | 'exploration' | 'contradictions';
 
 function GraphTestInner() {
   const [type, setType] = useState<GraphType>('knowledge');
 
-  const client = useQuery(api.clients.get, { id: DEMO_CLIENT_ID });
+  // Dynamically look up the demo client — no hardcoded ID needed
+  const demoClients = useQuery(api.clients.list, { createdBy: 'demo' });
+  const client = demoClients?.[0];
+  const clientId = client?._id as Id<'clients'> | undefined;
+
+  if (demoClients === undefined) {
+    return (
+      <div style={{ background: '#0f172a', minHeight: '100vh', color: '#64748b', display: 'flex', alignItems: 'center', justifyContent: 'center', fontFamily: 'sans-serif' }}>
+        Loading…
+      </div>
+    );
+  }
+
+  if (!clientId) {
+    return (
+      <div style={{ background: '#0f172a', minHeight: '100vh', color: '#f87171', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', fontFamily: 'sans-serif', gap: '12px' }}>
+        <p style={{ fontSize: '16px', fontWeight: 600, margin: 0 }}>No demo client found.</p>
+        <p style={{ fontSize: '13px', color: '#64748b', margin: 0 }}>Run <code style={{ background: '#1e293b', padding: '2px 6px', borderRadius: '4px' }}>npx convex run demoData:createDemoClient</code> then seed with <code style={{ background: '#1e293b', padding: '2px 6px', borderRadius: '4px' }}>insertDemoMessy</code>.</p>
+      </div>
+    );
+  }
 
   return (
     <div style={{ background: '#0f172a', minHeight: '100vh', color: 'white', fontFamily: 'sans-serif' }}>
@@ -30,7 +47,7 @@ function GraphTestInner() {
         <div>
           <h1 style={{ margin: 0, fontSize: '18px', fontWeight: 600 }}>Graph Test</h1>
           <p style={{ margin: 0, fontSize: '13px', color: '#64748b' }}>
-            Client: {client?.name ?? '…'} · ID: {DEMO_CLIENT_ID}
+            Client: {client?.name} · ID: {clientId}
           </p>
         </div>
 
@@ -59,7 +76,7 @@ function GraphTestInner() {
 
       {/* Graph */}
       <div style={{ height: 'calc(100vh - 65px)' }}>
-        <VisualizationGraph clientId={DEMO_CLIENT_ID} type={type} />
+        <VisualizationGraph clientId={clientId} type={type} />
       </div>
     </div>
   );

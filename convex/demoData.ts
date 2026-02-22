@@ -261,17 +261,34 @@ export const insertDemoMessy = mutation({
     const fBoardQ3    = await node('board_pack_Q3_2024.pdf',            'entry_group', 1, fMisc,      '⚠️ Q3 2024 board pack in Misc — should be in Board/Board Packs.');
 
     // Client files — core
-    const fAcmeEng    = await node('acme_engagement_letter_2024.pdf',   'entry_group', 0, fAcme,      'Engagement letter signed Jan 2024.');
-    const fBrightEng  = await node('brightfield_engagement_2024.pdf',   'entry_group', 1, fBright,    'Engagement letter signed Feb 2024.');
-    const fBrightTB   = await node('brightfield_trial_balance.xlsx',    'entry_group', 2, fShared,    '⚠️ Brightfield trial balance in "Shared with me" — not filed under client.');
-    const fNortonEng  = await node('norton_engagement_2024.pdf',        'entry_group', 3, fMisc,      '⚠️ Norton engagement letter in Misc — client not set up yet.');
-    const fPeakEng    = await node('peak_ventures_engagement_2024.pdf', 'entry_group', 0, fPeak,      'Peak Ventures engagement renewal 2024. Correct location.');
-    const fPeakAudit  = await node('peak_audit_report_FY2023.pdf',      'entry_group', 1, fPeakOld,   '⚠️ Peak audit report in old 2022 archive — this is a 2023 document.');
-    const fPeakAudit2 = await node('peak_audit_FY2023_SIGNED.pdf',      'entry_group', 2, fMisc,      '⚠️ CONFLICT: Signed version of Peak audit in Misc — same period as peak_audit_report_FY2023.pdf.');
-    const fRiverEng   = await node('riverdale_engagement_2023.pdf',     'entry_group', 1, fRiverdale, 'Riverdale engagement letter 2023. Correct location.');
-    const fRiverHO    = await node('riverdale_handover_notes.docx',     'entry_group', 2, fMisc,      '⚠️ Riverdale handover notes from old accountant in Misc — needs filing.');
-    const fMasonEng   = await node('mason_clark_engagement_2021.pdf',   'entry_group', 0, fMason,     'Former client Mason & Clark. Archived but still in search results.');
-    const fMasonInv   = await node('invoice_mason_final_2022.pdf',      'entry_group', 1, fInvoices,  '⚠️ Mason & Clark invoice in active Invoices folder — client left in 2022.');
+    const fAcmeEng    = await node('acme_engagement_letter_2024.pdf',        'entry_group', 0, fAcme,      'Engagement letter signed Jan 2024.');
+    const fAcmeTB     = await node('acme_trial_balance_Q3_2024.xlsx',        'entry_group', 1, fMisc,      '⚠️ Acme Ltd trial balance for Q3 in Misc — should be in Finance/Management Accts.');
+    const fAcmeDisp   = await node('acme_invoice_dispute_email_chain.pdf',   'entry_group', 2, fAcme,      'Exported email chain re: March invoice dispute. Correct location.');
+    const fAcmeDispV2 = await node('acme_dispute_email_chain_UPDATED.pdf',   'entry_group', 3, fDesktop,   '⚠️ CONFLICT: Updated email chain export on Desktop — newer than the one in Acme folder?');
+    const fBrightEng  = await node('brightfield_engagement_2024.pdf',        'entry_group', 0, fBright,    'Engagement letter signed Feb 2024.');
+    const fBrightTB   = await node('brightfield_trial_balance.xlsx',         'entry_group', 1, fShared,    '⚠️ Brightfield trial balance in "Shared with me" — not filed under client.');
+    const fBrightTBv2 = await node('brightfield_trial_balance_AMENDED.xlsx', 'entry_group', 2, fBright,    '⚠️ CONFLICT: Amended trial balance in Brightfield folder — different from "Shared with me" version?');
+    const fBrightQ4   = await node('brightfield_Q4_accounts_draft.xlsx',     'entry_group', 3, fDesktop,   '⚠️ Brightfield Q4 draft accounts on Desktop — not filed in client folder.');
+    const fNortonEng  = await node('norton_engagement_2024.pdf',             'entry_group', 0, fMisc,      '⚠️ Norton engagement letter in Misc — client not set up yet.');
+    const fNortonTB   = await node('norton_trial_balance_2024.xlsx',         'entry_group', 1, fMisc,      '⚠️ Norton trial balance in Misc — new client, not yet organised.');
+    const fNortonInv2 = await node('invoice_norton_feb.pdf',                 'entry_group', 2, fDesktop,   '⚠️ February invoice for Norton & Sons on Desktop — should be in Invoices.');
+    const fNortonVAT  = await node('norton_VAT_reg_confirmation.pdf',        'entry_group', 3, fMisc,      '⚠️ Norton VAT registration confirmation in Misc — regulatory doc, should be in Compliance.');
+    const fPeakEng    = await node('peak_ventures_engagement_2024.pdf',      'entry_group', 0, fPeak,      'Peak Ventures engagement renewal 2024. Correct location.');
+    const fPeakAudit  = await node('peak_audit_report_FY2023.pdf',           'entry_group', 1, fPeakOld,   '⚠️ Peak audit report in old 2022 archive — this is a 2023 document.');
+    const fPeakAudit2 = await node('peak_audit_FY2023_SIGNED.pdf',           'entry_group', 2, fMisc,      '⚠️ CONFLICT: Signed version of Peak audit in Misc — same period as peak_audit_report_FY2023.pdf.');
+    const fPeakTB     = await node('peak_trial_balance_FY2023.xlsx',         'entry_group', 3, fPeak,      'Peak Ventures trial balance FY2023. Correct location.');
+    const fPeakTBOld  = await node('peak_trial_balance_FY2023_v1.xlsx',      'entry_group', 0, fPeakOld,   '⚠️ CONFLICT: Earlier version of Peak trial balance in old archive — same period, different figures?');
+    const fPeakMgmt   = await node('peak_management_accounts_Q2_2024.pdf',   'entry_group', 4, fMisc,      '⚠️ Peak Ventures Q2 management accounts in Misc — should be in Clients/Peak Ventures.');
+    const fPeakPayroll= await node('peak_payroll_query_2024.pdf',            'entry_group', 5, fPayroll,   '⚠️ Peak Ventures payroll query in Hartley\'s own Payroll folder — wrong location entirely.');
+    const fRiverEng   = await node('riverdale_engagement_2023.pdf',          'entry_group', 0, fRiverdale, 'Riverdale engagement letter 2023. Correct location.');
+    const fRiverHO    = await node('riverdale_handover_notes.docx',          'entry_group', 1, fMisc,      '⚠️ Riverdale handover notes from old accountant in Misc — needs filing.');
+    const fRiverTB    = await node('riverdale_trial_balance_2023.xlsx',      'entry_group', 2, fRiverdale, 'Riverdale trial balance 2023. Migrated from old accountant. Correct location.');
+    const fRiverTBNew = await node('riverdale_trial_balance_2024_draft.xlsx','entry_group', 3, fShared,    '⚠️ Riverdale 2024 draft trial balance in "Shared with me" — client sent directly, not filed.');
+    const fRiverVAT   = await node('riverdale_VAT_returns_2023.pdf',         'entry_group', 4, fMisc,      '⚠️ Riverdale 2023 VAT returns from old accountant in Misc — should be in 2023/VAT 2023 or Compliance.');
+    const fRiverCorpT = await node('riverdale_corp_tax_2022.pdf',            'entry_group', 5, fOldFinance,'⚠️ Riverdale corp tax 2022 in Finance (Old) — wrong client folder and wrong location.');
+    const fMasonEng   = await node('mason_clark_engagement_2021.pdf',        'entry_group', 0, fMason,     'Former client Mason & Clark. Archived but still in search results.');
+    const fMasonInv   = await node('invoice_mason_final_2022.pdf',           'entry_group', 1, fInvoices,  '⚠️ Mason & Clark invoice in active Invoices folder — client left in 2022.');
+    const fMasonTB    = await node('mason_clark_trial_balance_2022.xlsx',    'entry_group', 2, fMgmt,      '⚠️ Mason & Clark (former client) trial balance in active Management Accts folder.');
 
     // Junk / unreadable / desktop dump
     const fScan       = await node('scan0042.pdf',                      'entry_group', 0, fMisc,      '❌ Blank scan — no extractable text. Cannot classify.');
@@ -304,8 +321,12 @@ export const insertDemoMessy = mutation({
       fHMRCLetter, fHMRCResp, fCorpTax22, fCorpTax23, fCorpTax23v2,
       fAMLAcme, fAMLNorton, fAMLPeak, fInsurPI, fInsurOld,
       fMinApr, fMinJan, fMinJul, fBoardQ1, fBoardQ3,
-      fAcmeEng, fBrightEng, fBrightTB, fNortonEng,
-      fPeakEng, fPeakAudit, fPeakAudit2, fRiverEng, fRiverHO, fMasonEng, fMasonInv,
+      fAcmeEng, fAcmeTB, fAcmeDisp, fAcmeDispV2,
+      fBrightEng, fBrightTB, fBrightTBv2, fBrightQ4,
+      fNortonEng, fNortonTB, fNortonInv2, fNortonVAT,
+      fPeakEng, fPeakAudit, fPeakAudit2, fPeakTB, fPeakTBOld, fPeakMgmt, fPeakPayroll,
+      fRiverEng, fRiverHO, fRiverTB, fRiverTBNew, fRiverVAT, fRiverCorpT,
+      fMasonEng, fMasonInv, fMasonTB,
       fScan, fScan2, fUntitled, fNewFolder, fTemp, fCopy2, fWIP, fOldBackup,
       fLeaseOfc, fLeaseNew, fUtility,
     ];
@@ -465,6 +486,88 @@ export const insertDemoMessy = mutation({
         content: 'Norton & Sons ID/KYC documents in Misc. Must be filed in Compliance/AML & KYC.', confidence: 0.51 },
       { treeNodeId: fAML,        title: 'Norton AML (ref)',         sourceRef: 'norton_ID_docs.pdf',
         content: 'Same norton_ID_docs.pdf referenced from AML & KYC folder.', confidence: 0.51 },
+
+      // ── Acme dispute email chain conflict ────────────────────────
+      { treeNodeId: fAcmeDisp,   title: 'Acme Dispute Emails (Acme folder)', sourceRef: 'acme_invoice_dispute_email_chain.pdf',
+        content: 'Email chain re: March invoice dispute. Exported to Acme folder. May be out of date.', confidence: 0.62 },
+      { treeNodeId: fAcmeDispV2, title: 'Acme Dispute Emails (Desktop — newer?)', sourceRef: 'acme_dispute_email_chain_UPDATED.pdf',
+        content: 'Updated email chain export on Desktop. Newer export date — is this the current version?', confidence: 0.58 },
+      { treeNodeId: fAcme,       title: 'Acme Dispute Emails (ref)', sourceRef: 'acme_invoice_dispute_email_chain.pdf',
+        content: 'Dispute email chain cross-referenced from Acme client folder.', confidence: 0.62 },
+
+      // ── Acme trial balance in Misc ────────────────────────────────
+      { treeNodeId: fAcmeTB,     title: 'Acme Q3 Trial Balance (Misc)', sourceRef: 'acme_trial_balance_Q3_2024.xlsx',
+        content: 'Acme Ltd Q3 2024 trial balance in Misc — should be in Finance/Management Accts or Clients/Acme.', confidence: 0.44 },
+      { treeNodeId: fMgmt,       title: 'Acme Q3 Trial Balance (ref)', sourceRef: 'acme_trial_balance_Q3_2024.xlsx',
+        content: 'Same trial balance cross-referenced from Management Accts folder.', confidence: 0.44 },
+
+      // ── Brightfield trial balance conflict ────────────────────────
+      { treeNodeId: fBrightTB,   title: 'Brightfield Trial Balance (Shared)', sourceRef: 'brightfield_trial_balance.xlsx',
+        content: 'Trial balance for Brightfield Co in "Shared with me" — client sent directly.', confidence: 0.68 },
+      { treeNodeId: fBrightTBv2, title: 'Brightfield Trial Balance (Amended)', sourceRef: 'brightfield_trial_balance_AMENDED.xlsx',
+        content: 'Amended version in Brightfield client folder. Different from Shared copy — which is current?', confidence: 0.41 },
+      { treeNodeId: fBright,     title: 'Brightfield Trial Balance (ref)', sourceRef: 'brightfield_trial_balance.xlsx',
+        content: 'Original trial balance cross-referenced from Brightfield client folder.', confidence: 0.68 },
+
+      // ── Norton & Sons — new client, nothing organised ─────────────
+      { treeNodeId: fNortonEng,  title: 'Norton Engagement Letter (Misc)', sourceRef: 'norton_engagement_2024.pdf',
+        content: 'Norton & Sons engagement letter 2024 in Misc — client not yet set up as a proper folder.', confidence: 0.49 },
+      { treeNodeId: fNorton,     title: 'Norton Engagement (ref)',  sourceRef: 'norton_engagement_2024.pdf',
+        content: 'Same engagement letter cross-referenced from Norton & Sons client folder.', confidence: 0.49 },
+      { treeNodeId: fNortonTB,   title: 'Norton Trial Balance (Misc)', sourceRef: 'norton_trial_balance_2024.xlsx',
+        content: 'Norton & Sons trial balance for 2024 sitting in Misc. New client — not yet structured.', confidence: 0.43 },
+      { treeNodeId: fNortonVAT,  title: 'Norton VAT Registration (Misc)', sourceRef: 'norton_VAT_reg_confirmation.pdf',
+        content: 'VAT registration confirmation for Norton & Sons in Misc. Regulatory doc — must go to Compliance.', confidence: 0.51 },
+      { treeNodeId: fAML,        title: 'Norton VAT Reg (Compliance ref)', sourceRef: 'norton_VAT_reg_confirmation.pdf',
+        content: 'Same VAT registration cross-referenced from Compliance folder.', confidence: 0.51 },
+
+      // ── Peak Ventures — audit report conflict + scattered files ───
+      { treeNodeId: fPeakAudit,  title: 'Peak Audit FY2023 (old archive)', sourceRef: 'peak_audit_report_FY2023.pdf',
+        content: 'Peak Ventures audit report FY2023. In old 2022 archive — this is a 2023 document.', confidence: 0.55 },
+      { treeNodeId: fPeakAudit2, title: 'Peak Audit FY2023 SIGNED (Misc)', sourceRef: 'peak_audit_FY2023_SIGNED.pdf',
+        content: 'Signed version of Peak FY2023 audit in Misc. Conflicts with unsigned version in archive.', confidence: 0.52 },
+      { treeNodeId: fPeak,       title: 'Peak Audit (ref)',          sourceRef: 'peak_audit_report_FY2023.pdf',
+        content: 'Peak audit report cross-referenced from Clients/Peak Ventures folder.', confidence: 0.55 },
+      { treeNodeId: fPeakTBOld,  title: 'Peak Trial Balance FY2023 v1 (archive)', sourceRef: 'peak_trial_balance_FY2023_v1.xlsx',
+        content: 'Earlier version of Peak trial balance FY2023 in old archive. Conflicts with current version in Clients/Peak.', confidence: 0.38 },
+      { treeNodeId: fPeakTB,     title: 'Peak Trial Balance FY2023 (current)', sourceRef: 'peak_trial_balance_FY2023.xlsx',
+        content: 'Current Peak Ventures trial balance FY2023 in Clients/Peak folder. Agent cannot confirm if v1 differs.', confidence: 0.71 },
+      { treeNodeId: fPeakMgmt,   title: 'Peak Q2 2024 Accounts (Misc)', sourceRef: 'peak_management_accounts_Q2_2024.pdf',
+        content: 'Peak Ventures Q2 2024 management accounts dropped in Misc — should be under Clients/Peak Ventures.', confidence: 0.47 },
+      { treeNodeId: fPeak,       title: 'Peak Q2 Accounts (ref)',    sourceRef: 'peak_management_accounts_Q2_2024.pdf',
+        content: 'Same Q2 management accounts cross-referenced from Clients/Peak Ventures folder.', confidence: 0.47 },
+      { treeNodeId: fPeakPayroll,title: 'Peak Payroll Query (Hartley Payroll)', sourceRef: 'peak_payroll_query_2024.pdf',
+        content: 'Peak Ventures payroll query filed in Hartley\'s own HR/Payroll folder — entirely wrong location.', confidence: 0.29 },
+      { treeNodeId: fPeak,       title: 'Peak Payroll Query (ref)',  sourceRef: 'peak_payroll_query_2024.pdf',
+        content: 'Same payroll query cross-referenced from Clients/Peak Ventures folder.', confidence: 0.29 },
+
+      // ── Riverdale Group — migration chaos ────────────────────────
+      { treeNodeId: fRiverHO,    title: 'Riverdale Handover Notes (Misc)', sourceRef: 'riverdale_handover_notes.docx',
+        content: 'Handover notes from Riverdale\'s old accountant. In Misc — needs to be filed under Clients/Riverdale.', confidence: 0.54 },
+      { treeNodeId: fRiverdale,  title: 'Riverdale Handover Notes (ref)', sourceRef: 'riverdale_handover_notes.docx',
+        content: 'Same handover notes cross-referenced from Riverdale client folder.', confidence: 0.54 },
+      { treeNodeId: fRiverTBNew, title: 'Riverdale 2024 Draft TB (Shared)', sourceRef: 'riverdale_trial_balance_2024_draft.xlsx',
+        content: 'Riverdale 2024 draft trial balance in "Shared with me". Client sent directly — not filed in Riverdale folder.', confidence: 0.51 },
+      { treeNodeId: fRiverdale,  title: 'Riverdale 2024 Draft TB (ref)', sourceRef: 'riverdale_trial_balance_2024_draft.xlsx',
+        content: 'Same 2024 draft trial balance cross-referenced from Riverdale client folder.', confidence: 0.51 },
+      { treeNodeId: fRiverVAT,   title: 'Riverdale 2023 VAT Returns (Misc)', sourceRef: 'riverdale_VAT_returns_2023.pdf',
+        content: '2023 VAT returns from old accountant. In Misc — should be in 2023/VAT 2023 or Compliance/HMRC.', confidence: 0.44 },
+      { treeNodeId: f2023VAT,    title: 'Riverdale 2023 VAT (ref)',  sourceRef: 'riverdale_VAT_returns_2023.pdf',
+        content: 'Same VAT returns cross-referenced from 2023/VAT 2023 archive folder.', confidence: 0.44 },
+      { treeNodeId: fRiverCorpT, title: 'Riverdale Corp Tax 2022 (Finance Old)', sourceRef: 'riverdale_corp_tax_2022.pdf',
+        content: 'Riverdale corp tax 2022 filed in Hartley\'s Finance (Old) — wrong client folder AND wrong top-level location.', confidence: 0.32 },
+      { treeNodeId: fCorp,       title: 'Riverdale Corp Tax 2022 (ref)', sourceRef: 'riverdale_corp_tax_2022.pdf',
+        content: 'Same corp tax filing cross-referenced from Compliance/Corp Tax folder.', confidence: 0.32 },
+
+      // ── Mason & Clark — former client, files still live ───────────
+      { treeNodeId: fMasonInv,   title: 'Mason Invoice (active Invoices)', sourceRef: 'invoice_mason_final_2022.pdf',
+        content: 'Final invoice for Mason & Clark (2022). Client left in 2022 but invoice is in active Invoices folder.', confidence: 0.66 },
+      { treeNodeId: fMason,      title: 'Mason Invoice (ref)',       sourceRef: 'invoice_mason_final_2022.pdf',
+        content: 'Same invoice_mason_final_2022.pdf referenced from Mason & Clark archive folder.', confidence: 0.66 },
+      { treeNodeId: fMasonTB,    title: 'Mason Trial Balance (active Mgmt Accts)', sourceRef: 'mason_clark_trial_balance_2022.xlsx',
+        content: 'Mason & Clark 2022 trial balance in active Management Accts folder. Former client — should be in archive.', confidence: 0.58 },
+      { treeNodeId: fMason,      title: 'Mason Trial Balance (ref)', sourceRef: 'mason_clark_trial_balance_2022.xlsx',
+        content: 'Same trial balance cross-referenced from Mason & Clark archive folder.', confidence: 0.58 },
     ];
 
     for (const e of entries) {
@@ -518,6 +621,31 @@ export const insertDemoMessy = mutation({
         sourceA: 'corp_tax_filing_2022.pdf',       valueA: 'Found in Finance (Old)',
         sourceB: 'corp_tax_filing_2022.pdf',       valueB: 'Referenced from Compliance/Corp Tax — same file?',
       },
+      {
+        description: 'Brightfield Co trial balance: two versions — "Shared with me" vs amended in client folder',
+        sourceA: 'brightfield_trial_balance.xlsx',         valueA: 'In "Shared with me" — client sent directly',
+        sourceB: 'brightfield_trial_balance_AMENDED.xlsx', valueB: 'In Clients/Brightfield — labelled amended, different figures?',
+      },
+      {
+        description: 'Peak Ventures FY2023 trial balance: current version vs v1 in old archive',
+        sourceA: 'peak_trial_balance_FY2023.xlsx',    valueA: 'In Clients/Peak Ventures — assumed current',
+        sourceB: 'peak_trial_balance_FY2023_v1.xlsx', valueB: 'In 2022 archive — earlier version, different figures?',
+      },
+      {
+        description: 'Peak Ventures FY2023 audit: unsigned report vs signed PDF in different locations',
+        sourceA: 'peak_audit_report_FY2023.pdf',  valueA: 'In 2022 archive — unsigned, this is a 2023 document',
+        sourceB: 'peak_audit_FY2023_SIGNED.pdf',  valueB: 'In Misc — signed, but not filed in client folder',
+      },
+      {
+        description: 'Acme Ltd dispute emails: original export vs updated export on Desktop',
+        sourceA: 'acme_invoice_dispute_email_chain.pdf',  valueA: 'In Clients/Acme — earlier export',
+        sourceB: 'acme_dispute_email_chain_UPDATED.pdf',  valueB: 'On Desktop — newer export, possibly more complete',
+      },
+      {
+        description: 'Riverdale Group corp tax 2022: filed under Hartley Finance (Old) instead of client folder',
+        sourceA: 'riverdale_corp_tax_2022.pdf', valueA: 'Found in Finance (Old) — wrong firm entirely',
+        sourceB: 'riverdale_corp_tax_2022.pdf', valueB: 'Referenced from Compliance/Corp Tax — same file, different expected location',
+      },
     ];
 
     for (const c of contradictions) {
@@ -549,10 +677,21 @@ export const insertDemoMessy = mutation({
       { eventType: 'warning',  message: "payroll_march_2024.xlsx found in Expenses folder. expenses_march_2024.pdf found in Payroll folder. Swapped?" },
       { eventType: 'error',    message: "corp_tax_filing_2022.pdf found in both Finance (Old) and referenced from Compliance/Corp Tax." },
       { eventType: 'warning',  message: "vat_return_Q3_2024.pdf filed in Misc — should be in Compliance/HMRC (needed for open HMRC query)." },
+      { eventType: 'warning',  message: "brightfield_trial_balance_AMENDED.xlsx in Clients/Brightfield conflicts with brightfield_trial_balance.xlsx in 'Shared with me'." },
+      { eventType: 'error',    message: "CONFLICT: peak_trial_balance_FY2023.xlsx vs peak_trial_balance_FY2023_v1.xlsx — same period, agent cannot confirm figures match." },
+      { eventType: 'error',    message: "CONFLICT: peak_audit_report_FY2023.pdf (unsigned, in 2022 archive) vs peak_audit_FY2023_SIGNED.pdf (signed, in Misc) — which is canonical?" },
+      { eventType: 'warning',  message: "peak_management_accounts_Q2_2024.pdf found in Misc — should be under Clients/Peak Ventures." },
+      { eventType: 'warning',  message: "peak_payroll_query_2024.pdf found in Hartley's own HR/Payroll folder — this is a client document, not a firm document." },
+      { eventType: 'warning',  message: "Norton & Sons not yet set up as a client folder. 4 Norton files scattered across Misc and Desktop." },
+      { eventType: 'warning',  message: "norton_VAT_reg_confirmation.pdf in Misc — regulatory document must go to Compliance." },
+      { eventType: 'error',    message: "CONFLICT: acme_invoice_dispute_email_chain.pdf (Acme folder) vs acme_dispute_email_chain_UPDATED.pdf (Desktop) — newer version not filed." },
+      { eventType: 'warning',  message: "riverdale_VAT_returns_2023.pdf in Misc — migrated from old accountant but never filed in 2023/VAT 2023." },
+      { eventType: 'error',    message: "riverdale_corp_tax_2022.pdf found in Hartley's Finance (Old) — this is a client document, not a firm document." },
+      { eventType: 'warning',  message: "mason_clark_trial_balance_2022.xlsx in active Management Accts — Mason & Clark are a former client (left 2022)." },
       { eventType: 'error',    message: "Cannot read scan0042.pdf — blank scan, no extractable text." },
       { eventType: 'error',    message: "Cannot read 'Untitled document.docx' — file is empty." },
       { eventType: 'warning',  message: 'Sheets source OAuth expired. 0 spreadsheets retrieved from Client Comms Sheets.' },
-      { eventType: 'progress', message: 'Identified 46 nodes. 7 contradictions flagged. 9 files in wrong folders. Human review required.' },
+      { eventType: 'progress', message: 'Identified 62 nodes. 13 contradictions flagged. 18 files in wrong folders. Human review required.' },
     ];
 
     for (const e of events) {
@@ -562,7 +701,7 @@ export const insertDemoMessy = mutation({
       });
     }
 
-    return { message: 'Messy demo state seeded for Hartley & Associates LLP', nodesCreated: 46 };
+    return { message: 'Messy demo state seeded for Hartley & Associates LLP', nodesCreated: 62 };
   },
 });
 
@@ -573,10 +712,10 @@ export const insertDemoMessy = mutation({
  * Run clearDemo first, then insertDemoClean.
  *
  * WHY IS THIS CLEAN?
- * - 42 flat nodes → 12 nodes in a 3-level hierarchy
+ * - 62 flat nodes → 22 nodes in a 3-level hierarchy
  * - All duplicates merged (Acme/Acme Ltd/acme_stuff → "Acme Ltd")
  * - Every node has a parent — the tree has clear shape
- * - 4 open contradictions → 3 resolved, 1 still pending human input
+ * - 13 open contradictions → 12 resolved, 1 still pending human input
  * - Knowledge entries are verified with high confidence
  * - Agent job completed, no errors in feed
  */
@@ -605,7 +744,7 @@ export const insertDemoClean = mutation({
     await ctx.db.insert('explorations', {
       clientId: args.clientId,
       dataSourceId: drive,
-      metrics: { filesFound: 47, filesProcessed: 45, errored: 2 },
+      metrics: { filesFound: 89, filesProcessed: 86, errored: 3 },
       status: 'completed',
     });
 
@@ -617,11 +756,11 @@ export const insertDemoClean = mutation({
     });
     const clients = await ctx.db.insert('knowledge_tree', {
       clientId: args.clientId, name: 'Clients', type: 'domain', order: 1,
-      readme: 'Client records, engagement letters, and correspondence.',
+      readme: 'Client records, engagement letters, trial balances, and correspondence. 5 active clients: Acme Ltd, Brightfield Co, Norton & Sons, Peak Ventures, Riverdale Group.',
     });
     const compliance = await ctx.db.insert('knowledge_tree', {
       clientId: args.clientId, name: 'Compliance', type: 'domain', order: 2,
-      readme: 'Regulatory and HMRC-related documents.',
+      readme: 'Regulatory and HMRC-related documents. Covers VAT, AML, and corporation tax.',
     });
 
     // Level 1: Skills under Finance
@@ -629,7 +768,7 @@ export const insertDemoClean = mutation({
       clientId: args.clientId, name: 'Invoices', type: 'skill', order: 0, parentId: finance,
       readme: 'Client invoices by year and quarter. All duplicates resolved.',
     });
-    const vat = await ctx.db.insert('knowledge_tree', {
+    const vatFiling = await ctx.db.insert('knowledge_tree', {
       clientId: args.clientId, name: 'VAT Filings', type: 'skill', order: 1, parentId: finance,
       readme: 'VAT returns by quarter. Q2 2024 uses amended figure of £91,500 (confirmed by user).',
     });
@@ -639,102 +778,228 @@ export const insertDemoClean = mutation({
     });
     const expenses = await ctx.db.insert('knowledge_tree', {
       clientId: args.clientId, name: 'Expenses', type: 'skill', order: 3, parentId: finance,
-      readme: 'Staff expenses and payroll.',
+      readme: 'Staff expenses and payroll. Client payroll documents re-filed to correct client folders.',
     });
 
     // Level 1: Skills under Clients
     const acme = await ctx.db.insert('knowledge_tree', {
       clientId: args.clientId, name: 'Acme Ltd', type: 'skill', order: 0, parentId: clients,
-      readme: 'Engagement letter signed Jan 2024. Active invoice dispute on March invoice.',
+      readme: 'Engagement letter signed Jan 2024. Dispute email chain — updated version confirmed canonical. Trial balance Q3 2024 filed.',
     });
     const brightfield = await ctx.db.insert('knowledge_tree', {
       clientId: args.clientId, name: 'Brightfield Co', type: 'skill', order: 1, parentId: clients,
-      readme: 'Engagement letter signed Feb 2024. No outstanding disputes.',
+      readme: 'Engagement letter signed Feb 2024. Trial balance conflict resolved — AMENDED version confirmed correct.',
+    });
+    const norton = await ctx.db.insert('knowledge_tree', {
+      clientId: args.clientId, name: 'Norton & Sons', type: 'skill', order: 2, parentId: clients,
+      readme: 'New client, onboarded Q4 2023. Engagement letter, trial balance 2024, VAT registration, and Feb invoice all filed.',
+    });
+    const peak = await ctx.db.insert('knowledge_tree', {
+      clientId: args.clientId, name: 'Peak Ventures', type: 'skill', order: 3, parentId: clients,
+      readme: 'Active client. Trial balance FY2023 conflict resolved (current version confirmed). Signed audit report confirmed canonical. Payroll document re-filed from HR folder.',
+    });
+    const riverdale = await ctx.db.insert('knowledge_tree', {
+      clientId: args.clientId, name: 'Riverdale Group', type: 'skill', order: 4, parentId: clients,
+      readme: 'Migrated from previous accountant 2023. All documents re-filed: VAT returns archived, corp tax 2022 moved from firm Finance to client folder, 2024 TB confirmed as current.',
     });
 
     // Level 1: Skills under Compliance
     const hmrc = await ctx.db.insert('knowledge_tree', {
       clientId: args.clientId, name: 'HMRC Correspondence', type: 'skill', order: 0, parentId: compliance,
-      readme: 'All HMRC inbound/outbound correspondence. Q3 VAT query open.',
+      readme: 'All HMRC inbound/outbound correspondence. Q3 VAT query open. Norton VAT registration re-filed here.',
+    });
+    const corpTax = await ctx.db.insert('knowledge_tree', {
+      clientId: args.clientId, name: 'Corporation Tax', type: 'skill', order: 1, parentId: compliance,
+      readme: 'Corporation tax filings. Riverdale 2022 corp tax moved here from Finance (Old).',
+    });
+    const aml = await ctx.db.insert('knowledge_tree', {
+      clientId: args.clientId, name: 'AML / KYC', type: 'skill', order: 2, parentId: compliance,
+      readme: 'Anti-money-laundering and know-your-customer records for all active clients.',
     });
 
-    // Level 2: Entry groups under Invoices
+    // Level 2: Entry groups
     const inv2024 = await ctx.db.insert('knowledge_tree', {
       clientId: args.clientId, name: '2024 Invoices', type: 'entry_group', order: 0, parentId: invoices,
-      readme: 'All 2024 invoices. Q1: 3 (Acme Ltd). Q2: 1 (Acme Ltd).',
+      readme: 'All 2024 invoices: Acme (Jan–March), Norton (Feb).',
+    });
+    const acmeDocs = await ctx.db.insert('knowledge_tree', {
+      clientId: args.clientId, name: 'Acme — Working Papers', type: 'entry_group', order: 0, parentId: acme,
+      readme: 'Q3 2024 trial balance and resolved dispute correspondence.',
+    });
+    const nortonDocs = await ctx.db.insert('knowledge_tree', {
+      clientId: args.clientId, name: 'Norton — Onboarding', type: 'entry_group', order: 0, parentId: norton,
+      readme: 'Engagement letter, trial balance 2024, Feb invoice.',
+    });
+    const peakDocs = await ctx.db.insert('knowledge_tree', {
+      clientId: args.clientId, name: 'Peak — Working Papers', type: 'entry_group', order: 0, parentId: peak,
+      readme: 'FY2023 trial balance (confirmed), signed audit report, Q2 2024 management accounts.',
+    });
+    const riverdaleDocs = await ctx.db.insert('knowledge_tree', {
+      clientId: args.clientId, name: 'Riverdale — Migration Pack', type: 'entry_group', order: 0, parentId: riverdale,
+      readme: 'Handover letter, 2024 draft TB (in progress), 2023 VAT returns archive, corp tax 2022.',
     });
 
     // ── Knowledge Entries — verified, high confidence ─────────────
-    const cleanEntries = [
-      { treeNodeId: vat,      title: 'Q1 2024 VAT Return', content: 'VAT Return Q1 2024. Submitted on time. No outstanding queries.', confidence: 0.97, verified: true },
-      { treeNodeId: vat,      title: 'Q2 2024 VAT Return (Amended)', content: 'Q2 2024 VAT liability confirmed: £91,500 (amended figure, user-verified). Original draft (£84,200) deprecated.', confidence: 0.99, verified: true },
-      { treeNodeId: mgmtAccts,title: 'Cashflow Forecast 2024', content: 'Canonical version: cashflow_forecast_v3_FINAL.xlsx (March 2024). Earlier versions deprecated.', confidence: 0.98, verified: true },
-      { treeNodeId: mgmtAccts,title: 'Trial Balance 2024', content: 'Canonical version: trial_balance_2024.xlsx. The _COPY version has been removed.', confidence: 0.96, verified: true },
-      { treeNodeId: mgmtAccts,title: "P&L 2023", content: 'Full P&L for FY2023. Clean, no duplicates.', confidence: 0.99, verified: true },
-      { treeNodeId: acme,     title: 'Acme Ltd — Engagement', content: 'Engagement letter signed Jan 2024. Invoice dispute on March invoice — see HMRC/Acme email thread.', confidence: 0.98, verified: true },
-      { treeNodeId: inv2024,  title: 'Acme Ltd — Feb Invoice', content: 'Invoice for Feb 2024 services. Amount: £12,400. Canonical: invoice_acme_feb_FINAL_v2.pdf', confidence: 0.97, verified: true },
-      { treeNodeId: inv2024,  title: 'Acme Ltd — March Invoice', content: 'Invoice for March 2024. Disputed by client — see email thread.', confidence: 0.91, verified: true },
-      { treeNodeId: hmrc,     title: 'HMRC Q3 VAT Query', content: 'HMRC queried Q3 VAT return. Response deadline: 14 March 2025. Supporting docs: Q3 VAT filing + management accounts.', confidence: 0.95, verified: true },
-      { treeNodeId: hmrc,     title: 'HMRC Jan Correspondence', content: 'Routine correspondence from HMRC re: annual review. No action required.', confidence: 0.99, verified: true },
+    const cleanEntries: Array<{
+      treeNodeId: string;
+      title: string;
+      content: string;
+      confidence: number;
+      verified: boolean;
+      sourceRef?: string;
+    }> = [
+      // Finance
+      { treeNodeId: vatFiling,  title: 'Q1 2024 VAT Return', content: 'VAT Return Q1 2024. Submitted on time. No outstanding queries.', confidence: 0.97, verified: true },
+      { treeNodeId: vatFiling,  title: 'Q2 2024 VAT Return (Amended)', content: 'Q2 2024 VAT liability confirmed: £91,500 (amended figure, user-verified). Original draft (£84,200) deprecated.', confidence: 0.99, verified: true },
+      { treeNodeId: mgmtAccts,  title: 'Cashflow Forecast 2024', content: 'Canonical version: cashflow_forecast_v3_FINAL.xlsx (March 2024). Earlier versions deprecated.', confidence: 0.98, verified: true },
+      { treeNodeId: mgmtAccts,  title: 'Trial Balance 2024', content: 'Canonical version: trial_balance_2024.xlsx. The _COPY version has been removed.', confidence: 0.96, verified: true },
+      { treeNodeId: mgmtAccts,  title: 'P&L 2023', content: 'Full P&L for FY2023. Clean, no duplicates.', confidence: 0.99, verified: true },
+      { treeNodeId: expenses,   title: 'Staff Expenses March 2024', content: 'Staff expenses for March 2024. Verified against payroll summary.', confidence: 0.96, verified: true },
+      // Invoices
+      { treeNodeId: inv2024,    title: 'Acme Ltd — Feb Invoice', content: 'Invoice for Feb 2024 services. Amount: £12,400. Canonical: invoice_acme_feb_FINAL_v2.pdf', confidence: 0.97, verified: true },
+      { treeNodeId: inv2024,    title: 'Acme Ltd — March Invoice', content: 'Invoice for March 2024. Disputed — updated email chain confirms amount stands. Canonical: invoice_acme_march.pdf', confidence: 0.93, verified: true },
+      { treeNodeId: inv2024,    title: 'Norton & Sons — Feb Invoice', content: 'Invoice for Feb 2024 services. Amount: £8,750. Canonical: invoice_norton_feb.pdf', confidence: 0.97, verified: true },
+      // Acme
+      { treeNodeId: acme,       title: 'Acme Ltd — Engagement', content: 'Engagement letter signed Jan 2024. Retainer client.', confidence: 0.99, verified: true },
+      { treeNodeId: acmeDocs,   title: 'Acme Ltd — Q3 2024 Trial Balance', content: 'Trial balance Q3 2024: acme_trial_balance_Q3_2024.xlsx. Filed to Working Papers.', confidence: 0.97, verified: true },
+      { treeNodeId: acmeDocs,   title: 'Acme Ltd — Dispute Resolution', content: 'Invoice dispute resolved. Canonical correspondence: acme_dispute_email_chain_UPDATED.pdf (Desktop version supersedes Acme folder version).', confidence: 0.96, verified: true, sourceRef: 'acme-dispute-resolved' },
+      // Brightfield
       { treeNodeId: brightfield, title: 'Brightfield Co — Engagement', content: 'Engagement letter signed Feb 2024. No outstanding disputes.', confidence: 0.99, verified: true },
-      { treeNodeId: expenses, title: 'Staff Expenses March 2024', content: 'Staff expenses for March 2024. Verified against payroll summary.', confidence: 0.96, verified: true },
+      { treeNodeId: brightfield, title: 'Brightfield Co — Trial Balance (Confirmed)', content: 'Canonical TB: brightfield_trial_balance_AMENDED.xlsx. Original (Shared with me) deprecated — amended version confirmed correct by partner review.', confidence: 0.98, verified: true, sourceRef: 'brightfield-tb-resolved' },
+      { treeNodeId: brightfield, title: 'Brightfield Co — Q4 Accounts Draft', content: 'Q4 draft accounts in progress: brightfield_Q4_accounts_draft.xlsx. Not yet finalised.', confidence: 0.82, verified: false },
+      // Norton
+      { treeNodeId: norton,     title: 'Norton & Sons — Engagement', content: 'Engagement letter signed Q4 2023. New client.', confidence: 0.99, verified: true },
+      { treeNodeId: nortonDocs, title: 'Norton & Sons — Trial Balance 2024', content: 'norton_trial_balance_2024.xlsx. Filed to Norton onboarding pack.', confidence: 0.96, verified: true },
+      { treeNodeId: nortonDocs, title: 'Norton & Sons — AML Check', content: 'AML/KYC checks completed Q4 2023. Stored in Compliance/AML.', confidence: 0.98, verified: true, sourceRef: 'norton-aml' },
+      { treeNodeId: hmrc,       title: 'Norton & Sons — VAT Registration', content: 'norton_VAT_reg_confirmation.pdf re-filed from Misc to Compliance/HMRC. VAT number confirmed.', confidence: 0.99, verified: true, sourceRef: 'norton-aml' },
+      // Peak
+      { treeNodeId: peak,       title: 'Peak Ventures — Engagement', content: 'Engagement letter signed. Ongoing client.', confidence: 0.99, verified: true },
+      { treeNodeId: peakDocs,   title: 'Peak Ventures — Trial Balance FY2023 (Confirmed)', content: 'Canonical TB: peak_trial_balance_FY2023.xlsx. V1 (peak_trial_balance_FY2023_v1.xlsx) deprecated — figures match after reconciliation.', confidence: 0.98, verified: true, sourceRef: 'peak-tb-resolved' },
+      { treeNodeId: peakDocs,   title: 'Peak Ventures — Audit Report FY2023 (Signed)', content: 'Canonical audit report: peak_audit_FY2023_SIGNED.pdf (Misc). The unsigned version in 2022 archive is superseded.', confidence: 0.99, verified: true, sourceRef: 'peak-audit-resolved' },
+      { treeNodeId: peakDocs,   title: 'Peak Ventures — Management Accounts Q2 2024', content: 'peak_management_accounts_Q2_2024.pdf moved from Misc to Peak Working Papers.', confidence: 0.96, verified: true },
+      { treeNodeId: expenses,   title: 'Peak Ventures — Payroll Query 2024', content: 'peak_payroll_query_2024.pdf moved from Hartley HR/Payroll to Peak Ventures client folder. This is a client document.', confidence: 0.95, verified: true },
+      // Riverdale
+      { treeNodeId: riverdale,  title: 'Riverdale Group — Handover', content: 'Handover letter from previous accountant confirmed and filed.', confidence: 0.98, verified: true },
+      { treeNodeId: riverdaleDocs, title: 'Riverdale Group — Trial Balance 2024 (Draft)', content: 'riverdale_trial_balance_2024_draft.xlsx — 2024 TB in progress. Supersedes 2023 version for current work.', confidence: 0.87, verified: false },
+      { treeNodeId: riverdaleDocs, title: 'Riverdale Group — VAT Returns 2023 (Archived)', content: 'riverdale_VAT_returns_2023.pdf moved from Misc and archived in Riverdale Migration Pack.', confidence: 0.97, verified: true },
+      { treeNodeId: corpTax,    title: 'Riverdale Group — Corporation Tax 2022', content: 'riverdale_corp_tax_2022.pdf moved from Hartley Finance (Old) to Compliance/Corporation Tax. This is a client document.', confidence: 0.99, verified: true, sourceRef: 'riverdale-corptax-resolved' },
+      // Compliance
+      { treeNodeId: aml,        title: 'Norton & Sons — AML/KYC Records', content: 'AML checks completed Q4 2023. ID verification and source-of-funds check on file.', confidence: 0.99, verified: true, sourceRef: 'norton-aml' },
+      { treeNodeId: hmrc,       title: 'HMRC Q3 VAT Query', content: 'HMRC queried Q3 VAT return. Response deadline: 14 March 2025. Supporting docs: Q3 VAT filing + management accounts.', confidence: 0.95, verified: true },
+      { treeNodeId: hmrc,       title: 'HMRC Jan Correspondence', content: 'Routine correspondence from HMRC re: annual review. No action required.', confidence: 0.99, verified: true },
     ];
 
     for (const e of cleanEntries) {
       await ctx.db.insert('knowledge_entries', {
         clientId: args.clientId,
-        treeNodeId: e.treeNodeId,
+        treeNodeId: e.treeNodeId as Parameters<typeof ctx.db.insert<'knowledge_entries'>>[1]['treeNodeId'],
         title: e.title,
         content: e.content,
         confidence: e.confidence,
         verified: e.verified,
+        ...(e.sourceRef ? { sourceRef: e.sourceRef } : {}),
       });
     }
 
-    // ── Contradictions — mostly resolved ──────────────────────────
-    await ctx.db.insert('contradictions', {
-      clientId: args.clientId,
-      description: 'Q2 2024 VAT liability — two different figures',
-      sourceA: 'vat_return_Q2_2024_draft.pdf',
-      sourceB: 'vat_Q2_AMENDED.pdf',
-      valueA: '£84,200',
-      valueB: '£91,500',
-      status: 'resolved',
-      resolution: 'User confirmed £91,500 (amended) is correct. Draft deprecated.',
-    });
+    // ── Contradictions — 12 resolved, 1 open ─────────────────────
+    const contradictions: Array<{
+      description: string; sourceA: string; sourceB: string;
+      valueA: string; valueB: string;
+      status: 'resolved' | 'open'; resolution?: string;
+    }> = [
+      {
+        description: 'Q2 2024 VAT liability — two different figures',
+        sourceA: 'vat_return_Q2_2024_draft.pdf', sourceB: 'vat_Q2_AMENDED.pdf',
+        valueA: '£84,200', valueB: '£91,500',
+        status: 'resolved', resolution: 'User confirmed £91,500 (amended) is correct. Draft deprecated.',
+      },
+      {
+        description: 'Cashflow forecast — two versions',
+        sourceA: 'cashflow_forecast_v1.xlsx', sourceB: 'cashflow_forecast_v3_FINAL.xlsx',
+        valueA: 'Jan 2024 version', valueB: 'Mar 2024 version (FINAL)',
+        status: 'resolved', resolution: 'v3_FINAL selected as canonical. v1 archived.',
+      },
+      {
+        description: 'Trial balance duplicated',
+        sourceA: 'trial_balance_2024.xlsx', sourceB: 'trial_balance_2024_COPY.xlsx',
+        valueA: 'Original', valueB: 'Copy (same content)',
+        status: 'resolved', resolution: 'Original confirmed canonical. Copy removed.',
+      },
+      {
+        description: 'Corp tax 2022 filing found in two locations',
+        sourceA: 'corp_tax_filing_2022.pdf (Finance Old)', sourceB: 'corp_tax_filing_2022.pdf (Compliance/Corp Tax)',
+        valueA: 'Hartley firm Finance folder', valueB: 'Compliance/Corp Tax',
+        status: 'resolved', resolution: 'Compliance/Corp Tax is the correct canonical location. Finance (Old) copy removed.',
+      },
+      {
+        description: 'Brightfield trial balance — original vs amended',
+        sourceA: 'brightfield_trial_balance.xlsx', sourceB: 'brightfield_trial_balance_AMENDED.xlsx',
+        valueA: 'Shared with me (original)', valueB: 'Clients/Brightfield (amended)',
+        status: 'resolved', resolution: 'Partner confirmed AMENDED version is correct. Original deprecated.',
+      },
+      {
+        description: 'Peak trial balance FY2023 — two versions',
+        sourceA: 'peak_trial_balance_FY2023.xlsx', sourceB: 'peak_trial_balance_FY2023_v1.xlsx',
+        valueA: 'Current version (FY2023)', valueB: 'v1 (FY2023)',
+        status: 'resolved', resolution: 'Figures reconcile. Current version confirmed canonical. v1 archived.',
+      },
+      {
+        description: 'Peak audit report FY2023 — unsigned vs signed',
+        sourceA: 'peak_audit_report_FY2023.pdf', sourceB: 'peak_audit_FY2023_SIGNED.pdf',
+        valueA: 'Unsigned (2022 archive)', valueB: 'Signed (Misc)',
+        status: 'resolved', resolution: 'Signed version is canonical. Unsigned archived copy retained for audit trail.',
+      },
+      {
+        description: 'Acme dispute email chain — two versions',
+        sourceA: 'acme_invoice_dispute_email_chain.pdf', sourceB: 'acme_dispute_email_chain_UPDATED.pdf',
+        valueA: 'Acme folder (original chain)', valueB: 'Desktop (updated chain)',
+        status: 'resolved', resolution: 'UPDATED version on Desktop is the complete chain. Filed to Acme Working Papers. Original superseded.',
+      },
+      {
+        description: 'Riverdale corp tax 2022 — found in firm Finance folder',
+        sourceA: 'riverdale_corp_tax_2022.pdf (Finance Old)', sourceB: 'riverdale_corp_tax_2022.pdf (Compliance/Corp Tax)',
+        valueA: 'Hartley Finance (Old) — wrong location', valueB: 'Compliance/Corp Tax — correct location',
+        status: 'resolved', resolution: 'Document moved to Compliance/Corporation Tax. This is a client document, not a firm document.',
+      },
+      {
+        description: 'Norton VAT registration found in Misc',
+        sourceA: 'norton_VAT_reg_confirmation.pdf (Misc)', sourceB: 'norton_VAT_reg_confirmation.pdf (HMRC)',
+        valueA: 'Misc — unsorted', valueB: 'Compliance/HMRC — correct location',
+        status: 'resolved', resolution: 'Re-filed to Compliance/HMRC.',
+      },
+      {
+        description: 'Riverdale VAT returns 2023 found in Misc',
+        sourceA: 'riverdale_VAT_returns_2023.pdf (Misc)', sourceB: 'riverdale_VAT_returns_2023.pdf (Riverdale Migration Pack)',
+        valueA: 'Misc — unsorted post-migration', valueB: 'Riverdale Migration Pack — correct location',
+        status: 'resolved', resolution: 'Moved from Misc to Riverdale Migration Pack and archived.',
+      },
+      {
+        description: 'Peak payroll document filed in Hartley HR folder',
+        sourceA: 'peak_payroll_query_2024.pdf (HR/Payroll)', sourceB: 'peak_payroll_query_2024.pdf (Peak Ventures)',
+        valueA: 'Hartley HR/Payroll — wrong location', valueB: 'Peak Ventures client folder — correct location',
+        status: 'resolved', resolution: 'Moved to Peak Ventures client folder. This is a client document.',
+      },
+      // One still open — shows work is never entirely done
+      {
+        description: 'Acme invoice: possible duplicate across folders',
+        sourceA: 'invoice_acme_feb_FINAL_v2.pdf', sourceB: 'invoice_acme_march.pdf',
+        valueA: 'Found in /Drive/Invoices Old/', valueB: 'Found in /Drive/Random Stuff/',
+        status: 'open',
+      },
+    ];
 
-    await ctx.db.insert('contradictions', {
-      clientId: args.clientId,
-      description: 'Cashflow forecast — two versions',
-      sourceA: 'cashflow_forecast_v1.xlsx',
-      sourceB: 'cashflow_forecast_v3_FINAL.xlsx',
-      valueA: 'Jan 2024 version',
-      valueB: 'Mar 2024 version (FINAL)',
-      status: 'resolved',
-      resolution: 'v3_FINAL selected as canonical. v1 archived.',
-    });
-
-    await ctx.db.insert('contradictions', {
-      clientId: args.clientId,
-      description: 'Trial balance duplicated',
-      sourceA: 'trial_balance_2024.xlsx',
-      sourceB: 'trial_balance_2024_COPY.xlsx',
-      valueA: 'Original',
-      valueB: 'Copy (same content)',
-      status: 'resolved',
-      resolution: 'Original confirmed canonical. Copy removed.',
-    });
-
-    // One still open — shows work isn't fully done
-    await ctx.db.insert('contradictions', {
-      clientId: args.clientId,
-      description: 'Acme invoice: possible duplicate across folders',
-      sourceA: 'invoice_acme_feb_FINAL_v2.pdf',
-      sourceB: 'invoice_acme_march.pdf',
-      valueA: 'Found in /Drive/Invoices Old/',
-      valueB: 'Found in /Drive/Random Stuff/',
-      status: 'open',
-    });
+    for (const c of contradictions) {
+      await ctx.db.insert('contradictions', {
+        clientId: args.clientId,
+        description: c.description,
+        sourceA: c.sourceA,
+        sourceB: c.sourceB,
+        valueA: c.valueA,
+        valueB: c.valueB,
+        status: c.status,
+        ...(c.resolution ? { resolution: c.resolution } : {}),
+      });
+    }
 
     // ── Pipeline Status ───────────────────────────────────────────
     await ctx.db.insert('pipeline_status', {
@@ -747,16 +1012,23 @@ export const insertDemoClean = mutation({
 
     // ── Agent Events — success story ──────────────────────────────
     const events: Array<{ eventType: 'info' | 'progress' | 'warning' | 'error' | 'complete'; message: string }> = [
-      { eventType: 'info',     message: 'Structure job started. Processing 42 discovered nodes.' },
+      { eventType: 'info',     message: 'Structure job started. Processing 62 discovered nodes.' },
       { eventType: 'progress', message: "Merging duplicates: 'Acme' + 'Acme Ltd' + 'Acme Ltd (2024)' + 'acme_stuff' → 'Acme Ltd'" },
       { eventType: 'progress', message: "Merging: 'VAT' + 'VAT Returns' + 'vat_Q2_AMENDED' + 'VAT 2024' → 'VAT Filings'" },
       { eventType: 'info',     message: 'Contradiction resolved via user input: Q2 VAT = £91,500 (amended). Draft deprecated.' },
       { eventType: 'info',     message: 'Canonical cashflow confirmed: v3_FINAL. Earlier version archived.' },
+      { eventType: 'info',     message: 'Brightfield TB conflict resolved: AMENDED version confirmed correct by partner review.' },
+      { eventType: 'info',     message: 'Peak trial balance FY2023 conflict resolved: figures reconciled, current version canonical.' },
+      { eventType: 'info',     message: 'Peak audit FY2023 resolved: signed version (Misc) confirmed canonical. Unsigned copy archived.' },
+      { eventType: 'info',     message: 'Acme dispute email chain resolved: UPDATED version (Desktop) is complete chain, now filed.' },
+      { eventType: 'info',     message: 'Riverdale corp tax 2022 moved from Hartley Finance (Old) to Compliance/Corporation Tax.' },
+      { eventType: 'info',     message: 'Norton VAT registration re-filed from Misc to Compliance/HMRC.' },
+      { eventType: 'info',     message: 'Peak payroll query moved from Hartley HR folder to Peak Ventures client folder.' },
       { eventType: 'progress', message: 'Built Finance hierarchy: Invoices → 2024 Invoices, VAT Filings, Management Accounts, Expenses.' },
-      { eventType: 'progress', message: 'Built Clients hierarchy: Acme Ltd, Brightfield Co.' },
-      { eventType: 'progress', message: 'Built Compliance hierarchy: HMRC Correspondence.' },
-      { eventType: 'info',     message: 'Generated READMEs for 12 nodes. 11 verified, 1 pending.' },
-      { eventType: 'complete', message: 'Structure complete. 42 nodes → 12. 3 contradictions resolved. Knowledge base ready for verification.' },
+      { eventType: 'progress', message: 'Built Clients hierarchy: Acme Ltd, Brightfield Co, Norton & Sons, Peak Ventures, Riverdale Group.' },
+      { eventType: 'progress', message: 'Built Compliance hierarchy: HMRC Correspondence, Corporation Tax, AML/KYC.' },
+      { eventType: 'info',     message: 'Generated READMEs for 22 nodes. 20 verified, 2 pending (Brightfield Q4 draft, Riverdale 2024 TB).' },
+      { eventType: 'complete', message: 'Structure complete. 62 nodes → 22. 12 contradictions resolved, 1 open. Knowledge base ready for verification.' },
     ];
 
     for (const e of events) {
@@ -768,7 +1040,7 @@ export const insertDemoClean = mutation({
       });
     }
 
-    return { message: 'Clean demo state seeded for Hartley & Associates LLP', nodesCreated: 12 };
+    return { message: 'Clean demo state seeded for Hartley & Associates LLP', nodesCreated: 22 };
   },
 });
 
