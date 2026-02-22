@@ -3,7 +3,13 @@ import logging
 logger = logging.getLogger(__name__)
 
 GOOGLE_TOOL_PREFIXES = ("GMAIL_", "GOOGLEDRIVE_", "GOOGLESHEETS_")
-GOOGLE_TOOLKITS = ["gmail", "googledrive", "googlesheets"]
+
+# Maps data source type → Composio toolkit slug
+SOURCE_TOOLKIT: dict[str, str] = {
+    "gmail": "gmail",
+    "drive": "googledrive",
+    "sheets": "googlesheets",
+}
 
 
 class ComposioIntegration:
@@ -15,31 +21,51 @@ class ComposioIntegration:
 
         self.provider = AnthropicProvider()
         self.composio = Composio(api_key=api_key, provider=self.provider)
-        # Map toolkit slug -> auth config id, e.g. {"gmail": "ac_XpF8cor_8g5S"}
+        # Kept for potential future use with composio.tools.execute(connected_account_id=...)
         self.auth_config_ids = auth_config_ids or {}
+        # Note: Composio SDK resolves auth via user_id at connection time.
+        # tools.get() and execute_tool_call() do not accept auth_config_id.
 
-    def get_google_tools(self, user_id: str) -> list[dict]:
-        """Get Composio tool schemas for Google Workspace."""
+    def get_tools_for_source(self, user_id: str, source_type: str) -> list[dict]:
+        """Get Composio tool schemas for a specific data source type."""
+        toolkit = SOURCE_TOOLKIT.get(source_type)
+        if not toolkit:
+            logger.warning(f"No Composio toolkit mapped for source_type '{source_type}'")
+            return []
         try:
-            session = self.composio.create(
-                user_id=user_id,
-                toolkits=GOOGLE_TOOLKITS,
-                auth_configs=self.auth_config_ids if self.auth_config_ids else None,
-            )
-            tools = session.tools()
-            logger.info(f"Got {len(tools)} Google tools from Composio")
+            tools = self.composio.tools.get(user_id=user_id, toolkits=[toolkit])
+            tool_names = [t.get("name", "?") for t in tools]
+            logger.info(f"Got {len(tools)} {source_type} tools from Composio: {tool_names}")
             return tools
         except Exception as e:
-            logger.error(f"Failed to get Composio Google tools: {e}")
+            logger.error(f"Failed to get Composio tools for {source_type}: {e}")
             return []
 
-    def handle_tool_calls(self, user_id: str, response) -> list:
-        """Let Composio handle tool calls from Claude's response."""
-        try:
-            return self.provider.handle_tool_calls(user_id=user_id, response=response)
-        except Exception as e:
-            logger.error(f"Composio tool call handling failed: {e}")
-            return []
+    def execute_tool(self, name: str, args: dict, user_id: str) -> str:
+        """Execute a single Composio tool and return its result as a string."""
+        import uuid
+        from anthropic.types import ToolUseBlock
+
+        tool_use = ToolUseBlock(
+            id=f"toolu_{uuid.uuid4().hex[:24]}",
+            type="tool_use",
+            name=name,
+            input=args,
+        )
+        result = self.provider.execute_tool_call(user_id=user_id, tool_call=tool_use)
+        # SDK may return a ToolExecutionResponse object or a plain dict
+        if isinstance(result, dict):
+            successful = result.get("successful", False)
+            data = result.get("data")
+            error = result.get("error")
+        else:
+            successful = result.successful
+            data = result.data
+            error = result.error
+        logger.info(f"Composio {name} result: successful={successful}, data={str(data)[:200]}")
+        if successful:
+            return str(data) if data is not None else ""
+        return f"Composio error: {error}"
 
     @staticmethod
     def is_composio_tool(tool_name: str) -> bool:
