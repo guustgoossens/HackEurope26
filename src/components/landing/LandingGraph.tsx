@@ -7,8 +7,8 @@ interface Props {
   className?: string;
 }
 
-const NODE_R: Record<number, number> = { 0: 18, 1: 10, 2: 5 };
-const NODE_COLOR: Record<string, string> = { verified: '#1E3A5F', draft: '#3B82F6' };
+const NAVY = '#0b172a';
+const NODE_R: Record<number, number> = { 0: 24, 1: 14, 2: 8 };
 
 const GROUP_POS: Record<string, { x: number; y: number }> = {
   finance: { x: -200, y: -130 },
@@ -18,11 +18,18 @@ const GROUP_POS: Record<string, { x: number; y: number }> = {
 };
 
 const EDGE_STYLE: Record<string, { stroke: string; width: number; dash?: string; opacity: number }> = {
-  parent_of: { stroke: '#CBD5E1', width: 1, opacity: 0.5 },
+  parent_of: { stroke: '#3B82F6', width: 1.5, opacity: 0.8 }, // Blue from graphic chart
   depends_on: { stroke: '#D97706', width: 2, dash: '6 4', opacity: 0.6 },
-  references: { stroke: '#93C5FD', width: 1.5, opacity: 0.5 },
-  temporal: { stroke: '#CBD5E1', width: 1, dash: '3 3', opacity: 0.3 },
+  references: { stroke: '#60A5FA', width: 1.5, opacity: 0.5 }, // Lighter blue
+  temporal: { stroke: '#94A3B8', width: 1, dash: '3 3', opacity: 0.3 },
 };
+
+// Organic blob paths (normalized to ~100x100, centered)
+const BLOBS = [
+  'M50 4C72 3 96 14 98 38C100 62 84 96 54 98C24 100 4 78 2 52C0 26 28 5 50 4Z',
+  'M48 2C76 0 98 20 99 46C100 72 80 98 52 99C24 100 2 76 3 48C4 20 20 4 48 2Z',
+  'M52 3C74 2 97 18 98 44C99 70 78 97 50 98C22 99 3 74 2 46C1 18 30 4 52 3Z',
+];
 
 export default function LandingGraph({ visibleCount, className }: Props) {
   const containerRef = useRef<HTMLDivElement>(null);
@@ -38,8 +45,10 @@ export default function LandingGraph({ visibleCount, className }: Props) {
     svg.attr('viewBox', `0 0 ${w || 900} ${h || 520}`);
 
     const defs = svg.append('defs');
+    
+    // Glow filter for central node
     const glow = defs.append('filter').attr('id', 'glow').attr('x', '-50%').attr('y', '-50%').attr('width', '200%').attr('height', '200%');
-    glow.append('feGaussianBlur').attr('stdDeviation', '6').attr('result', 'b');
+    glow.append('feGaussianBlur').attr('stdDeviation', '4').attr('result', 'b');
     const m = glow.append('feMerge');
     m.append('feMergeNode').attr('in', 'b');
     m.append('feMergeNode').attr('in', 'SourceGraphic');
@@ -50,11 +59,16 @@ export default function LandingGraph({ visibleCount, className }: Props) {
     `);
 
     const g = svg.append('g');
-    g.append('g').attr('class', 'links');
-    g.append('g').attr('class', 'nodes');
+    g.append('g').attr('class', 'links').style('pointer-events', 'none'); // So links never steal drag
+    g.append('g').attr('class', 'nodes').style('pointer-events', 'auto');
+    g.append('g').attr('class', 'labels').style('pointer-events', 'none'); // Labels on top so never hidden by nodes
     gRef.current = g.node();
 
-    g.attr('transform', `translate(${(w || 900) / 2}, ${(h || 520) / 2}) scale(0.85)`);
+    // Shift graph up so bottom clusters (e.g. Operations) stay above the overlay button
+    const cx = (w || 900) / 2;
+    const cy = (h || 520) / 2;
+    const shiftUp = 56;
+    g.attr('transform', `translate(${cx}, ${cy - shiftUp}) scale(0.85)`);
 
     ready.current = true;
     return () => {
@@ -70,8 +84,9 @@ export default function LandingGraph({ visibleCount, className }: Props) {
 
     if (visibleCount === 0) {
       simRef.current?.stop();
-      g.select('.links').selectAll('line').remove();
+      g.select('.links').selectAll('path').remove();
       g.select('.nodes').selectAll('.node').remove();
+      g.select('.labels').selectAll('text').remove();
       posRef.current.clear();
       return;
     }
@@ -80,10 +95,15 @@ export default function LandingGraph({ visibleCount, className }: Props) {
     const visIds = new Set(vis.map((n) => n.id));
     const visEdges = landingEdges.filter((e) => visIds.has(e.source) && visIds.has(e.target));
 
-    const simNodes: any[] = vis.map((n) => {
+    const simNodes: any[] = vis.map((n, i) => {
       const s = posRef.current.get(n.id);
       const gp = GROUP_POS[n.group] || { x: 0, y: 0 };
-      return { ...n, x: s?.x ?? gp.x + (Math.random() - 0.5) * 70, y: s?.y ?? gp.y + (Math.random() - 0.5) * 70 };
+      return { 
+        ...n, 
+        x: s?.x ?? gp.x + (Math.random() - 0.5) * 70, 
+        y: s?.y ?? gp.y + (Math.random() - 0.5) * 70,
+        blobIndex: i % BLOBS.length 
+      };
     });
     const simEdges = visEdges.map((e) => ({ ...e }));
 
@@ -95,25 +115,27 @@ export default function LandingGraph({ visibleCount, className }: Props) {
         d3
           .forceLink(simEdges)
           .id((d: any) => d.id)
-          .distance((d: any) => (d.type === 'parent_of' ? 45 : 90))
+          .distance((d: any) => (d.type === 'parent_of' ? 55 : 100))
           .strength((d: any) => (d.type === 'parent_of' ? 0.5 : 0.12)),
       )
-      .force('charge', d3.forceManyBody().strength((d: any) => (d.depth === 0 ? -280 : d.depth === 1 ? -100 : -40)))
-      .force('collide', d3.forceCollide().radius((d: any) => (NODE_R[d.depth] || 5) + 8))
+      .force('charge', d3.forceManyBody().strength((d: any) => (d.depth === 0 ? -320 : d.depth === 1 ? -120 : -50)))
+      .force('collide', d3.forceCollide().radius((d: any) => (NODE_R[d.depth] || 8) + 12))
       .force('x', d3.forceX((d: any) => GROUP_POS[d.group]?.x || 0).strength(0.06))
       .force('y', d3.forceY((d: any) => GROUP_POS[d.group]?.y || 0).strength(0.06))
-      .alpha(visibleCount <= 4 ? 1 : 0.2)
-      .alphaDecay(0.02);
+      .alpha(visibleCount <= 4 ? 1 : 0.08)
+      .alphaDecay(0); // Never stop: keeps nodes always draggable and simulation responsive
     simRef.current = sim;
 
     const link = g
       .select('.links')
-      .selectAll<SVGLineElement, any>('line')
+      .selectAll<SVGPathElement, any>('path')
       .data(simEdges, (d: any) => `${d.source.id ?? d.source}-${d.target.id ?? d.target}-${d.type}`);
     link.exit().remove();
     const linkE = link
       .enter()
-      .append('line')
+      .append('path')
+      .attr('fill', 'none')
+      .attr('stroke-linecap', 'round')
       .each(function (d: any) {
         const s = EDGE_STYLE[d.type] || EDGE_STYLE.parent_of;
         const el = d3.select(this).attr('stroke', s.stroke).attr('stroke-width', s.width).attr('opacity', 0);
@@ -140,76 +162,129 @@ export default function LandingGraph({ visibleCount, className }: Props) {
         d.fy = event.y;
       })
       .on('end', function (event, d) {
-        if (!event.active) sim.alphaTarget(0);
+        if (!event.active) sim.alphaTarget(0.08).restart(); // Keep sim ticking so drag stays responsive
         d.fx = null;
         d.fy = null;
         d3.select(this).style('cursor', 'grab');
       });
 
-    ne.call(drag);
-    ne.style('cursor', 'grab');
-
-    ne.filter((d: any) => d.status === 'draft' && d.depth < 2).each(function (d: any) {
-      const r = NODE_R[d.depth] || 5;
-      const pulse = d3
-        .select(this)
-        .insert('circle', ':first-child')
-        .attr('fill', 'none')
-        .attr('stroke', NODE_COLOR.draft)
-        .attr('stroke-width', 1);
-      const animR = document.createElementNS('http://www.w3.org/2000/svg', 'animate');
-      animR.setAttribute('attributeName', 'r');
-      animR.setAttribute('from', String(r + 2));
-      animR.setAttribute('to', String(r + 14));
-      animR.setAttribute('dur', '2.5s');
-      animR.setAttribute('repeatCount', 'indefinite');
-      pulse.node()!.appendChild(animR);
-      const animO = document.createElementNS('http://www.w3.org/2000/svg', 'animate');
-      animO.setAttribute('attributeName', 'stroke-opacity');
-      animO.setAttribute('from', '0.35');
-      animO.setAttribute('to', '0');
-      animO.setAttribute('dur', '2.5s');
-      animO.setAttribute('repeatCount', 'indefinite');
-      pulse.node()!.appendChild(animO);
+    // Render nodes (enter only)
+    ne.each(function(d: any) {
+      const el = d3.select(this);
+      const r = NODE_R[d.depth] || 8;
+      
+      if (d.depth === 0) {
+        // Central node: concentric rings
+        // Outer dark blob
+        el.append('path')
+          .attr('d', BLOBS[d.blobIndex])
+          .attr('transform', `scale(${r/50}) translate(-50, -50)`)
+          .attr('fill', NAVY);
+        
+        // Inner white ring
+        el.append('circle')
+          .attr('r', r * 0.7)
+          .attr('fill', 'white');
+          
+        // Inner dark circle
+        el.append('circle')
+          .attr('r', r * 0.55)
+          .attr('fill', NAVY);
+          
+        // Center white dot
+        el.append('circle')
+          .attr('r', 3)
+          .attr('fill', 'white');
+      } else {
+        // Satellite nodes: solid blobs
+        el.append('path')
+          .attr('d', BLOBS[d.blobIndex])
+          .attr('transform', `scale(0) translate(-50, -50)`) // Start scale 0
+          .attr('fill', NAVY)
+          .transition()
+          .duration(450)
+          .ease(d3.easeBackOut)
+          .attr('transform', `scale(${r/50}) translate(-50, -50)`);
+      }
     });
 
-    ne.append('circle')
-      .attr('class', 'mc')
-      .attr('r', 0)
-      .attr('fill', (d: any) => NODE_COLOR[d.status])
-      .attr('stroke', (d: any) => (d.depth === 0 ? NODE_COLOR[d.status] : 'transparent'))
-      .attr('stroke-width', 1)
-      .attr('stroke-opacity', 0.2)
-      .attr('filter', (d: any) => (d.depth === 0 ? 'url(#glow)' : null))
-      .transition()
-      .duration(450)
-      .ease(d3.easeBackOut)
-      .attr('r', (d: any) => NODE_R[d.depth] || 5);
-
-    ne.filter((d: any) => d.depth < 2)
+    // Labels: rendered in a separate top layer (g.labels) so they're never hidden by other nodes
+    const labelData = simNodes.filter((d: any) => d.depth < 2);
+    const labelsGroup = g.select('.labels');
+    const labelSel = labelsGroup.selectAll<SVGTextElement, any>('text').data(labelData, (d: any) => d.id);
+    labelSel.exit().remove();
+    const labelEnter = labelSel
+      .enter()
       .append('text')
       .text((d: any) => d.label)
-      .attr('dx', (d: any) => (NODE_R[d.depth] || 5) + 6)
-      .attr('dy', 3.5)
+      .attr('text-anchor', 'middle')
       .attr('font-size', (d: any) => (d.depth === 0 ? '13px' : '10px'))
-      .attr('font-weight', (d: any) => (d.depth === 0 ? '600' : '400'))
-      .attr('fill', '#475569')
-      .attr('pointer-events', 'none')
-      .attr('opacity', 0)
-      .transition()
-      .delay(200)
-      .duration(350)
-      .attr('opacity', 1);
+      .attr('font-weight', (d: any) => (d.depth === 0 ? '600' : '500'))
+      .attr('fill', NAVY)
+      .attr('stroke', 'white')
+      .attr('stroke-width', 3)
+      .attr('paint-order', 'stroke')
+      .attr('opacity', 0);
+    labelEnter.transition().delay(200).duration(350).attr('opacity', 1);
+    const allLabels = labelEnter.merge(labelSel);
 
     const allNodes = ne.merge(node);
+    // Apply drag to all nodes (new + existing) so they stay moveable
+    allNodes.call(drag);
+    allNodes.style('cursor', 'grab');
 
     sim.on('tick', () => {
-      allLinks
-        .attr('x1', (d: any) => d.source.x)
-        .attr('y1', (d: any) => d.source.y)
-        .attr('x2', (d: any) => d.target.x)
-        .attr('y2', (d: any) => d.target.y);
+      allLinks.attr('d', (d: any) => {
+        const dx = d.target.x - d.source.x;
+        const dy = d.target.y - d.source.y;
+        const dr = Math.sqrt(dx * dx + dy * dy);
+        
+        // Calculate stop points (short of node radius)
+        const sourceR = NODE_R[d.source.depth] || 8;
+        const targetR = NODE_R[d.target.depth] || 8;
+        const padding = 12; // Increased padding so lines stop short
+        
+        if (dr === 0) return ''; // Prevent division by zero
+
+        // Normalized direction vector
+        const nx = dx / dr;
+        const ny = dy / dr;
+
+        // Start and end points adjusted for radius + padding
+        const startX = d.source.x + nx * (sourceR + padding * 0.5);
+        const startY = d.source.y + ny * (sourceR + padding * 0.5);
+        const endX = d.target.x - nx * (targetR + padding);
+        const endY = d.target.y - ny * (targetR + padding);
+
+        // Quadratic bezier curve
+        // Control point is midpoint offset perpendicularly
+        // Less curve for parent_of, more for others
+        const midX = (startX + endX) / 2;
+        const midY = (startY + endY) / 2;
+        
+        // Small curvature to simulate "organic" feel, not straight lines
+        // Direction of curve depends on node positions to keep it somewhat consistent
+        const curveFactor = d.type === 'parent_of' ? 0 : 20; 
+        // Simple curve logic: offset midpoint
+        // perpendicular vector (-ny, nx)
+        const cX = midX - ny * curveFactor;
+        const cY = midY + nx * curveFactor;
+
+        return `M${startX},${startY} Q${cX},${cY} ${endX},${endY}`;
+      });
+
       allNodes.attr('transform', (d: any) => `translate(${d.x},${d.y})`);
+
+      // Position labels in top layer: radially outward from center, larger offset so not hidden
+      const labelOffset = 32;
+      allLabels.attr('x', (d: any) => {
+        const norm = Math.sqrt(d.x * d.x + d.y * d.y) || 1;
+        return d.x + (d.x / norm) * labelOffset;
+      }).attr('y', (d: any) => {
+        const norm = Math.sqrt(d.x * d.x + d.y * d.y) || 1;
+        return d.y + (d.y / norm) * labelOffset;
+      });
+
       simNodes.forEach((n) => posRef.current.set(n.id, { x: n.x, y: n.y }));
     });
   }, [visibleCount]);

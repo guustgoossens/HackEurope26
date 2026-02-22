@@ -3,8 +3,9 @@ import { api } from '../../convex/_generated/api';
 import type { Id } from '../../convex/_generated/dataModel';
 import {
     FolioCheckCircle2 as CheckCircle2,
-    FolioHelpCircle as HelpCircle,
+    FolioAlertTriangle as AlertTriangle,
     FolioSparkles,
+    FolioShield,
 } from '@/components/icons/FolioIcons';
 import { cn } from '@/lib/utils';
 
@@ -18,38 +19,59 @@ export default function VerifyPhase({ clientId, isComplete, onComplete }: Props)
     const questionnaires = useQuery(api.questionnaires.listByClient, {
         clientId: clientId as Id<'clients'>,
     });
+    const contradictions = useQuery(api.contradictions.listByClient, {
+        clientId: clientId as Id<'clients'>,
+    });
     const respond = useMutation(api.questionnaires.respond);
 
     const questionnaire = questionnaires?.[questionnaires.length - 1];
-
     const data = useQuery(
         api.questionnaires.getWithResponses,
         questionnaire ? { id: questionnaire._id } : 'skip',
     );
 
-    if (isComplete || (data && data.responses.length === data.questionnaire.questions.length && data.questionnaire.questions.length > 0)) {
+    const contradictionMap = new Map((contradictions ?? []).map(c => [c._id, c]));
+
+    const allAnswered =
+        data &&
+        data.responses.length === data.questionnaire.questions.length &&
+        data.questionnaire.questions.length > 0;
+
+    const panelStyle: React.CSSProperties = {
+        background: 'linear-gradient(180deg, hsl(0 0% 100%), hsl(217 25% 97%))',
+        borderLeft: '1px solid hsl(217 20% 91%)',
+    };
+
+    if (isComplete || allAnswered) {
+        if (allAnswered && !isComplete) onComplete();
         return (
-            <div className="absolute inset-0 flex items-center justify-center z-10 pointer-events-none">
-                <div
-                    className="max-w-lg w-full mx-4 pointer-events-auto rounded-2xl p-10 text-center"
-                    style={{
-                        animation: 'scale-in 0.4s ease-out',
-                        background: 'linear-gradient(135deg, hsl(0 0% 100%), hsl(217 30% 97%))',
-                        border: '1px solid hsl(217 20% 91%)',
-                        boxShadow: '0 8px 32px hsl(217 30% 70% / 0.12), 0 2px 8px hsl(217 30% 70% / 0.06)',
-                    }}
-                >
-                    <FolioSparkles className="h-24 w-24 mx-auto mb-3 text-primary" />
-                    <CheckCircle2 className="h-32 w-32 mx-auto mb-4" style={{ color: 'hsl(152, 55%, 42%)' }} />
-                    <h2
-                        className="text-2xl font-semibold text-foreground mb-2"
-                        style={{ fontFamily: "'Newsreader', serif" }}
+            <div className="h-full flex flex-col w-96 shrink-0" style={panelStyle}>
+                <div className="flex-1 flex flex-col items-center justify-center px-6 text-center gap-4">
+                    <div
+                        className="w-14 h-14 rounded-full flex items-center justify-center"
+                        style={{ background: 'linear-gradient(135deg, hsl(152 60% 94%), hsl(152 50% 90%))' }}
                     >
-                        Base de connaissances vérifiée
-                    </h2>
-                    <p className="text-muted-foreground text-sm">
-                        Toutes les ambiguïtés résolues · Prête pour les agents
-                    </p>
+                        <CheckCircle2 className="h-8 w-8" style={{ color: 'hsl(152, 55%, 38%)' }} />
+                    </div>
+                    <div>
+                        <h3 className="text-lg font-semibold text-foreground mb-1" style={{ fontFamily: "'Newsreader', serif" }}>
+                            Base vérifiée
+                        </h3>
+                        <p className="text-sm text-muted-foreground">
+                            Toutes les ambiguïtés résolues.<br />Prête pour les agents.
+                        </p>
+                    </div>
+                    <div
+                        className="flex items-center gap-2 px-4 py-2 rounded-xl text-xs"
+                        style={{
+                            background: 'hsl(152 40% 96%)',
+                            border: '1px solid hsl(152 35% 85%)',
+                            color: 'hsl(152 50% 32%)',
+                        }}
+                    >
+                        <FolioSparkles className="h-5 w-5" />
+                        <span>Base de connaissances opérationnelle</span>
+                    </div>
                 </div>
             </div>
         );
@@ -57,17 +79,10 @@ export default function VerifyPhase({ clientId, isComplete, onComplete }: Props)
 
     if (!questionnaire || !data) {
         return (
-            <div className="absolute inset-0 flex items-center justify-center z-10 pointer-events-none">
-                <div
-                    className="max-w-xl w-full mx-4 pointer-events-auto rounded-2xl p-8 text-center"
-                    style={{
-                        background: 'linear-gradient(135deg, hsl(0 0% 100%), hsl(217 25% 97%))',
-                        border: '1px solid hsl(217 20% 91%)',
-                        boxShadow: '0 8px 32px hsl(217 30% 70% / 0.12)',
-                    }}
-                >
-                    <p className="text-sm text-muted-foreground">
-                        En attente de la génération du questionnaire de vérification…
+            <div className="h-full flex flex-col w-96 shrink-0" style={panelStyle}>
+                <div className="flex-1 flex items-center justify-center px-6">
+                    <p className="text-sm text-muted-foreground text-center">
+                        Génération du questionnaire de vérification…
                     </p>
                 </div>
             </div>
@@ -75,18 +90,20 @@ export default function VerifyPhase({ clientId, isComplete, onComplete }: Props)
     }
 
     const { questions } = data.questionnaire;
-    const responseMap = new Map(data.responses.map((r) => [r.questionId, r.selectedOption]));
+    const responseMap = new Map(data.responses.map(r => [r.questionId, r.selectedOption]));
     const total = questions.length;
-
-    // Find the current unanswered question
-    const currentQ = questions.find((q) => !responseMap.has(q.id));
+    const answeredCount = data.responses.length;
+    const currentQ = questions.find(q => !responseMap.has(q.id));
     const questionIndex = currentQ ? questions.indexOf(currentQ) : total;
 
     if (!currentQ) {
-        // All answered but onComplete not yet fired
         onComplete();
         return null;
     }
+
+    const contradiction = currentQ.contradictionId
+        ? contradictionMap.get(currentQ.contradictionId)
+        : undefined;
 
     const handleAnswer = async (optionText: string) => {
         await respond({
@@ -98,71 +115,132 @@ export default function VerifyPhase({ clientId, isComplete, onComplete }: Props)
     };
 
     return (
-        <div className="absolute inset-0 flex items-center justify-center z-10 pointer-events-none">
-            <div
-                key={currentQ.id}
-                className="max-w-xl w-full mx-4 pointer-events-auto rounded-2xl overflow-hidden"
-                style={{
-                    animation: 'scale-in 0.3s ease-out',
-                    background: 'linear-gradient(135deg, hsl(0 0% 100%), hsl(217 25% 97%))',
-                    border: '1px solid hsl(217 20% 91%)',
-                    boxShadow: '0 8px 32px hsl(217 30% 70% / 0.12), 0 2px 8px hsl(217 30% 70% / 0.06)',
-                }}
-            >
-                <div className="px-6 pt-6 pb-3">
-                    <div className="flex items-center gap-2 text-xs text-muted-foreground mb-2">
-                        <HelpCircle className="h-7 w-7" />
-                        Question {questionIndex + 1} sur {total}
-                    </div>
-                    {/* Progress bar */}
-                    <div className="h-1 rounded-full mb-3 overflow-hidden" style={{ background: 'hsl(217 20% 91%)' }}>
+        <div className="h-full flex flex-col w-96 shrink-0" style={panelStyle}>
+            {/* Header */}
+            <div className="px-5 py-4 shrink-0" style={{ borderBottom: '1px solid hsl(217 20% 91%)' }}>
+                <div className="flex items-center gap-2 mb-1.5">
+                    <FolioShield className="h-5 w-5 text-primary shrink-0" />
+                    <span className="text-sm font-semibold text-foreground" style={{ fontFamily: "'Newsreader', serif" }}>
+                        Vérification humaine
+                    </span>
+                </div>
+                <p className="text-xs text-muted-foreground mb-3">
+                    L'agent a détecté des ambiguïtés. Vos réponses finaliseront la base.
+                </p>
+                {/* Progress bar */}
+                <div className="flex items-center gap-2">
+                    <div className="flex-1 h-1.5 rounded-full overflow-hidden" style={{ background: 'hsl(217 20% 91%)' }}>
                         <div
                             className="h-full rounded-full transition-all duration-500"
                             style={{
-                                width: `${((questionIndex + 1) / total) * 100}%`,
-                                background: 'linear-gradient(90deg, hsl(217 55% 70%), hsl(217 65% 55%))',
+                                width: `${(answeredCount / total) * 100}%`,
+                                background: 'linear-gradient(90deg, hsl(217 55% 70%), hsl(217 65% 52%))',
                             }}
                         />
                     </div>
-                    <h3
-                        className="text-base font-semibold text-foreground mt-2"
+                    <span className="text-xs text-muted-foreground shrink-0">{answeredCount}/{total}</span>
+                </div>
+            </div>
+
+            {/* Scrollable question content */}
+            <div className="flex-1 overflow-y-auto px-5 py-5 space-y-4">
+                <div key={currentQ.id} style={{ animation: 'fade-in 0.3s ease-out' }}>
+                    {/* Contradiction badge */}
+                    {contradiction && (
+                        <div
+                            className="flex items-center gap-1.5 text-xs px-3 py-1.5 rounded-lg mb-3 font-medium"
+                            style={{
+                                background: 'hsl(38 80% 96%)',
+                                border: '1px solid hsl(38 40% 86%)',
+                                color: 'hsl(38 70% 32%)',
+                            }}
+                        >
+                            <AlertTriangle className="h-4 w-4 shrink-0" />
+                            Contradiction détectée
+                        </div>
+                    )}
+
+                    {/* Question text */}
+                    <p
+                        className="text-sm font-semibold text-foreground leading-snug mb-4"
                         style={{ fontFamily: "'Newsreader', serif" }}
                     >
                         {currentQ.text}
-                    </h3>
-                </div>
-                <div className="px-6 pb-6 space-y-2">
-                    {currentQ.options.map((opt, i) => {
-                        const answered = responseMap.get(currentQ.id);
-                        const isSelected = answered === opt;
-                        return (
-                            <button
-                                key={i}
-                                onClick={() => void handleAnswer(opt)}
-                                className={cn(
-                                    'w-full text-left py-3 px-4 text-sm rounded-xl transition-all duration-300',
-                                    isSelected ? 'text-primary font-medium' : 'text-foreground hover:-translate-y-0.5',
-                                )}
-                                style={
-                                    isSelected
-                                        ? {
-                                            background: 'linear-gradient(135deg, hsl(217 60% 95%), hsl(217 50% 92%))',
-                                            border: '1px solid hsl(217 40% 82%)',
-                                            boxShadow: '0 2px 8px hsl(217 40% 70% / 0.15)',
-                                        }
-                                        : {
-                                            background: 'hsl(0 0% 100%)',
-                                            border: '1px solid hsl(217 20% 91%)',
-                                            boxShadow: '0 1px 3px hsl(217 30% 70% / 0.06)',
-                                        }
-                                }
-                            >
-                                {opt}
-                            </button>
-                        );
-                    })}
+                    </p>
+
+                    {/* Source context blocks */}
+                    {contradiction && (
+                        <div className="space-y-2 mb-4">
+                            <SourceBlock label="Source A" filename={contradiction.sourceA} value={contradiction.valueA} />
+                            <SourceBlock label="Source B" filename={contradiction.sourceB} value={contradiction.valueB} />
+                        </div>
+                    )}
+
+                    {/* Answer options */}
+                    <div className="space-y-2">
+                        {currentQ.options.map((opt, i) => {
+                            const isSelected = responseMap.get(currentQ.id) === opt;
+                            return (
+                                <button
+                                    key={i}
+                                    onClick={() => void handleAnswer(opt)}
+                                    className={cn(
+                                        'w-full text-left py-2.5 px-4 text-sm rounded-xl transition-all duration-200 flex items-start gap-2.5',
+                                        isSelected ? 'text-primary font-medium' : 'text-foreground hover:-translate-y-0.5',
+                                    )}
+                                    style={
+                                        isSelected
+                                            ? {
+                                                background: 'linear-gradient(135deg, hsl(217 60% 95%), hsl(217 50% 92%))',
+                                                border: '1.5px solid hsl(217 40% 80%)',
+                                                boxShadow: '0 2px 8px hsl(217 40% 70% / 0.15)',
+                                            }
+                                            : {
+                                                background: 'hsl(0 0% 100%)',
+                                                border: '1px solid hsl(217 20% 90%)',
+                                                boxShadow: '0 1px 3px hsl(217 30% 70% / 0.05)',
+                                            }
+                                    }
+                                >
+                                    <span
+                                        className={cn(
+                                            'w-4 h-4 rounded-full border shrink-0 mt-0.5 flex items-center justify-center transition-all',
+                                            isSelected ? 'border-primary bg-primary' : 'border-muted-foreground/30',
+                                        )}
+                                    >
+                                        {isSelected && <span className="w-1.5 h-1.5 rounded-full bg-white" />}
+                                    </span>
+                                    <span className="leading-snug">{opt}</span>
+                                </button>
+                            );
+                        })}
+                    </div>
                 </div>
             </div>
+
+            {/* Footer */}
+            <div
+                className="px-5 py-3 shrink-0 text-xs text-muted-foreground text-center"
+                style={{ borderTop: '1px solid hsl(217 20% 92%)' }}
+            >
+                Question {questionIndex + 1} sur {total}
+            </div>
+        </div>
+    );
+}
+
+function SourceBlock({ label, filename, value }: { label: string; filename: string; value: string }) {
+    return (
+        <div
+            className="rounded-xl px-3 py-2.5 text-xs space-y-0.5"
+            style={{
+                background: 'hsl(217 30% 97%)',
+                border: '1px solid hsl(217 20% 91%)',
+            }}
+        >
+            <div className="text-muted-foreground font-medium">{label}</div>
+            <div className="text-foreground font-medium truncate">{filename}</div>
+            <div style={{ color: 'hsl(217 50% 45%)' }}>→ {value}</div>
         </div>
     );
 }

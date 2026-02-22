@@ -7,6 +7,7 @@ import type { Id } from '../../convex/_generated/dataModel';
 interface KnowledgeGraphProps {
   clientId: string;
   onSelectNode?: (nodeId: string | null, readme?: string, name?: string, type?: string) => void;
+  cleanMode?: boolean;
 }
 
 // Domain colors auto-assigned by top-level node index
@@ -25,7 +26,7 @@ const NODE_R: Record<string, number> = {
   entry_group: 8,
 };
 
-export function KnowledgeGraph({ clientId, onSelectNode }: KnowledgeGraphProps) {
+export function KnowledgeGraph({ clientId, onSelectNode, cleanMode = false }: KnowledgeGraphProps) {
   const treeNodes = useQuery(api.knowledge.getTree, { clientId: clientId as Id<'clients'> });
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const containerRef = useRef<HTMLDivElement>(null);
@@ -35,7 +36,7 @@ export function KnowledgeGraph({ clientId, onSelectNode }: KnowledgeGraphProps) 
   const posRef = useRef<Map<string, { x: number; y: number }>>(new Map());
   const initDone = useRef(false);
   const cbRef = useRef(onSelectNode);
-  cbRef.current = onSelectNode;
+  useEffect(() => { cbRef.current = onSelectNode; });
 
   // Init SVG + zoom once
   useEffect(() => {
@@ -67,6 +68,7 @@ export function KnowledgeGraph({ clientId, onSelectNode }: KnowledgeGraphProps) 
       .scaleExtent([0.2, 4])
       .on('zoom', (e) => g.attr('transform', e.transform));
     svg.call(zoom);
+    // eslint-disable-next-line @typescript-eslint/unbound-method
     svg.call(zoom.transform, d3.zoomIdentity.translate(w / 2, h / 2).scale(0.85));
     svg.on('click', (e) => {
       if (e.target === svgRef.current) {
@@ -83,39 +85,42 @@ export function KnowledgeGraph({ clientId, onSelectNode }: KnowledgeGraphProps) 
     };
   }, []);
 
-  // Update data whenever treeNodes change
+  // Update data whenever treeNodes or cleanMode change
   useEffect(() => {
     if (!initDone.current || !gRef.current || !treeNodes) return;
     if (treeNodes.length === 0) return;
     const g = d3.select(gRef.current);
 
+    // Filter nodes based on cleanMode
+    const visibleNodes = cleanMode
+      ? treeNodes.filter((n) => n.type === 'domain' || n.type === 'skill')
+      : treeNodes;
+
     // Build domain color map from top-level nodes
-    const domainNodes = treeNodes.filter((n) => !n.parentId);
+    const domainNodes = visibleNodes.filter((n) => !n.parentId);
     const domainColor: Record<string, string> = {};
     domainNodes.forEach((n, i) => {
       domainColor[n._id] = DOMAIN_COLORS[i % DOMAIN_COLORS.length];
     });
 
-    // Assign color to each node by root ancestor
     function getRootId(nodeId: string): string {
-      if (!treeNodes) return nodeId;
-      const node = treeNodes.find((n) => n._id === nodeId);
+      const node = visibleNodes.find((n) => n._id === nodeId);
       if (!node) return nodeId;
       if (!node.parentId) return nodeId;
       return getRootId(node.parentId);
     }
 
-    // Build D3 nodes
-    const simNodes: any[] = treeNodes.map((n) => {
+    const simNodes: any[] = visibleNodes.map((n) => {
       const rootId = getRootId(n._id);
-      const color = domainColor[rootId] || DOMAIN_COLORS[0];
+      const baseColor = domainColor[rootId] || DOMAIN_COLORS[0];
+      const color = cleanMode ? baseColor : baseColor;
       const s = posRef.current.get(n._id);
-      // Spread out domains in a rough circle for initial placement
       const domainIdx = domainNodes.findIndex((d) => d._id === rootId);
       const angle = (domainIdx / Math.max(domainNodes.length, 1)) * Math.PI * 2;
-      const radius = n.parentId ? 80 : 0;
-      const defaultX = Math.cos(angle) * 200 + (Math.random() - 0.5) * 60;
-      const defaultY = Math.sin(angle) * 200 + (Math.random() - 0.5) * 60;
+      const spread = cleanMode ? 180 : 250;
+      const jitter = cleanMode ? 30 : 80;
+      const defaultX = Math.cos(angle) * spread + (Math.random() - 0.5) * jitter;
+      const defaultY = Math.sin(angle) * spread + (Math.random() - 0.5) * jitter;
       return {
         id: n._id,
         name: n.name,
@@ -124,7 +129,6 @@ export function KnowledgeGraph({ clientId, onSelectNode }: KnowledgeGraphProps) 
         readme: n.readme,
         color,
         domainAngle: angle,
-        domainRadius: radius,
         x: s?.x ?? defaultX,
         y: s?.y ?? defaultY,
       };
@@ -137,25 +141,37 @@ export function KnowledgeGraph({ clientId, onSelectNode }: KnowledgeGraphProps) 
 
     simRef.current?.stop();
 
+    // Messy: stronger repulsion (more chaos); clean: tighter, organized
+    const chargeStrength = cleanMode ? -120 : -220;
+    const linkStrength = cleanMode ? 0.5 : 0.25;
+    const centerStrength = cleanMode ? 0.08 : 0.03;
+    const orbitRadius = cleanMode ? 200 : 240;
+
     const sim = d3
       .forceSimulation(simNodes)
-      .force('link', d3.forceLink(simEdges).id((d: any) => d.id).distance(70).strength(0.4))
-      .force('charge', d3.forceManyBody().strength(-150))
+      .force('link', d3.forceLink(simEdges).id((d: any) => d.id).distance(70).strength(linkStrength))
+      .force('charge', d3.forceManyBody().strength(chargeStrength))
       .force('collide', d3.forceCollide().radius((d: any) => (NODE_R[d.type] || 8) + 6))
-      .force('x', d3.forceX((d: any) => Math.cos(d.domainAngle) * 220).strength(0.05))
-      .force('y', d3.forceY((d: any) => Math.sin(d.domainAngle) * 220).strength(0.05))
-      .alpha(0.3)
+      .force('x', d3.forceX((d: any) => Math.cos(d.domainAngle) * orbitRadius).strength(centerStrength))
+      .force('y', d3.forceY((d: any) => Math.sin(d.domainAngle) * orbitRadius).strength(centerStrength))
+      .alpha(0.4)
       .alphaDecay(0.025);
     simRef.current = sim;
 
     // Links
+    const linkColor = cleanMode ? 'hsl(217, 30%, 80%)' : 'hsl(217, 20%, 82%)';
     const link = g
       .select('.links')
       .selectAll<SVGLineElement, any>('line')
       .data(simEdges, (d: any) => `${d.source.id ?? d.source}-${d.target.id ?? d.target}`);
     link.exit().remove();
-    const linkEnter = link.enter().append('line').attr('stroke', 'hsl(217, 30%, 82%)').attr('stroke-width', 1).attr('opacity', 0);
-    linkEnter.transition().duration(600).attr('opacity', 0.35);
+    const linkEnter = link
+      .enter()
+      .append('line')
+      .attr('stroke', linkColor)
+      .attr('stroke-width', 1)
+      .attr('opacity', 0);
+    linkEnter.transition().duration(600).attr('opacity', cleanMode ? 0.4 : 0.28);
     const allLinks = linkEnter.merge(link);
 
     // Nodes
@@ -180,7 +196,7 @@ export function KnowledgeGraph({ clientId, onSelectNode }: KnowledgeGraphProps) 
       .attr('dx', (d: any) => (NODE_R[d.type] || 8) + 5)
       .attr('dy', 3)
       .attr('font-size', '10px')
-      .attr('fill', 'hsl(220, 15%, 50%)')
+      .attr('fill', 'hsl(220, 15%, 45%)')
       .attr('pointer-events', 'none')
       .attr('opacity', 0)
       .transition()
@@ -223,53 +239,90 @@ export function KnowledgeGraph({ clientId, onSelectNode }: KnowledgeGraphProps) 
       allNodes.attr('transform', (d: any) => `translate(${d.x},${d.y})`);
       simNodes.forEach((n) => posRef.current.set(n.id, { x: n.x, y: n.y }));
     });
-  }, [treeNodes]);
+  }, [treeNodes, cleanMode]);
 
   // Highlight selected node
   useEffect(() => {
     if (!gRef.current) return;
     const g = d3.select(gRef.current);
-    g.selectAll<SVGGElement, any>('.node').select('circle').transition().duration(300).attr('stroke', (d: any) => (d.id === selectedId ? 'hsl(210, 80%, 52%)' : 'hsl(0, 0%, 100%)')).attr('stroke-width', (d: any) => (d.id === selectedId ? 3 : 2));
+    g.selectAll<SVGGElement, any>('.node')
+      .select('circle')
+      .transition()
+      .duration(300)
+      .attr('stroke', (d: any) => (d.id === selectedId ? 'hsl(210, 80%, 52%)' : 'hsl(0, 0%, 100%)'))
+      .attr('stroke-width', (d: any) => (d.id === selectedId ? 3 : 2));
   }, [selectedId]);
 
   if (treeNodes === undefined) {
     return (
-      <div ref={containerRef} className="w-full h-full flex items-center justify-center bg-slate-800 rounded-xl border border-slate-700">
-        <div className="animate-pulse text-slate-500 text-sm">Loading knowledge graph…</div>
+      <div
+        ref={containerRef}
+        className="w-full h-full flex items-center justify-center rounded-xl"
+        style={{ background: 'hsl(220 20% 98%)', border: '1px solid hsl(217 20% 91%)' }}
+      >
+        <div className="text-sm text-muted-foreground animate-pulse">Chargement du graphe…</div>
       </div>
     );
   }
 
   if (treeNodes.length === 0) {
     return (
-      <div ref={containerRef} className="w-full h-full flex items-center justify-center bg-slate-800 rounded-xl border border-slate-700 min-h-[400px]">
-        <div className="text-center space-y-2">
-          <div className="text-slate-400 text-sm">Agents are building the knowledge base…</div>
-          <div className="text-slate-600 text-xs">Nodes will appear here as they are created</div>
+      <div
+        ref={containerRef}
+        className="w-full h-full flex items-center justify-center rounded-xl min-h-[400px]"
+        style={{ background: 'hsl(220 20% 98%)', border: '1px solid hsl(217 20% 91%)' }}
+      >
+        <div className="text-center space-y-1">
+          <div className="text-sm text-muted-foreground">Construction de la base de connaissances…</div>
+          <div className="text-xs" style={{ color: 'hsl(217 20% 70%)' }}>
+            Les nœuds apparaîtront ici
+          </div>
         </div>
       </div>
     );
   }
 
-  // Build domain legend from top-level nodes
-  const domainNodes = treeNodes.filter((n) => !n.parentId);
+  // Legend: top-level nodes of the visible set
+  const legendNodes = (cleanMode
+    ? treeNodes.filter((n) => n.type === 'domain' || n.type === 'skill')
+    : treeNodes
+  ).filter((n) => !n.parentId);
+
+  const visibleCount = cleanMode ? treeNodes.filter((n) => n.type === 'domain' || n.type === 'skill').length : treeNodes.length;
 
   return (
-    <div className="relative w-full" style={{ minHeight: '400px' }}>
+    <div className="relative w-full h-full" style={{ minHeight: '400px' }}>
       {/* Domain legend */}
-      <div className="absolute top-3 left-3 z-10 flex flex-col gap-1.5 bg-slate-900/80 backdrop-blur-sm rounded-lg p-2.5 border border-slate-700">
-        {domainNodes.slice(0, 5).map((n, i) => (
+      <div
+        className="absolute top-3 left-3 z-10 flex flex-col gap-1.5 rounded-xl p-2.5"
+        style={{
+          background: 'linear-gradient(135deg, hsl(0 0% 100% / 0.92), hsl(217 30% 97% / 0.92))',
+          backdropFilter: 'blur(8px)',
+          border: '1px solid hsl(217 20% 90% / 0.6)',
+          boxShadow: '0 2px 8px hsl(217 30% 70% / 0.08)',
+        }}
+      >
+        {legendNodes.slice(0, 5).map((n, i) => (
           <div key={n._id} className="flex items-center gap-2 text-xs">
             <span className="w-2.5 h-2.5 rounded-full shrink-0" style={{ background: DOMAIN_COLORS[i % DOMAIN_COLORS.length] }} />
-            <span className="text-slate-300">{n.name}</span>
+            <span className="text-foreground/70">{n.name}</span>
           </div>
         ))}
       </div>
+
       {/* Stats */}
-      <div className="absolute bottom-3 left-3 z-10 text-xs text-slate-500">
-        {treeNodes.length} nodes · {treeNodes.filter((n) => n.parentId).length} links
+      <div
+        className="absolute bottom-3 left-3 z-10 text-xs"
+        style={{ color: 'hsl(217 20% 60%)' }}
+      >
+        {visibleCount} nœuds · {visibleCount > 1 ? visibleCount - 1 : 0} liens
       </div>
-      <div ref={containerRef} className="w-full rounded-xl overflow-hidden border border-slate-700" style={{ height: '480px' }}>
+
+      <div
+        ref={containerRef}
+        className="w-full h-full rounded-xl overflow-hidden"
+        style={{ border: '1px solid hsl(217 20% 91%)' }}
+      >
         <svg ref={svgRef} className="w-full h-full" />
       </div>
     </div>

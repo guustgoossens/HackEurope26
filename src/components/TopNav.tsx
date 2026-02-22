@@ -34,24 +34,25 @@ export default function TopNav({
                 boxShadow: '0 1px 3px -1px hsl(217 30% 70% / 0.12), 0 1px 0 hsl(217 20% 90% / 0.5)',
             }}
         >
-            {/* Logo + back */}
-            <button
-                onClick={onBack}
-                className="flex items-center gap-2.5 hover:opacity-80 transition-opacity"
-                aria-label="Back to landing"
-            >
-                <img src={folioMark} alt="Folio" className="w-[50px] h-[50px]" />
-                <span className="text-[28px] tracking-tight text-foreground" style={{ fontFamily: "'Newsreader', serif", fontWeight: 500 }}>
-                    folio
-                </span>
-            </button>
-
-            {/* Client name */}
-            <div className="flex-1 text-center">
-                <span className="text-sm text-muted-foreground" style={{ fontFamily: "'Newsreader', serif", fontStyle: 'italic' }}>
+            {/* Logo + back + client name (left) */}
+            <div className="flex items-center gap-6 min-w-0">
+                <button
+                    onClick={onBack}
+                    className="flex items-center gap-2.5 hover:opacity-80 transition-opacity shrink-0"
+                    aria-label="Back to landing"
+                >
+                    <img src={folioMark} alt="Folio" className="w-[60px] h-[60px]" />
+                    <span className="text-[34px] tracking-tight text-foreground" style={{ fontFamily: "'Newsreader', serif", fontWeight: 500 }}>
+                        folio
+                    </span>
+                </button>
+                <span className="text-sm text-muted-foreground truncate" style={{ fontFamily: "'Newsreader', serif", fontStyle: 'italic' }}>
                     {clientName}
                 </span>
             </div>
+
+            {/* Spacer so phase nav stays right */}
+            <div className="flex-1 min-w-4" />
 
             {/* Phase navigation */}
             <div className="flex items-center gap-1">

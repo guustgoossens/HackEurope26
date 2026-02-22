@@ -14,14 +14,12 @@ const demoSkipAuth = import.meta.env.VITE_DEMO_SKIP_AUTH === 'true';
 
 function Root() {
   if (demoSkipAuth) {
+    // No AuthKitProvider in demo: avoid blank screen from WorkOS loading/redirect behavior
     return (
       <ConvexProvider client={convex}>
-        <AuthKitProvider
-          clientId={import.meta.env.VITE_WORKOS_CLIENT_ID ?? ''}
-          redirectUri={import.meta.env.VITE_WORKOS_REDIRECT_URI ?? 'http://localhost:5173/callback'}
-        >
+        <div data-demo-mode className="min-h-screen min-w-full">
           <DemoApp />
-        </AuthKitProvider>
+        </div>
       </ConvexProvider>
     );
   }

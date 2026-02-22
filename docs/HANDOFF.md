@@ -4,7 +4,7 @@
 
 ---
 
-## 1. Reproduire l’environnement local
+## 1. Reproduire l'environnement local
 
 ### Prérequis
 
@@ -18,19 +18,21 @@ cd HackEurope26
 bun install   # ou npm install
 ```
 
-### Variables d’environnement
+### Variables d'environnement
 
 Fichier **`.env.local`** à la racine du projet. Les variables utilisées en local :
 
-| Variable | Rôle | Valeur actuelle (à garder ou adapter) |
-|----------|------|----------------------------------------|
+| Variable | Rôle | Valeur actuelle |
+|----------|------|-----------------|
 | `VITE_DEMO_SKIP_AUTH` | **Mode démo sans WorkOS** | `true` → landing + démo sans login |
 | `VITE_CONVEX_URL` | URL du backend Convex | Déjà renseigné (cloud Convex) |
-| `VITE_WORKOS_CLIENT_ID` | WorkOS (si tu réactives l’auth) | Optionnel en mode démo |
+| `VITE_WORKOS_CLIENT_ID` | WorkOS (si tu réactives l'auth) | Optionnel en mode démo |
 | `VITE_WORKOS_REDIRECT_URI` | Callback WorkOS | `http://localhost:5173/callback` si besoin |
 | `CONVEX_DEPLOYMENT` | Déploiement Convex utilisé par `convex dev` | Déjà renseigné |
 
-En mode démo, **WorkOS est désactivé** : pas de login, pas de `WORKOS_CLIENT_ID` requis pour faire tourner le front.
+En mode démo, **WorkOS est désactivé** : pas de login, pas de `WORKOS_CLIENT_ID` requis.
+
+> **Important :** Toujours redémarrer le serveur Vite depuis le dossier `HackEurope26` après avoir modifié `.env.local`. Sinon les variables ne sont pas chargées et le mode démo ne s'active pas — résultat : page blanche.
 
 ### Lancer le projet
 
@@ -39,7 +41,7 @@ bun run dev
 # ou: npm run dev
 ```
 
-- **Front** : http://localhost:5173  
+- **Front** : http://localhost:5173
 - **Convex** : suit selon la config (cloud ou local).
 
 ---
@@ -49,62 +51,141 @@ bun run dev
 En local avec `VITE_DEMO_SKIP_AUTH=true` :
 
 | URL | Contenu |
-|-----|--------|
-| **`/`** | **Landing** (design marketing, thème clair, graph D3 hero, CTA « Voir la démo ») |
-| **`/demo`** | **App démo** : Layout + fiche client « Cabinet Dupont & Associés » branchée Convex (phases Onboard / Explore / Structure / Verify / Use, graph, agents, etc.) |
+|-----|---------|
+| **`/`** | **Landing** (marketing, thème clair, graph D3 hero animé, CTA « Voir la démo ») |
+| **`/demo`** | **DemoIndex** : UI démo complète, 3 phases (Explorer → Structurer → Vérifier), client Convex « Hartley & Associates LLP » |
 
 Comportement :
 
-- Sur **`/`** : clic sur « Get Started » / « Voir la démo » ou sur la zone du graph → navigation vers **`/demo`** (pas de WorkOS).
-- Sur **`/demo`** : bouton « Back to Dashboard » (ou équivalent) renvoie vers **`/`** (landing).
-- Pas de router externe : tout est géré en state + `history.pushState` dans `src/DemoApp.tsx`.
-
-À faire attention : ne pas casser la synchro URL ↔ écran (landing vs démo) si tu ajoutes des routes ou un router.
+- Sur **`/`** : clic sur « Voir la démo » / zone du graph → navigation vers **`/demo`**.
+- Sur **`/demo`** : bouton « Accueil » (TopNav) → retour vers **`/`**.
+- Pas de router externe : géré par `useState` + `history.pushState` dans `src/DemoApp.tsx`.
 
 ---
 
-## 3. Ce qui est en place (design + démo)
+## 3. Ce qui est en place
 
-- **Landing** (`src/pages/Landing.tsx`) : design Lovable (folio), thème clair, graph D3 hero, sections produit, CTA.
-- **Démo** : même code que l’app « réelle » (Layout + `ClientDetail`), mais alimentée par le **client démo Convex** (sans auth).
-- **Backend démo** :
-  - **Données** : `convex/demoData.ts` — client « Hartley & Associates LLP » (phase explore) + seed complet via `createDemoClient` puis `insertDemoMessy` (knowledge tree, contradictions, data_sources, explorations, agent_events). Schéma et relations : `convex/SCHEMA.md`.
-  - `convex/clients.ts` : `getDemo` (query) pour récupérer le client `createdBy: "demo"`. Création du démo faite côté front via `demoData.createDemoClient` + `demoData.insertDemoMessy`.
-- **Design de la démo** : la page démo **est** la page app (Layout sombre + ClientDetail avec graph D3, ExploreVisualization, NodeDetailPanel, Verify questionnaire, etc.). Le « design de la démo » = ce que tu vois sur **`/demo`** (pas un second design à part).
+### Landing (`src/pages/Landing.tsx`)
+
+Design marketing, thème clair. Sections : hero (graph D3 animé), problème, how-it-works (5 étapes), comparison (flat search vs Folio), data moat, who it's for, vision, early access.
+
+**Graph hero** : `src/components/landing/LandingGraph.tsx` — D3 force-directed avec nœuds blob organiques (SVG paths navy `#0b172a`), liens quadratiques bezier, labels radially outward dans un layer séparé. Nœuds révélés progressivement via `gVis` state (interval de 150ms). `alphaDecay(0)` → simulation toujours active, nœuds draggables.
+
+**Boutons landing** : classes CSS organiques (`.btn-organic`, `.btn-organic-secondary`, `.btn-organic-pill`, `.input-organic`) dans `src/index.css` — border-radius légèrement asymétrique pour un rendu handcrafted.
+
+> Note : `src/components/landing/LandingGraphEditorial.tsx` est un SVG statique éditorial (nœuds blob + arêtes courbes, monochrome navy). Pas utilisé actuellement dans la landing, disponible si besoin d'une version sans D3.
+
+### Démo (`/demo`)
+
+La démo est rendue par **`src/pages/DemoIndex.tsx`** (pas `Layout + ClientDetail`). Elle a une TopNav propre (`src/components/TopNav.tsx`) et 3 phases numérotées :
+
+#### Phase 1 — Explorer (`src/components/ExplorePhase.tsx`)
+
+Stepper vertical 3 étapes :
+1. **Connexion des sources** : cartes par source (Gmail/Drive/Sheets) avec statut de connexion et bouton « Connecter via Composio ». La connexion ouvre un popup OAuth Composio via `src/hooks/useComposioConnect.ts` (hook pleinement implémenté : crée la data source en Convex, ouvre le popup, poll jusqu'à fermeture).
+2. **Exploration en cours** : barres de progression par source + log animé de découverte de fichiers.
+3. **Bilan** : stats globales (éléments analysés, signalés) + CTA « Passer à la structuration ».
+
+#### Phase 2 — Structurer
+
+Layout : `KnowledgeGraph` (flex-1) + `AgentFeed` (w-72 droite).
+
+**KnowledgeGraph** (`src/components/KnowledgeGraph.tsx`) : graphe D3 force-directed. Prop `cleanMode: boolean` (défaut `false`) :
+- `cleanMode=false` : tous les nœuds Convex (46 nœuds de `insertDemoMessy`), répulsion forte.
+- `cleanMode=true` : filtre sur `type === 'domain' || type === 'skill'` uniquement, layout plus organisé.
+
+Animation « dirty → clean » : bouton « Structurer ▶ » déclenche un overlay de 3 lignes séquentielles (« Suppression des doublons… / Regroupement par domaine… / Validation des liens… » via setInterval), puis `cleanMode` passe à `true`.
+
+#### Phase 3 — Vérifier
+
+Layout : `KnowledgeGraph` (flex-1) + `VerifyPhase` (w-96 droite) — panel latéral, pas d'overlay centré.
+
+**VerifyPhase** (`src/components/VerifyPhase.tsx`) : affiche les questions de vérification avec le **contexte de la contradiction** (sourceA, sourceB, valueA, valueB depuis `api.contradictions.listByClient`). Options en style radio-card. État final « Base vérifiée » dans le même panel.
+
+### Backend démo (Convex — inchangé)
+
+- **Client** : « Hartley & Associates LLP » (`createdBy: "demo"`).
+- **Seed** : `convex/demoData.ts` — `createDemoClient` + `insertDemoMessy` (knowledge tree 46 nœuds, contradictions, data_sources, explorations, agent_events).
+- **Query** : `api.clients.getDemo` récupère le client demo par `createdBy: "demo"`.
+- Schéma complet : `convex/SCHEMA.md`.
+
+### Agent pipeline (Python — inchangé)
+
+Agents Python dans `agents/` — 4 phases (Explore → Structure → Verify → Use). Voir `docs/agent_pipeline.md`. Aucune modification dans ce PR.
 
 ---
 
-## 4. Réactiver WorkOS (auth)
+## 4. Architecture des providers (mode démo vs auth)
+
+### Mode démo (`VITE_DEMO_SKIP_AUTH=true`)
+
+```
+ErrorBoundary
+  └── ConvexProvider
+        └── div[data-demo-mode]
+              └── DemoApp
+                    ├── path=/ → Landing
+                    └── path=/demo → DemoIndex (3 phases)
+```
+
+`AuthKitProvider` est **omis** en mode démo — il causait une page blanche (WorkOS en loading/redirect bloquait le rendu des enfants).
+
+### Mode auth (`VITE_DEMO_SKIP_AUTH=false` ou absent)
+
+```
+ErrorBoundary
+  └── AuthKitProvider
+        └── ConvexProviderWithAuthKit
+              └── App
+                    ├── unauthenticated → Landing (sign-in CTA)
+                    └── authenticated → Layout → Dashboard / ClientDetail
+```
+
+---
+
+## 5. Réactiver WorkOS (auth)
 
 Pour repasser en mode « avec login » :
 
 1. Dans **`.env.local`** : `VITE_DEMO_SKIP_AUTH=false` (ou supprimer la variable).
-2. Dans le **dashboard Convex** : définir `WORKOS_CLIENT_ID` (et éventuellement les autres variables WorkOS si besoin).
+2. Dans le **dashboard Convex** : définir `WORKOS_CLIENT_ID`.
 3. Redémarrer le front.
 
-Alors : **`/`** affiche la landing, et « Get Started » déclenche le flux WorkOS (redirect, callback, puis app authentifiée avec Dashboard → clients).
+---
+
+## 6. Fichiers clés
+
+| Fichier | Rôle |
+|---------|------|
+| `src/main.tsx` | Branchement démo / auth (providers) |
+| `src/DemoApp.tsx` | Routing `/` vs `/demo`, chargement client démo, rendu Landing ou DemoIndex |
+| `src/pages/DemoIndex.tsx` | UI démo 3 phases (Explorer / Structurer / Vérifier), orchestration état |
+| `src/components/ExplorePhase.tsx` | Phase 1 : stepper + Composio connect |
+| `src/components/KnowledgeGraph.tsx` | Phase 2/3 : graphe D3 light theme + prop cleanMode |
+| `src/components/VerifyPhase.tsx` | Phase 3 : panel latéral vérification + contexte contradictions |
+| `src/components/TopNav.tsx` | Barre de navigation démo (logo + phases + play/pause + retour) |
+| `src/components/AgentFeed.tsx` | Feed temps réel des événements agents (Phase 2) |
+| `src/components/landing/LandingGraph.tsx` | Graph D3 hero landing (nœuds blob, liens courbes) |
+| `src/hooks/useComposioConnect.ts` | Hook OAuth Composio (crée data source + popup + poll) |
+| `src/App.tsx` | App avec auth (Dashboard, ClientDetail, 5 phases) |
+| `convex/clients.ts` | `getDemo`, `get` — queries clients |
+| `convex/demoData.ts` | Seed démo : `createDemoClient`, `insertDemoMessy`, `insertDemoClean`, `clearDemo` |
+| `convex/http.ts` | 11 endpoints HTTP pour le bridge agent Python → Convex |
+| `convex/SCHEMA.md` | Documentation du schéma Convex (11 tables) |
+| `docs/agent_pipeline.md` | Architecture du pipeline agent Python (4 phases, outils, LLM adapters) |
+| `docs/architecture.md` | Architecture système (3 couches : frontend, Convex, Python) |
+| `docs/DECISIONS.md` | Décisions techniques clés avec rationale |
 
 ---
 
-## 5. Fichiers utiles pour la suite
+## 7. Suite possible
 
-- **`src/main.tsx`** : choix entre mode démo (`DemoApp`) et mode auth (`App` + WorkOS).
-- **`src/DemoApp.tsx`** : routing landing vs démo (`/` vs `/demo`), chargement du client démo, rendu `ClientDetail`.
-- **`src/App.tsx`** : app avec auth (Dashboard, ClientDetail, etc.).
-- **`convex/clients.ts`** : `getDemo` (données démo).
-- **`convex/demoData.ts`** : `createDemoClient`, `insertDemoMessy`, `insertDemoClean`, `clearDemo` — seed démo pour `/demo`. Doc schéma : **`convex/SCHEMA.md`**.
-- **`docs/README.md`** : contexte produit et vision.
-- **`CLAUDE.md`** : commandes, archi, conventions Convex.
+- Intégrer Composio en prod (les credentials Composio ne sont pas configurés en démo — le hook gère l'erreur gracieusement).
+- Ajouter un vrai router (ex. React Router) pour gérer `/`, `/demo`, et `/callback` proprement.
+- Relier `DemoIndex` au pipeline agent réel : pour l'instant la Phase 1 est mockée (animationStep/exploreStep en local), les phases 2/3 sont branchées Convex.
+- Auto-play démo : `isPlaying` state dans DemoIndex, progression automatique entre phases.
+- Vérifier que le build Vite (`bun run build`) sert correctement la SPA avec fallback sur `/demo`.
 
 ---
 
-## 6. Suite possible (idées)
-
-- Ajouter un vrai router (ex. React Router) et garder `/` et `/demo` propres.
-- Réactiver WorkOS en prod / pour certains environnements tout en gardant le mode démo en dev.
-- Enrichir les données démo (`createDemo`) ou le seed pour des scénarios de démo plus poussés.
-- Vérifier que le déploiement (Vite build + Convex) sert bien la landing en `/` et la démo en `/demo` (config serveur / SPA fallback).
-
----
-
-*Dernière mise à jour : handoff Emeric → Antigravity (Google).*
+*Dernière mise à jour : refonte UI/UX démo + fix blank page.*

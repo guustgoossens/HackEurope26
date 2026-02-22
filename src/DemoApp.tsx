@@ -18,7 +18,6 @@ export function DemoApp() {
   const [path, setPath] = useState(() =>
     window.location.pathname === DEMO_PATH ? DEMO_PATH : '/',
   );
-
   useEffect(() => {
     const onPopState = () => setPath(window.location.pathname);
     window.addEventListener('popstate', onPopState);

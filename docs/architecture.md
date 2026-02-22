@@ -13,10 +13,11 @@ System architecture, data model, and communication patterns.
 │  Dashboard ← useQuery → Convex reactive subscriptions        │
 │  ClientDetail ← useMutation → Convex mutations               │
 │                                                              │
-│  Pages: Dashboard, ClientDetail (5 phase panels)             │
-│  Components: PhaseIndicator, AgentEventFeed, ExploreMetrics, │
-│    KnowledgeTree, ContradictionsList, QuestionCard,          │
-│    KnowledgeEntry, Layout                                    │
+│  Auth app: Dashboard, ClientDetail (5 phase panels)          │
+│  Demo app: Landing, DemoIndex (3 phases), ExplorePhase,      │
+│    KnowledgeGraph (cleanMode), VerifyPhase, TopNav,          │
+│    AgentFeed, LandingGraph (D3 animated)                     │
+│  Shared components: NodeDetailPanel, AgentFeed, icons        │
 └──────────────────────────┬──────────────────────────────────┘
                            │ Convex client SDK
                            │ (real-time subscriptions)
@@ -158,21 +159,55 @@ All endpoints in `convex/http.ts`, authenticated via `Bearer AGENT_AUTH_TOKEN`.
 
 ## Frontend Routing
 
-No client-side router — page state managed via `useState<Page>` in `App.tsx`.
+No client-side router. Two separate entry points depending on `VITE_DEMO_SKIP_AUTH`.
+
+### Demo mode (`VITE_DEMO_SKIP_AUTH=true`)
+
+URL routing via `useState` + `history.pushState` in `DemoApp.tsx`. No WorkOS involved.
 
 ```
-App
-├── Unauthenticated → LandingPage (sign-in CTA)
-└── Authenticated → Layout
-    ├── page.type === 'dashboard' → Dashboard
-    └── page.type === 'client'   → ClientDetail
-        └── client.phase determines which panel renders:
-            ├── onboard   → OnboardPanel
-            ├── explore   → ExplorePanel
-            ├── structure → StructurePanel
-            ├── verify    → VerifyPanel
-            └── use       → UsePanel
+main.tsx: ConvexProvider → div[data-demo-mode] → DemoApp
+                                                      │
+                                    ┌─────────────────┴──────────────────┐
+                                    │                                    │
+                               path='/'                            path='/demo'
+                                    │                                    │
+                                Landing                            DemoIndex
+                          (marketing, hero graph,            (3-phase demo UI)
+                           D3 LandingGraph, CTA)                    │
+                                                     ┌──────────────┼──────────────┐
+                                                     │              │              │
+                                                  phase=1        phase=2        phase=3
+                                                     │              │              │
+                                               ExplorePhase    KnowledgeGraph  KnowledgeGraph
+                                               (3-step        + AgentFeed     + VerifyPhase
+                                               stepper,       (flex-1 + w-72) (flex-1 + w-96)
+                                               Composio)      dirty→clean
+                                                              animation
 ```
+
+### Auth mode (`VITE_DEMO_SKIP_AUTH=false` or unset)
+
+Page state managed via `useState<Page>` in `App.tsx`. WorkOS handles login/SSO.
+
+```
+main.tsx: AuthKitProvider → ConvexProviderWithAuthKit → App
+                                                          │
+                                          ┌───────────────┴───────────────┐
+                                          │                               │
+                                   Unauthenticated                  Authenticated
+                                          │                               │
+                                    Landing (CTA)                      Layout
+                                                               ┌──────────┴──────────┐
+                                                               │                     │
+                                                          Dashboard               ClientDetail
+                                                                           (5 phase panels driven
+                                                                            by client.phase in Convex)
+```
+
+> **Why `AuthKitProvider` is omitted in demo mode:** WorkOS's loading/redirect lifecycle kept the
+> component tree from rendering until auth resolved, producing a blank page. The demo branch wraps
+> `DemoApp` in a plain `div[data-demo-mode]` instead.
 
 ---
 

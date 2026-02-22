@@ -198,7 +198,7 @@ function VerifyCard({ selected, onSelect }: { selected: number | null; onSelect:
           <button
             key={o}
             onClick={() => onSelect(i)}
-            className={cn('w-full text-left px-4 py-2.5 rounded-lg border text-sm transition-all hover:-translate-y-0.5 hover:shadow-sm')}
+            className={cn('btn-organic-secondary w-full text-left px-4 py-2.5 border text-sm hover:shadow-sm')}
             style={
               selected === i
                 ? { borderColor: 'hsl(var(--primary))', background: 'hsl(var(--primary) / 0.05)', color: 'hsl(var(--foreground))' }
@@ -288,12 +288,12 @@ function DataMoatFlow() {
 /* ─── Page ─── */
 export default function Landing({ onSignIn, authLoading = false }: LandingProps) {
   const [gVis, setGVis] = useState(0);
-  const [navVisible, setNavVisible] = useState(false);
+  const [navVisible, setNavVisible] = useState(true); // true on first paint so content is never blank
   const [verifyOpt, setVerifyOpt] = useState<number | null>(null);
   const [demoSubmitted, setDemoSubmitted] = useState(false);
 
   useEffect(() => {
-    setTimeout(() => setNavVisible(true), 100);
+    // already true; kept in case we want a short delay again later
   }, []);
 
   useEffect(() => {
@@ -336,8 +336,8 @@ export default function Landing({ onSignIn, authLoading = false }: LandingProps)
       >
         <div className="max-w-6xl mx-auto px-6 h-16 flex items-center justify-between">
           <div className="flex items-center gap-2.5">
-            <img src={folioMark} alt="Folio" className="w-[50px] h-[50px]" />
-            <span className="text-[32px] tracking-tight" style={{ fontFamily: "'Newsreader', serif", fontWeight: 500, color: 'hsl(var(--foreground))' }}>folio</span>
+            <img src={folioMark} alt="Folio" className="w-[60px] h-[60px]" />
+            <span className="text-[38px] tracking-tight" style={{ fontFamily: "'Newsreader', serif", fontWeight: 500, color: 'hsl(var(--foreground))' }}>folio</span>
           </div>
           <div className="flex items-center gap-8">
             <a href="#product" className="text-sm hidden sm:block transition-colors" style={{ color: 'hsl(var(--muted-foreground))' }}>Product</a>
@@ -346,7 +346,7 @@ export default function Landing({ onSignIn, authLoading = false }: LandingProps)
             <button
               onClick={onSignIn}
               disabled={authLoading}
-              className="px-4 py-2 text-sm font-medium rounded-md transition-colors disabled:opacity-60 disabled:cursor-not-allowed"
+              className="btn-organic px-4 py-2 text-sm font-medium transition-colors disabled:opacity-60 disabled:cursor-not-allowed"
               style={{ background: 'hsl(var(--primary))', color: 'hsl(var(--primary-foreground))' }}
             >
               {authLoading ? 'Chargement…' : 'Get Started'}
@@ -387,15 +387,15 @@ export default function Landing({ onSignIn, authLoading = false }: LandingProps)
             <button
               onClick={onSignIn}
               disabled={authLoading}
-              className="px-6 py-3 font-medium rounded-md transition-colors text-sm disabled:opacity-60 disabled:cursor-not-allowed"
+              className="btn-organic px-6 py-3 font-medium transition-colors text-sm disabled:opacity-60 disabled:cursor-not-allowed"
               style={{ background: 'hsl(var(--primary))', color: 'hsl(var(--primary-foreground))' }}
             >
               {authLoading ? 'Chargement…' : 'Voir la démo'}
             </button>
             <a
               href="#product"
-              className="px-6 py-3 font-medium rounded-md transition-colors text-sm"
-              style={{ border: '1px solid hsl(var(--border))', color: 'hsl(var(--foreground))', background: 'transparent' }}
+              className="btn-organic-secondary px-6 py-3 font-medium transition-colors text-sm border"
+              style={{ borderColor: 'hsl(var(--border))', color: 'hsl(var(--foreground))', background: 'transparent' }}
             >
               See how it works
             </a>
@@ -406,7 +406,7 @@ export default function Landing({ onSignIn, authLoading = false }: LandingProps)
         >
           <LandingGraph visibleCount={gVis} className="w-full h-[380px] md:h-[520px]" />
           <div
-            className="absolute bottom-5 left-1/2 -translate-x-1/2 flex items-center gap-2.5 px-4 py-2 rounded-full backdrop-blur-md text-sm shadow-sm transition-colors cursor-pointer hover:bg-black/5"
+            className="btn-organic-pill absolute bottom-5 left-1/2 -translate-x-1/2 flex items-center gap-2.5 px-4 py-2 backdrop-blur-md text-sm shadow-sm transition-colors cursor-pointer hover:bg-black/5"
             style={{
               background: 'hsl(var(--card) / 0.9)',
               border: '1px solid hsl(var(--border))',
@@ -620,7 +620,7 @@ export default function Landing({ onSignIn, authLoading = false }: LandingProps)
                   <input
                     type="email"
                     placeholder="Enter your work email"
-                    className="flex-1 px-4 py-3 rounded-md text-sm shadow-sm outline-none"
+                    className="input-organic flex-1 px-4 py-3 text-sm shadow-sm outline-none"
                     style={{
                       background: 'hsl(var(--card))',
                       border: '1px solid hsl(var(--border))',
@@ -629,7 +629,7 @@ export default function Landing({ onSignIn, authLoading = false }: LandingProps)
                   />
                   <button
                     onClick={() => setDemoSubmitted(true)}
-                    className="px-6 py-3 font-medium rounded-md transition-colors text-sm whitespace-nowrap"
+                    className="btn-organic px-6 py-3 font-medium transition-colors text-sm whitespace-nowrap"
                     style={{ background: 'hsl(var(--primary))', color: 'hsl(var(--primary-foreground))' }}
                   >
                     Request a demo
@@ -648,8 +648,8 @@ export default function Landing({ onSignIn, authLoading = false }: LandingProps)
         <div className="max-w-6xl mx-auto flex flex-col md:flex-row items-center justify-between gap-6">
           <div className="text-center md:text-left">
             <div className="flex items-center gap-2.5">
-              <img src={folioMark} alt="Folio" className="w-[45px] h-[45px]" />
-              <span className="text-[32px]" style={{ fontFamily: "'Newsreader', serif", fontWeight: 500, color: 'hsl(var(--foreground))' }}>folio</span>
+              <img src={folioMark} alt="Folio" className="w-[54px] h-[54px]" />
+              <span className="text-[38px]" style={{ fontFamily: "'Newsreader', serif", fontWeight: 500, color: 'hsl(var(--foreground))' }}>folio</span>
             </div>
             <p className="text-sm mt-1" style={{ color: 'hsl(var(--muted-foreground))' }}>Make your company navigable.</p>
           </div>
