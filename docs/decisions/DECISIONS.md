@@ -116,6 +116,27 @@ Key architectural and product decisions, with rationale.
 
 ---
 
+## Dynamic Tool Surface Area (not Hardcoded Tool Lists)
+
+**Decision:** Build each agent's tool set dynamically at runtime based on what's actually available — never hardcode tool lists in system prompts or register tools that can't work.
+
+**Why:**
+- An agent that sees a tool it can't use will call it, get an error, and waste turns retrying or working around it
+- Hardcoded tool lists in system prompts drift from reality as integrations change (Composio vs. service account, Gmail vs. Drive)
+- Error-handling fallbacks inside tools ("this tool isn't available, try X instead") are prompt-engineering by another name — the agent shouldn't need to parse error messages to discover its capabilities
+- The ClawdBot principle extends beyond prompts to infrastructure: if you wouldn't put a broken wrench in a toolbox, don't register a broken tool
+
+**Implementation:**
+- `_register_sandbox_tools`: only registers `download_file` when `google` is not None
+- `_build_structurer_executor` / `_build_explorer_executor`: conditionally register tools based on active integrations
+- `_get_structurer_tools` / `_get_explorer_tools`: build tool schemas dynamically, adding Composio tools scoped to relevant source types
+- System prompts list tools from the actual `tools` array, not from a hardcoded description block
+- When Composio is active, agents get `GMAIL_*` / `GOOGLEDRIVE_*` tools directly — no wrapper tools needed
+
+**Rule of thumb:** If a tool requires a dependency that might be None, don't register it. Give the agent tools that work, and let it figure out how to use them.
+
+---
+
 ## Capabilities-Focused Agent Prompts (not Restrictive)
 
 **Decision:** Write agent system prompts in a capabilities-focused style (describe the environment and available tools) rather than a restrictive style (long lists of "do NOT" instructions).
@@ -144,6 +165,25 @@ Key architectural and product decisions, with rationale.
 **Known gap:** Semantic variants (same operation, different argument strings) produce different hashes and are not caught. Needs additional normalization for tools like `run_command` and `install_package`.
 
 **Changed from:** `MAX_CONSECUTIVE_ERRORS = 3` in each agent loop. Changed Feb 2026.
+
+---
+
+## Truncate All External Tool Results (Context Window Protection)
+
+**Decision:** Truncate all external tool results (Composio, sandbox commands) at the integration boundary, before they enter the agent's message history.
+
+**Why:**
+- A single `GMAIL_FETCH_EMAILS` call with `include_payload: True` returned 233K tokens — exceeding Claude's 200K context window and crashing the agent instantly
+- The agent can't protect itself — by the time it sees the result, the context is already blown
+- Truncation must happen in infrastructure (the executor/client layer), not in the prompt ("please don't request too much data")
+- Prompt-based guardrails are best-effort; infrastructure-level truncation is guaranteed
+
+**Implementation:**
+- `composio_client.py`: `MAX_RESULT_CHARS = 30_000` — all Composio results truncated before returning to the agent
+- `master_agent.py`: `run_command` output truncated at 10K chars
+- Truncation logs a warning so operators can see when data is being cut
+
+**Rule of thumb:** Every boundary where external data enters the agent loop needs a size limit. 30K chars (~7.5K tokens) is generous for structured data while leaving room in the 200K context window.
 
 ---
 
