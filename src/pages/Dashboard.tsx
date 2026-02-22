@@ -63,10 +63,10 @@ export function Dashboard({ onSelectClient, devBypassUser }: DashboardProps) {
     return (
       <div className="p-8">
         <div className="animate-pulse space-y-4">
-          <div className="h-8 bg-slate-700 rounded w-48" />
+          <div className="h-8 rounded w-48" style={{ background: 'hsl(var(--muted))' }} />
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
             {[1, 2, 3].map((i) => (
-              <div key={i} className="h-36 bg-slate-800 rounded-xl" />
+              <div key={i} className="h-36 rounded-xl" style={{ background: 'hsl(var(--card))' }} />
             ))}
           </div>
         </div>
@@ -78,12 +78,13 @@ export function Dashboard({ onSelectClient, devBypassUser }: DashboardProps) {
     <div className="p-8">
       <div className="flex items-center justify-between mb-8">
         <div>
-          <h1 className="text-2xl font-bold text-white">{t('dashboard.clients')}</h1>
-          <p className="text-slate-400 mt-1">{t('dashboard.subtitle')}</p>
+          <h1 className="text-2xl font-bold" style={{ color: 'hsl(var(--foreground))', fontFamily: "'Newsreader', serif" }}>{t('dashboard.clients')}</h1>
+          <p className="mt-1 text-sm" style={{ color: 'hsl(var(--muted-foreground))' }}>{t('dashboard.subtitle')}</p>
         </div>
         <button
           onClick={() => setShowForm(!showForm)}
-          className="flex items-center gap-2 px-4 py-2.5 bg-blue-600 text-white rounded-lg text-sm font-medium hover:bg-blue-700 transition-colors"
+          className="btn-organic flex items-center gap-2 px-4 py-2.5 text-white rounded-lg text-sm font-medium transition-colors"
+          style={{ background: 'hsl(217 71% 30%)', boxShadow: '0 4px 12px hsl(217 71% 30% / 0.25)' }}
         >
           <Plus className="w-4 h-4" />
           {t('dashboard.newClient')}
@@ -92,15 +93,16 @@ export function Dashboard({ onSelectClient, devBypassUser }: DashboardProps) {
 
       {/* Inline create form */}
       {showForm && (
-        <div className="mb-6 p-5 bg-slate-800 border border-slate-700 rounded-xl">
-          <h3 className="text-sm font-medium text-slate-300 mb-4">{t('dashboard.createTitle')}</h3>
+        <div className="mb-6 p-5 card-organic border shadow-sm" style={{ background: 'hsl(var(--card))', borderColor: 'hsl(var(--border))' }}>
+          <h3 className="text-sm font-medium mb-4" style={{ color: 'hsl(var(--foreground))' }}>{t('dashboard.createTitle')}</h3>
           <div className="flex gap-3">
             <input
               type="text"
               placeholder={t('dashboard.companyName')}
               value={name}
               onChange={(e) => setName(e.target.value)}
-              className="flex-1 px-3 py-2 bg-slate-900 border border-slate-600 rounded-lg text-sm text-white placeholder-slate-500 focus:outline-none focus:border-blue-500"
+              className="input-organic flex-1 px-3 py-2 border text-sm focus:outline-none focus:ring-1"
+              style={{ background: 'hsl(var(--background))', borderColor: 'hsl(var(--border))', color: 'hsl(var(--foreground))' }}
               autoFocus
             />
             <input
@@ -108,7 +110,8 @@ export function Dashboard({ onSelectClient, devBypassUser }: DashboardProps) {
               placeholder={t('dashboard.industry')}
               value={industry}
               onChange={(e) => setIndustry(e.target.value)}
-              className="flex-1 px-3 py-2 bg-slate-900 border border-slate-600 rounded-lg text-sm text-white placeholder-slate-500 focus:outline-none focus:border-blue-500"
+              className="input-organic flex-1 px-3 py-2 border text-sm focus:outline-none focus:ring-1"
+              style={{ background: 'hsl(var(--background))', borderColor: 'hsl(var(--border))', color: 'hsl(var(--foreground))' }}
               onKeyDown={(e) => {
                 if (e.key === 'Enter') void handleCreate();
               }}
@@ -116,7 +119,8 @@ export function Dashboard({ onSelectClient, devBypassUser }: DashboardProps) {
             <button
               onClick={() => void handleCreate()}
               disabled={creating || !name.trim() || !industry.trim()}
-              className="px-4 py-2 bg-blue-600 text-white rounded-lg text-sm font-medium hover:bg-blue-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+              className="btn-organic px-4 py-2 text-white rounded-lg text-sm font-medium disabled:opacity-50 disabled:cursor-not-allowed"
+              style={{ background: 'hsl(217 71% 30%)' }}
             >
               {creating ? t('common.creating') : t('common.create')}
             </button>
@@ -126,7 +130,8 @@ export function Dashboard({ onSelectClient, devBypassUser }: DashboardProps) {
                 setName('');
                 setIndustry('');
               }}
-              className="px-4 py-2 text-slate-400 hover:text-white transition-colors text-sm"
+              className="px-4 py-2 transition-colors text-sm"
+              style={{ color: 'hsl(var(--muted-foreground))' }}
             >
               {t('common.cancel')}
             </button>
@@ -137,12 +142,13 @@ export function Dashboard({ onSelectClient, devBypassUser }: DashboardProps) {
       {/* Client list */}
       {clients.length === 0 ? (
         <div className="text-center py-20">
-          <Building2 className="w-12 h-12 text-slate-600 mx-auto mb-4" />
-          <h3 className="text-lg font-medium text-slate-300 mb-2">{t('dashboard.noClients')}</h3>
-          <p className="text-slate-500 mb-6">{t('dashboard.noClientsP')}</p>
+          <Building2 className="w-12 h-12 mx-auto mb-4" style={{ color: 'hsl(var(--muted-foreground))' }} />
+          <h3 className="text-lg font-medium mb-2" style={{ color: 'hsl(var(--foreground))' }}>{t('dashboard.noClients')}</h3>
+          <p className="mb-6" style={{ color: 'hsl(var(--muted-foreground))' }}>{t('dashboard.noClientsP')}</p>
           <button
             onClick={() => setShowForm(true)}
-            className="inline-flex items-center gap-2 px-4 py-2.5 bg-blue-600 text-white rounded-lg text-sm font-medium hover:bg-blue-700 transition-colors"
+            className="btn-organic inline-flex items-center gap-2 px-4 py-2.5 text-white rounded-lg text-sm font-medium"
+            style={{ background: 'hsl(217 71% 30%)' }}
           >
             <Plus className="w-4 h-4" />
             {t('dashboard.createClient')}
@@ -154,24 +160,25 @@ export function Dashboard({ onSelectClient, devBypassUser }: DashboardProps) {
             <button
               key={client._id}
               onClick={() => onSelectClient(client._id)}
-              className="text-left p-5 bg-slate-800 border border-slate-700 rounded-xl hover:border-slate-600 hover:bg-slate-800/80 transition-all group"
+              className="card-organic text-left p-5 border transition-all hover:-translate-y-1 shadow-sm hover:shadow-md group"
+              style={{ background: 'hsl(var(--card))', borderColor: 'hsl(var(--border))' }}
             >
               <div className="flex items-start justify-between mb-3">
                 <div className="flex items-center gap-3">
-                  <div className="w-10 h-10 bg-slate-700 rounded-lg flex items-center justify-center">
-                    <Building2 className="w-5 h-5 text-slate-400" />
+                  <div className="w-10 h-10 step-icon-organic flex items-center justify-center shrink-0" style={{ background: 'hsl(var(--primary) / 0.08)' }}>
+                    <Building2 className="w-5 h-5 text-primary" />
                   </div>
                   <div>
-                    <h3 className="font-semibold text-white">{client.name}</h3>
-                    <p className="text-xs text-slate-400">{client.industry}</p>
+                    <h3 className="font-semibold" style={{ color: 'hsl(var(--foreground))' }}>{client.name}</h3>
+                    <p className="text-xs" style={{ color: 'hsl(var(--muted-foreground))' }}>{client.industry}</p>
                   </div>
                 </div>
-                <ChevronRight className="w-4 h-4 text-slate-600 group-hover:text-slate-400 transition-colors mt-1" />
+                <ChevronRight className="w-4 h-4 transition-colors opacity-0 group-hover:opacity-100 mt-1" style={{ color: 'hsl(var(--primary))' }} />
               </div>
               <div className="flex items-center justify-between">
                 <span
                   className={clsx(
-                    'text-xs px-2.5 py-1 rounded-full font-medium capitalize',
+                    'text-[10px] px-2.5 py-1 rounded-full font-medium capitalize',
                     phaseBadgeColors[client.phase] ?? phaseBadgeColors.onboard,
                   )}
                 >

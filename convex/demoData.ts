@@ -56,7 +56,7 @@ export const createLiveClient = mutation({
   returns: v.object({ clientId: v.id('clients') }),
   handler: async (ctx) => {
     const clientId = await ctx.db.insert('clients', {
-      name: 'Hartley & Associates LLP',
+      name: 'Cabinet Dupont & Associés',
       industry: 'Accountancy',
       phase: 'onboard',
       createdBy: 'demo-live',

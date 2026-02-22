@@ -160,16 +160,18 @@ export default function DemoIndex({ clientId, onBack, onSwitchToLive }: DemoInde
                     <div className="absolute inset-0 pointer-events-none z-0"
                         style={{ background: 'radial-gradient(ellipse at 50% 0%, hsl(217 71% 30% / 0.04), transparent 70%)' }} />
 
-            <TopNav
-                clientName={client.name}
-                currentPhase={phase}
-                isPlaying={isPlaying}
-                isComplete={isVerifyComplete}
-                onPhaseChange={handlePhaseChange}
-                onTogglePlay={handleTogglePlay}
-                onBack={onBack}
-                onSwitchToLive={onSwitchToLive}
-            />
+                    <TopNav
+                        clientName={client.name}
+                        currentPhase={phase}
+                        isPlaying={isPlaying}
+                        isComplete={isVerifyComplete}
+                        onPhaseChange={handlePhaseChange}
+                        onTogglePlay={handleTogglePlay}
+                        onBack={onBack}
+                        onSwitchToLive={onSwitchToLive}
+                        activePhaseTitle={info.title}
+                        activePhaseSubtitle={info.subtitle}
+                    />
                 </>
             )}
 
@@ -318,16 +320,6 @@ export default function DemoIndex({ clientId, onBack, onSwitchToLive }: DemoInde
                     </div>
                 )}
 
-                {/* Phase subtitle — only for phases 2 + 3 */}
-                {phase > 1 && phase < 4 && (
-                    <div
-                        className="absolute top-4 left-1/2 -translate-x-1/2 text-center pointer-events-none z-20"
-                        key={phase}
-                        style={{ animation: 'fade-in 0.5s ease-out' }}
-                    >
-                        <p className="text-xs text-muted-foreground">{info.subtitle}</p>
-                    </div>
-                )}
             </main>
         </div>
     );

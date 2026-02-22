@@ -2,7 +2,7 @@ import { useQuery, useMutation } from 'convex/react';
 import { api } from '../../convex/_generated/api';
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { ArrowLeft, Loader2, Play } from 'lucide-react';
+import { ArrowLeft, Loader2, Play, MessageSquare, LayoutTemplate, BookOpen } from 'lucide-react';
 import { useAuth } from '@workos-inc/authkit-react';
 import { PhaseIndicator } from '@/components/PhaseIndicator';
 import { AgentEventFeed } from '@/components/AgentEventFeed';
@@ -46,6 +46,9 @@ export function ClientDetail({ clientId, onBack }: ClientDetailProps) {
 
   const [pipelineStarting, setPipelineStarting] = useState(false);
   const [pipelineError, setPipelineError] = useState<string | null>(null);
+
+  const [activeTab, setActiveTab] = useState<'pipeline' | 'docs'>('pipeline');
+  const [showChat, setShowChat] = useState(false);
 
   if (client === undefined) {
     return (
@@ -121,26 +124,75 @@ export function ClientDetail({ clientId, onBack }: ClientDetailProps) {
             <h1 className="text-2xl font-semibold text-foreground" style={{ fontFamily: "'Newsreader', serif" }}>{client.name}</h1>
             <p className="text-muted-foreground mt-1 text-sm">{client.industry}</p>
           </div>
+
+          <div className="flex items-center gap-3">
+            {/* Tabs */}
+            <div className="flex bg-slate-100 p-1 rounded-lg">
+              <button
+                onClick={() => setActiveTab('pipeline')}
+                className={cn('flex items-center gap-2 px-4 py-1.5 text-sm font-medium rounded-md transition-colors', activeTab === 'pipeline' ? 'bg-white shadow-sm text-foreground' : 'text-muted-foreground hover:text-foreground')}
+              >
+                <LayoutTemplate className="w-4 h-4" />
+                Vue générale
+              </button>
+              <button
+                onClick={() => setActiveTab('docs')}
+                className={cn('flex items-center gap-2 px-4 py-1.5 text-sm font-medium rounded-md transition-colors', activeTab === 'docs' ? 'bg-white shadow-sm text-foreground' : 'text-muted-foreground hover:text-foreground')}
+              >
+                <BookOpen className="w-4 h-4" />
+                Documentation
+              </button>
+            </div>
+
+            {/* Chat Toggle */}
+            <button
+              onClick={() => setShowChat(!showChat)}
+              className="btn-organic flex items-center gap-2 px-4 py-2 text-white text-sm font-medium rounded-lg"
+              style={{ background: showChat ? 'hsl(217 71% 20%)' : 'hsl(217 71% 30%)' }}
+            >
+              <MessageSquare className="w-4 h-4" />
+              Chat {showChat ? 'On' : 'Off'}
+            </button>
+          </div>
         </div>
 
-        {/* Phase indicator */}
-        <div className="mb-8">
-          <PhaseIndicator currentPhase={client.phase} />
-        </div>
+        <div className="flex gap-6 max-w-full relative">
+          <div className="flex-1 min-w-0">
+            {/* Phase indicator only on default tab */}
+            {activeTab === 'pipeline' && (
+              <div className="mb-8">
+                <PhaseIndicator currentPhase={client.phase} />
+              </div>
+            )}
 
-        {/* Phase-specific content */}
-        {client.phase === 'onboard' && (
-          <OnboardPanel
-            clientId={clientId}
-            onStartExplore={() => void handleStartExplore()}
-            pipelineStarting={pipelineStarting}
-            pipelineError={pipelineError}
-          />
-        )}
-        {client.phase === 'explore' && <LiveExplorePanel clientId={clientId} />}
-        {client.phase === 'structure' && <StructurePanel clientId={clientId} />}
-        {client.phase === 'verify' && <VerifyWrapper clientId={clientId} />}
-        {client.phase === 'use' && <UsePanel clientId={clientId} />}
+            {/* Content */}
+            {activeTab === 'docs' ? (
+              <StructurePanel clientId={clientId} />
+            ) : (
+              <>
+                {client.phase === 'onboard' && (
+                  <OnboardPanel
+                    clientId={clientId}
+                    onStartExplore={() => void handleStartExplore()}
+                    pipelineStarting={pipelineStarting}
+                    pipelineError={pipelineError}
+                  />
+                )}
+                {client.phase === 'explore' && <LiveExplorePanel clientId={clientId} />}
+                {client.phase === 'structure' && <StructurePanel clientId={clientId} />}
+                {client.phase === 'verify' && <VerifyWrapper clientId={clientId} />}
+                {client.phase === 'use' && <UsePanel clientId={clientId} />}
+              </>
+            )}
+          </div>
+
+          {/* Sliding Chat Panel */}
+          {showChat && (
+            <div className="w-80 shrink-0 border-l border-slate-200 pl-6 h-[calc(100vh-140px)] overflow-y-auto sticky top-6">
+              <AgentEventFeed clientId={clientId} />
+            </div>
+          )}
+        </div>
       </div>
     </div>
   );
@@ -204,15 +256,15 @@ function OnboardPanel({
                 style={
                   isConnected
                     ? {
-                        background: 'hsl(152 40% 96%)',
-                        border: '1px solid hsl(152 35% 85%)',
-                        color: 'hsl(152 50% 32%)',
-                      }
+                      background: 'hsl(152 40% 96%)',
+                      border: '1px solid hsl(152 35% 85%)',
+                      color: 'hsl(152 50% 32%)',
+                    }
                     : {
-                        background: 'linear-gradient(135deg, hsl(217 55% 96%), hsl(217 45% 93%))',
-                        border: '1px solid hsl(217 35% 85%)',
-                        color: 'hsl(217 60% 45%)',
-                      }
+                      background: 'linear-gradient(135deg, hsl(217 55% 96%), hsl(217 45% 93%))',
+                      border: '1px solid hsl(217 35% 85%)',
+                      color: 'hsl(217 60% 45%)',
+                    }
                 }
               >
                 {isConnecting ? (
@@ -331,8 +383,7 @@ function LiveExplorePanel({ clientId }: { clientId: string }) {
       {/* Pipeline status: phase progress, active agents, last activity */}
       <ExploreMetrics clientId={clientId} />
 
-      {/* Live agent event log */}
-      <AgentEventFeed clientId={clientId} />
+      <ExploreMetrics clientId={clientId} />
     </div>
   );
 }
@@ -401,10 +452,8 @@ function StructurePanel({ clientId }: { clientId: string }) {
           )}
         </div>
       )}
-
-      <AgentEventFeed clientId={clientId} />
     </div>
-  );
+  )
 }
 
 function VerifyWrapper({ clientId }: { clientId: string }) {
@@ -435,7 +484,6 @@ function VerifyWrapper({ clientId }: { clientId: string }) {
         />
       </div>
       <ContradictionsList clientId={clientId} />
-      <AgentEventFeed clientId={clientId} />
     </div>
   );
 }
@@ -511,8 +559,6 @@ function UsePanel({ clientId }: { clientId: string }) {
           </div>
         </div>
       )}
-
-      <AgentEventFeed clientId={clientId} />
     </div>
   );
 }

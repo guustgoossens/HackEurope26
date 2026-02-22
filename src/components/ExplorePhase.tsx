@@ -462,9 +462,9 @@ export default function ExplorePhase({ clientId, animationStep, onNextPhase, liv
                                     onClick={onNextPhase}
                                     className="flex items-center gap-2 px-6 py-3 btn-organic-pill text-sm font-medium transition-all duration-300 hover:-translate-y-0.5 active:scale-[0.98]"
                                     style={{
-                                        background: 'linear-gradient(135deg, hsl(217 65% 52%), hsl(217 75% 43%))',
+                                        background: 'hsl(217 71% 30%)',
                                         color: 'hsl(0 0% 100%)',
-                                        boxShadow: '0 4px 16px hsl(217 60% 50% / 0.3)',
+                                        boxShadow: '0 4px 12px hsl(217 71% 30% / 0.25)',
                                     }}
                                 >
                                     Passer à la structuration
