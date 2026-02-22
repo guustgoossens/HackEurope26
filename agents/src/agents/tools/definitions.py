@@ -94,6 +94,62 @@ EXPLORER_TOOLS = [
                         "required": ["id", "name"],
                     },
                 },
+                "data_categories": {
+                    "type": "array",
+                    "description": "Categorize discovered resources by business function",
+                    "items": {
+                        "type": "object",
+                        "properties": {
+                            "category": {"type": "string", "description": "Business category (e.g. Invoices, Contracts, Payroll, Tax, Reports)"},
+                            "count": {"type": "integer", "description": "Number of resources in this category"},
+                            "sample_names": {
+                                "type": "array",
+                                "items": {"type": "string"},
+                                "description": "Up to 3 example filenames in this category",
+                            },
+                        },
+                        "required": ["category", "count"],
+                    },
+                },
+                "key_entities": {
+                    "type": "array",
+                    "description": "Notable companies, people, or products found across resources",
+                    "items": {
+                        "type": "object",
+                        "properties": {
+                            "name": {"type": "string", "description": "Entity name"},
+                            "type": {"type": "string", "description": "Entity type: company, person, or product"},
+                            "mention_count": {"type": "integer", "description": "Approximate number of mentions"},
+                        },
+                        "required": ["name", "type"],
+                    },
+                },
+                "date_range": {
+                    "type": "object",
+                    "description": "Temporal coverage of discovered data",
+                    "properties": {
+                        "earliest": {"type": "string", "description": "Earliest date found (ISO or human-readable)"},
+                        "latest": {"type": "string", "description": "Latest date found (ISO or human-readable)"},
+                    },
+                },
+                "languages": {
+                    "type": "array",
+                    "items": {"type": "string"},
+                    "description": "Languages detected in resources (e.g. 'fr', 'en')",
+                },
+                "quality_flags": {
+                    "type": "array",
+                    "description": "Data quality observations",
+                    "items": {
+                        "type": "object",
+                        "properties": {
+                            "flag": {"type": "string", "description": "Short flag name (e.g. 'missing_data', 'duplicates', 'outdated')"},
+                            "count": {"type": "integer", "description": "Number of occurrences"},
+                            "description": {"type": "string", "description": "Brief explanation"},
+                        },
+                        "required": ["flag", "description"],
+                    },
+                },
             },
             "required": ["summary", "discovered_files"],
         },

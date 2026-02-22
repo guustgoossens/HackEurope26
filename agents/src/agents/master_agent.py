@@ -4,7 +4,7 @@ import logging
 import os
 
 from .llm.adapters import AnthropicAdapter, GeminiAdapter
-from .tools.definitions import MASTER_TOOLS, EXPLORER_TOOLS, SANDBOX_TOOLS, get_tool_schema, ToolCall
+from .tools.definitions import MASTER_TOOLS, EXPLORER_TOOLS, STRUCTURER_TOOLS, SANDBOX_TOOLS, get_tool_schema, ToolCall
 from .tools.executor import ToolExecutor
 from .tools.hybrid_executor import HybridToolExecutor
 from .storage.convex_client import ConvexClient
@@ -174,7 +174,7 @@ class MasterAgent:
         # Non-Composio path: include only the custom Google tool for this source
         source_google_tool = {"gmail": "list_gmail_messages", "drive": "list_drive_files", "sheets": "read_sheet"}
         relevant = source_google_tool.get(source_type)
-        tools = [t for t in EXPLORER_TOOLS if not t.name in ("list_gmail_messages", "list_drive_files", "read_sheet") or t.name == relevant]
+        tools = [t for t in EXPLORER_TOOLS if t.name not in ("list_gmail_messages", "list_drive_files", "read_sheet") or t.name == relevant]
         return [get_tool_schema(t) for t in tools] + sandbox_schemas
 
     async def _tool_list_gmail(
@@ -666,6 +666,7 @@ class MasterAgent:
             for ws in structurer_workspaces:
                 self.file_manager.cleanup(ws)
 
+            all_structurer_findings = []
             for report in structurer_reports:
                 if isinstance(report, Exception):
                     logger.error(f"Structurer failed: {report}")
@@ -675,6 +676,17 @@ class MasterAgent:
                 for contradiction in report.contradictions:
                     if contradiction not in self.state.open_contradictions:
                         self.state.open_contradictions.append(contradiction)
+                # Accumulate findings for cross-batch reconciliation
+                all_structurer_findings.append(
+                    f"=== Batch ({report.source_type}) ===\n"
+                    + "\n".join(f"- {f}" for f in report.findings)
+                )
+
+            # Cross-batch reconciliation: dedicated Claude call to find contradictions
+            if all_structurer_findings:
+                await self._run_cross_batch_reconciliation(
+                    "\n\n".join(all_structurer_findings)
+                )
 
         await self.convex.update_pipeline(
             self.client_id, "structure", 100, ["master"]
@@ -685,6 +697,100 @@ class MasterAgent:
             "complete",
             f"Structure phase complete. {len(tree_nodes_created)} tree nodes, "
             f"{len(self.state.open_contradictions)} contradictions found.",
+        )
+
+    async def _run_cross_batch_reconciliation(self, all_findings: str):
+        """Dedicated Claude call to find contradictions across structurer batches."""
+        await self.convex.emit_event(
+            self.client_id, "master", "info",
+            "Running cross-batch reconciliation to detect contradictions...",
+        )
+
+        contradiction_tool_def = next(
+            t for t in STRUCTURER_TOOLS if t.name == "add_contradiction"
+        )
+        tools = [get_tool_schema(contradiction_tool_def)]
+
+        system = (
+            "You are a contradiction detector. You will receive findings from multiple structurer batches "
+            "that each processed different sets of business documents.\n\n"
+            "Your ONLY job is to find contradictions BETWEEN these batches.\n"
+            "Look for:\n"
+            "- Numeric discrepancies (different amounts for the same invoice/transaction)\n"
+            "- Status conflicts (paid vs pending, active vs closed)\n"
+            "- Version conflicts (draft vs final with different content)\n"
+            "- Date mismatches (different dates for the same event)\n"
+            "- Entity mismatches (different names/addresses for the same entity)\n\n"
+            "For EACH contradiction found, call add_contradiction with specific details.\n"
+            "If you find no contradictions, simply state that and stop."
+        )
+
+        messages = [
+            {
+                "role": "user",
+                "content": (
+                    f"Compare these findings from different structurer batches and report any contradictions.\n\n"
+                    f"{all_findings[:15000]}"
+                ),
+            }
+        ]
+
+        max_reconciliation_turns = 5
+        for turn in range(max_reconciliation_turns):
+            text, tool_calls_raw = await self.claude.complete_with_tools_messages(
+                messages, tools, system
+            )
+
+            if not tool_calls_raw:
+                break
+
+            assistant_content = []
+            if text:
+                assistant_content.append({"type": "text", "text": text})
+            for tc in tool_calls_raw:
+                assistant_content.append(
+                    {
+                        "type": "tool_use",
+                        "id": tc["id"],
+                        "name": tc["name"],
+                        "input": tc["input"],
+                    }
+                )
+            messages.append({"role": "assistant", "content": assistant_content})
+
+            tool_results = []
+            for tc in tool_calls_raw:
+                call = ToolCall(id=tc["id"], name=tc["name"], input=tc["input"])
+                if call.name == "add_contradiction":
+                    result = await self._tool_add_contradiction(
+                        description=call.input.get("description", ""),
+                        source_a=call.input.get("source_a", ""),
+                        source_b=call.input.get("source_b", ""),
+                        value_a=call.input.get("value_a", ""),
+                        value_b=call.input.get("value_b", ""),
+                    )
+                    logger.info(f"Cross-batch contradiction: {call.input.get('description', '')}")
+                    tool_results.append(
+                        {
+                            "type": "tool_result",
+                            "tool_use_id": call.id,
+                            "content": result,
+                        }
+                    )
+                else:
+                    tool_results.append(
+                        {
+                            "type": "tool_result",
+                            "tool_use_id": call.id,
+                            "content": f"Unknown tool: {call.name}",
+                            "is_error": True,
+                        }
+                    )
+            messages.append({"role": "user", "content": tool_results})
+
+        await self.convex.emit_event(
+            self.client_id, "master", "info",
+            f"Cross-batch reconciliation complete. {len(self.state.open_contradictions)} total contradictions.",
         )
 
     # ══════════════════════════════════════════════════════════════════

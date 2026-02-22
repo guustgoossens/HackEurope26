@@ -1,6 +1,6 @@
 # Convex Functions
 
-32 functions across 10 files. Public functions are callable from the frontend; internal functions are called only from HTTP endpoints.
+Functions across 10 files. Public functions are callable from the frontend; internal functions are called only from HTTP endpoints.
 
 ---
 

@@ -40,8 +40,14 @@ class ExplorerAgent:
     def _get_discovery_strategy(self) -> str:
         """Return source-specific discovery instructions."""
         common_ending = (
-            "When you have enough information, call `report_metrics` with a `discovered_files` array "
-            "listing every resource you found (include id, name, and mimeType where known)."
+            "When you have enough information, call `report_metrics` with:\n"
+            "  - `discovered_files`: every resource found (id, name, mimeType)\n"
+            "  - `data_categories`: categorize files by business function (e.g. Invoices, Contracts, Payroll, Tax)\n"
+            "  - `key_entities`: companies, people, key entities spotted in subjects/filenames\n"
+            "  - `date_range`: earliest and latest dates found in the data\n"
+            "  - `languages`: languages detected (e.g. 'fr', 'en')\n"
+            "  - `quality_flags`: any data quality issues (duplicates, missing data, outdated files)\n"
+            "  - `summary`: overall text summary of what you found"
         )
 
         if self.source_type == "gmail":

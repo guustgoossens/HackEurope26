@@ -56,10 +56,10 @@ The "Start Exploration" button in OnboardPanel calls:
 
 ```typescript
 // ClientDetail.tsx
-await fetch(`${import.meta.env.VITE_AGENT_SERVER_URL}/run`, {
+await fetch(`${agentUrl}/api/pipeline/start`, {
   method: 'POST',
-  body: JSON.stringify({ clientId }),
-  headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ...' },
+  body: JSON.stringify({ client_id: clientId, auth_token: '...' }),
+  headers: { 'Content-Type': 'application/json' },
 });
 ```
 

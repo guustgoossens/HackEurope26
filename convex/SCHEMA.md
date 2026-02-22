@@ -12,8 +12,7 @@ This document describes every table in the Convex backend, what it stores, how t
 clients
   │
   ├── data_sources          (1 client has many connected data sources)
-  │     ├── explorations    (1 source has many exploration runs)
-  │     └── data_items      (1 source has many raw discovered files)
+  │     └── explorations    (1 source has many exploration runs)
   │
   ├── knowledge_tree        (1 client has many tree nodes, nodes form a hierarchy)
   │     └── knowledge_entries  (1 node has many extracted knowledge entries)
@@ -84,28 +83,6 @@ Tracks one agent run per data source. Records how many files were found, process
 **Indexes:** `by_clientId`, `by_clientId_and_dataSourceId`
 
 **Used in:** Exploration graph visualization (`api.visualizationGraph.getExplorationGraph`) — shows which sources have been explored and their status.
-
----
-
-### data_items
-
-Raw files and emails discovered from a data source during the explore phase. Created by the agent before any knowledge extraction has happened.
-
-| Field | Type | Description |
-|-------|------|-------------|
-| clientId | reference | Links to `clients` |
-| dataSourceId | reference | Links to `data_sources` — which system this came from |
-| name | string | File or document name, e.g. "vat_return_Q2_2024.pdf" |
-| path | string? | Original folder path in the source system |
-| fileType | `"pdf"` \| `"spreadsheet"` \| `"document"` \| `"email"` \| `"image"` \| `"presentation"` \| `"other"` | File type |
-| size | number? | File size in bytes |
-| mimeType | string? | MIME type, e.g. "application/pdf" |
-| processingStatus | `"discovered"` \| `"processing"` \| `"processed"` \| `"error"` | Agent processing progress |
-| processedAt | number? | Timestamp when processing completed |
-| errorMessage | string? | Error details if processing failed |
-| metadata | any? | JSON blob for any extra metadata |
-
-**Indexes:** `by_clientId`, `by_dataSourceId`, `by_clientId_and_status`
 
 ---
 
@@ -290,8 +267,8 @@ Not scoped to a single client.
 | Phase | Tables read | Tables written |
 |-------|-------------|----------------|
 | **Onboard** | — | `clients`, `data_sources` |
-| **Explore** | `data_sources` | `explorations`, `data_items`, `agent_events`, `pipeline_status` |
-| **Structure** | `data_items`, `explorations` | `knowledge_tree`, `knowledge_entries`, `contradictions`, `agent_events`, `pipeline_status` |
+| **Explore** | `data_sources` | `explorations`, `agent_events`, `pipeline_status` |
+| **Structure** | `explorations` | `knowledge_tree`, `knowledge_entries`, `contradictions`, `agent_events`, `pipeline_status` |
 | **Verify** | `contradictions`, `knowledge_tree` | `questionnaires`, `questionnaire_responses`, `contradictions` (status updates) |
 | **Use** | All tables | — |
 | **Cross-client** | `forum_entries` | `forum_entries` (agents write new guides) |

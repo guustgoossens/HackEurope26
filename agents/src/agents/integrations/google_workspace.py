@@ -78,15 +78,6 @@ class GoogleWorkspaceClient:
             )
         return detailed
 
-    def read_gmail_message(self, message_id: str) -> dict:
-        msg = (
-            self.gmail.users()
-            .messages()
-            .get(userId="me", id=message_id, format="full")
-            .execute()
-        )
-        return msg
-
     def list_drive_files(
         self, folder_id: str | None = None, mime_type: str | None = None
     ) -> list[dict]:

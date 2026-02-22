@@ -8,8 +8,8 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 COPY --from=ghcr.io/astral-sh/uv:latest /uv /usr/local/bin/uv
 
 WORKDIR /app
-COPY pyproject.toml .
-RUN uv pip install --system -e .
+COPY pyproject.toml uv.lock ./
+RUN uv pip install --system .
 
 COPY src/ src/
 EXPOSE 8000

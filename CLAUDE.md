@@ -37,7 +37,7 @@ Convex (real-time BaaS). Functions live in `convex/` with file-based routing. Sc
 
 ### Agent Pipeline
 Python 3.12 + uv, in `agents/`. FastAPI server (`agents/src/agents/server.py`) exposes `POST /api/pipeline/start`. Key modules:
-- `master_agent.py` — orchestrates the full 4-phase pipeline (explore → structure → verify → use)
+- `master_agent.py` — orchestrates the 4 agent phases (explore → structure → verify → use) of the 5-phase user journey
 - `sub_agents/explorer.py` — crawls one data source (gmail/drive/sheets), writes to agent forum
 - `sub_agents/structurer.py` — processes files, extracts content via Gemini, classifies relevance
 - `sub_agents/knowledge_writer.py` — populates the verified knowledge tree
@@ -89,7 +89,7 @@ Frontend (in `.env.local`):
 
 Backend (Convex dashboard): `WORKOS_API_KEY`, `AGENT_AUTH_TOKEN`
 
-Agent server: `ANTHROPIC_API_KEY`, `GOOGLE_GENAI_API_KEY`, `CONVEX_SITE_URL`, `AGENT_AUTH_TOKEN`, `COMPOSIO_API_KEY` (optional)
+Agent server: `ANTHROPIC_API_KEY`, `GEMINI_API_KEY`, `CONVEX_SITE_URL`, `AGENT_AUTH_TOKEN`, `COMPOSIO_API_KEY` (optional)
 
 ## Tech Stack
 

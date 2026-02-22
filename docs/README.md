@@ -12,7 +12,7 @@ Agent-ready data infrastructure for SMEs. Connects scattered business data (Gmai
 | [architecture/](./architecture/README.md) | System diagram, data model, HTTP API, auth, real-time flow |
 | [agent-pipeline/](./agent-pipeline/README.md) | 5-phase pipeline, sub-agents, tools, loop detection, Composio |
 | [patterns/](./patterns/README.md) | 5 design patterns with source inspirations and code references |
-| [convex/](./convex/README.md) | Convex schema, all 32 functions, forum deep-dive |
+| [convex/](./convex/README.md) | Convex schema, functions, forum deep-dive |
 | [frontend/](./frontend/README.md) | React components, routing, phase panels |
 | [decisions/](./decisions/README.md) | 10 architectural decisions with rationale |
 | [product/](./product/pitch.md) | Pitch script, Q&A, demo flow |

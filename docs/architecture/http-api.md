@@ -1,6 +1,6 @@
 # HTTP API
 
-11 endpoints in `convex/http.ts`. All authenticated via `Authorization: Bearer AGENT_AUTH_TOKEN`.
+12 endpoints in `convex/http.ts`. All authenticated via `Authorization: Bearer AGENT_AUTH_TOKEN`.
 
 Base URL: `CONVEX_SITE_URL` (set in agent `.env`)
 

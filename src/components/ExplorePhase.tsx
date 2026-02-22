@@ -6,7 +6,7 @@ import type { Id } from '../../convex/_generated/dataModel';
 export interface LiveExploreData {
     explorations?: Array<{
         dataSourceId: Id<'data_sources'>;
-        metrics: Record<string, number>;
+        metrics: Record<string, unknown>;
         status: 'running' | 'completed' | 'failed';
     }> | null;
     agentEvents?: Array<{
@@ -148,6 +148,97 @@ export default function ExplorePhase({ clientId, animationStep, onNextPhase, liv
             totals.total_items ? { label: 'Éléments totaux', count: totals.total_items } : null,
         ].filter(Boolean) as Array<{ label: string; count: number }>;
         return found.length > 0 ? found : FINDINGS;
+    })();
+
+    // Rich metrics: data categories aggregated across explorations
+    const liveCategories = (() => {
+        if (!liveData?.explorations) return null;
+        const catMap = new Map<string, { count: number; samples: string[] }>();
+        for (const exp of liveData.explorations) {
+            const cats = exp.metrics.data_categories;
+            if (!Array.isArray(cats)) continue;
+            for (const c of cats as Array<{ category: string; count: number; sample_names?: string[] }>) {
+                const existing = catMap.get(c.category);
+                if (existing) {
+                    existing.count += c.count ?? 0;
+                    if (c.sample_names) existing.samples.push(...c.sample_names);
+                } else {
+                    catMap.set(c.category, { count: c.count ?? 0, samples: c.sample_names?.slice(0, 3) ?? [] });
+                }
+            }
+        }
+        if (catMap.size === 0) return null;
+        return [...catMap.entries()]
+            .sort((a, b) => b[1].count - a[1].count)
+            .map(([category, { count, samples }]) => ({ category, count, samples: samples.slice(0, 3) }));
+    })();
+
+    // Rich metrics: key entities
+    const liveEntities = (() => {
+        if (!liveData?.explorations) return null;
+        const entityMap = new Map<string, { type: string; mentions: number }>();
+        for (const exp of liveData.explorations) {
+            const ents = exp.metrics.key_entities;
+            if (!Array.isArray(ents)) continue;
+            for (const e of ents as Array<{ name: string; type: string; mention_count?: number }>) {
+                const existing = entityMap.get(e.name);
+                if (existing) {
+                    existing.mentions += e.mention_count ?? 1;
+                } else {
+                    entityMap.set(e.name, { type: e.type, mentions: e.mention_count ?? 1 });
+                }
+            }
+        }
+        if (entityMap.size === 0) return null;
+        return [...entityMap.entries()]
+            .sort((a, b) => b[1].mentions - a[1].mentions)
+            .slice(0, 12)
+            .map(([name, { type, mentions }]) => ({ name, type, mentions }));
+    })();
+
+    // Rich metrics: date range
+    const liveDateRange = (() => {
+        if (!liveData?.explorations) return null;
+        let earliest: string | null = null;
+        let latest: string | null = null;
+        for (const exp of liveData.explorations) {
+            const dr = exp.metrics.date_range as { earliest?: string; latest?: string } | undefined;
+            if (!dr) continue;
+            if (dr.earliest && (!earliest || dr.earliest < earliest)) earliest = dr.earliest;
+            if (dr.latest && (!latest || dr.latest > latest)) latest = dr.latest;
+        }
+        return earliest && latest ? { earliest, latest } : null;
+    })();
+
+    // Rich metrics: languages
+    const liveLanguages = (() => {
+        if (!liveData?.explorations) return null;
+        const langs = new Set<string>();
+        for (const exp of liveData.explorations) {
+            const l = exp.metrics.languages;
+            if (Array.isArray(l)) l.forEach((lang) => { if (typeof lang === 'string') langs.add(lang); });
+        }
+        return langs.size > 0 ? [...langs] : null;
+    })();
+
+    // Rich metrics: quality flags
+    const liveQualityFlags = (() => {
+        if (!liveData?.explorations) return null;
+        const flagMap = new Map<string, { count: number; description: string }>();
+        for (const exp of liveData.explorations) {
+            const flags = exp.metrics.quality_flags;
+            if (!Array.isArray(flags)) continue;
+            for (const f of flags as Array<{ flag: string; count?: number; description: string }>) {
+                const existing = flagMap.get(f.flag);
+                if (existing) {
+                    existing.count += f.count ?? 1;
+                } else {
+                    flagMap.set(f.flag, { count: f.count ?? 1, description: f.description });
+                }
+            }
+        }
+        if (flagMap.size === 0) return null;
+        return [...flagMap.entries()].map(([flag, { count, description }]) => ({ flag, count, description }));
     })();
 
     return (
@@ -406,10 +497,70 @@ export default function ExplorePhase({ clientId, animationStep, onNextPhase, liv
                                 {animatedTotal.toLocaleString('fr-FR')}
                             </div>
                             <p className="text-sm text-muted-foreground mt-1">éléments analysés</p>
+                            {liveDateRange && (
+                                <p className="text-xs text-muted-foreground/70 mt-0.5">
+                                    {liveDateRange.earliest} — {liveDateRange.latest}
+                                </p>
+                            )}
+                            {liveLanguages && (
+                                <div className="flex items-center justify-center gap-1.5 mt-2">
+                                    {liveLanguages.map((lang) => (
+                                        <span
+                                            key={lang}
+                                            className="text-xs font-medium px-2 py-0.5 rounded-full"
+                                            style={{
+                                                background: 'hsl(217 55% 94%)',
+                                                color: 'hsl(217 55% 42%)',
+                                                border: '1px solid hsl(217 40% 88%)',
+                                            }}
+                                        >
+                                            {lang.toUpperCase()}
+                                        </span>
+                                    ))}
+                                </div>
+                            )}
                         </div>
 
-                        {/* Two mini-cards */}
-                        <div className="grid sm:grid-cols-2 gap-4">
+                        {/* Category breakdown (horizontal bars) — from live data or fallback */}
+                        {liveCategories ? (
+                            <div
+                                className="card-organic-elevated p-5"
+                                style={{
+                                    background: 'linear-gradient(135deg, hsl(0 0% 100%), hsl(217 30% 97%))',
+                                    border: '1px solid hsl(217 20% 91%)',
+                                    boxShadow: '0 2px 8px hsl(217 30% 70% / 0.06)',
+                                }}
+                            >
+                                <h3 className="text-sm font-semibold mb-3 text-foreground flex items-center gap-2">
+                                    <FolioEye className="h-6 w-6 text-primary" />
+                                    Catégories de données
+                                </h3>
+                                <div className="space-y-2.5">
+                                    {liveCategories.map((cat, i) => {
+                                        const maxCat = liveCategories[0]?.count || 1;
+                                        const pct = Math.round((cat.count / maxCat) * 100);
+                                        return (
+                                            <div key={i}>
+                                                <div className="flex items-center justify-between text-sm mb-1">
+                                                    <span className="text-muted-foreground">{cat.category}</span>
+                                                    <span className="font-medium text-foreground tabular-nums">{cat.count}</span>
+                                                </div>
+                                                <div className="h-2 rounded-full overflow-hidden" style={{ background: 'hsl(217 20% 93%)' }}>
+                                                    <div
+                                                        className="h-full rounded-full"
+                                                        style={{
+                                                            width: `${pct}%`,
+                                                            background: 'linear-gradient(90deg, hsl(217 55% 72%), hsl(217 70% 52%))',
+                                                            transition: 'width 0.8s ease-out',
+                                                        }}
+                                                    />
+                                                </div>
+                                            </div>
+                                        );
+                                    })}
+                                </div>
+                            </div>
+                        ) : (
                             <div
                                 className="card-organic-elevated p-5"
                                 style={{
@@ -431,7 +582,69 @@ export default function ExplorePhase({ clientId, animationStep, onNextPhase, liv
                                     ))}
                                 </div>
                             </div>
+                        )}
 
+                        {/* Key entities + Quality flags row */}
+                        <div className="grid sm:grid-cols-2 gap-4">
+                            {/* Key entities */}
+                            {liveEntities ? (
+                                <div
+                                    className="card-organic-elevated p-5"
+                                    style={{
+                                        background: 'linear-gradient(135deg, hsl(0 0% 100%), hsl(262 30% 97%))',
+                                        border: '1px solid hsl(262 20% 91%)',
+                                        boxShadow: '0 2px 8px hsl(262 30% 70% / 0.06)',
+                                    }}
+                                >
+                                    <h3 className="text-sm font-semibold mb-3 flex items-center gap-2" style={{ color: 'hsl(262 50% 45%)' }}>
+                                        Entités clés
+                                    </h3>
+                                    <div className="flex flex-wrap gap-1.5">
+                                        {liveEntities.map((ent, i) => {
+                                            const typeStyles: Record<string, { bg: string; color: string; border: string }> = {
+                                                company: { bg: 'hsl(217 55% 95%)', color: 'hsl(217 55% 40%)', border: 'hsl(217 40% 88%)' },
+                                                person: { bg: 'hsl(152 40% 94%)', color: 'hsl(152 40% 32%)', border: 'hsl(152 30% 85%)' },
+                                                product: { bg: 'hsl(38 60% 94%)', color: 'hsl(38 60% 32%)', border: 'hsl(38 40% 85%)' },
+                                            };
+                                            const s = typeStyles[ent.type] ?? typeStyles.company;
+                                            return (
+                                                <span
+                                                    key={i}
+                                                    className="text-xs px-2 py-0.5 rounded-full font-medium"
+                                                    style={{ background: s.bg, color: s.color, border: `1px solid ${s.border}` }}
+                                                    title={`${ent.type} · ${ent.mentions} mention${ent.mentions > 1 ? 's' : ''}`}
+                                                >
+                                                    {ent.name}
+                                                </span>
+                                            );
+                                        })}
+                                    </div>
+                                </div>
+                            ) : (
+                                <div
+                                    className="card-organic-elevated p-5"
+                                    style={{
+                                        background: 'linear-gradient(135deg, hsl(0 0% 100%), hsl(217 30% 97%))',
+                                        border: '1px solid hsl(217 20% 91%)',
+                                        boxShadow: '0 2px 8px hsl(217 30% 70% / 0.06)',
+                                    }}
+                                >
+                                    <h3 className="text-sm font-semibold mb-3 text-foreground flex items-center gap-2">
+                                        <FolioEye className="h-6 w-6 text-primary" />
+                                        Éléments découverts
+                                    </h3>
+                                    <div className="space-y-2">
+                                        {effectiveFindings.map((f, i) => (
+                                            <div key={i} className="flex items-center justify-between text-sm">
+                                                <span className="text-muted-foreground">{f.label}</span>
+                                                <span className="font-medium text-foreground">{f.count}</span>
+                                            </div>
+                                        ))}
+                                    </div>
+                                </div>
+                            )}
+
+                            {/* Quality flags */}
                             <div
                                 className="card-organic-elevated p-5"
                                 style={{
@@ -445,9 +658,11 @@ export default function ExplorePhase({ clientId, animationStep, onNextPhase, liv
                                     Signalés par l'agent
                                 </h3>
                                 <div className="space-y-2">
-                                    {FLAGGED.map((f, i) => (
+                                    {(liveQualityFlags ?? FLAGGED).map((f, i) => (
                                         <div key={i} className="flex items-center justify-between text-sm">
-                                            <span style={{ color: 'hsl(38, 50%, 35%)' }}>{f.label}</span>
+                                            <span style={{ color: 'hsl(38, 50%, 35%)' }}>
+                                                {'flag' in f ? f.description : (f as { label: string }).label}
+                                            </span>
                                             <span className="font-medium" style={{ color: 'hsl(38, 60%, 25%)' }}>{f.count}</span>
                                         </div>
                                     ))}
