@@ -79,8 +79,20 @@ export default function LandingGraph({ visibleCount, className }: Props) {
   }, []);
 
   useEffect(() => {
-    if (!ready.current || !gRef.current) return;
+    if (!ready.current || !gRef.current || !containerRef.current) return;
     const g = d3.select(gRef.current);
+    const rect = containerRef.current.getBoundingClientRect();
+    const w = rect.width || 900;
+    const h = rect.height || 520;
+    const scale = 0.85;
+    const shiftUp = 56;
+    const cx = w / 2;
+    const cy = h / 2;
+    const padding = 40; // Keep nodes and labels inside frame
+    const xMin = -cx / scale + padding;
+    const xMax = (w - cx) / scale - padding;
+    const yMin = -(cy - shiftUp) / scale + padding;
+    const yMax = (h - (cy - shiftUp)) / scale - padding;
 
     if (visibleCount === 0) {
       simRef.current?.stop();
@@ -234,6 +246,12 @@ export default function LandingGraph({ visibleCount, className }: Props) {
     allNodes.style('cursor', 'grab');
 
     sim.on('tick', () => {
+      // Clamp node positions so they stay inside the visible frame
+      simNodes.forEach((n: any) => {
+        n.x = Math.max(xMin, Math.min(xMax, n.x));
+        n.y = Math.max(yMin, Math.min(yMax, n.y));
+      });
+
       allLinks.attr('d', (d: any) => {
         const dx = d.target.x - d.source.x;
         const dy = d.target.y - d.source.y;
