@@ -1,7 +1,7 @@
 import { useQuery, useMutation, useAction } from 'convex/react';
 import { api } from '../../convex/_generated/api';
 import { useState } from 'react';
-import { ArrowLeft, Plus, Play, Mail, HardDrive, Sheet, Loader2 } from 'lucide-react';
+import { ArrowLeft, Plus, Play, Mail, HardDrive, Sheet, Loader2, Network } from 'lucide-react';
 import { useAuth } from '@workos-inc/authkit-react';
 import { PhaseIndicator } from '@/components/PhaseIndicator';
 import { AgentEventFeed } from '@/components/AgentEventFeed';
@@ -10,6 +10,7 @@ import { KnowledgeTree } from '@/components/KnowledgeTree';
 import { ContradictionsList } from '@/components/ContradictionsList';
 import { QuestionCard } from '@/components/QuestionCard';
 import { KnowledgeEntryList } from '@/components/KnowledgeEntry';
+import { VisualizationGraph } from '@/components/VisualizationGraph';
 import { useComposioConnect } from '@/hooks/useComposioConnect';
 import { ExploreVisualization } from '@/components/ExploreVisualization';
 import { KnowledgeGraph } from '@/components/KnowledgeGraph';
@@ -263,6 +264,8 @@ function ExplorePanel({
   creating,
   onAddSource,
 }: ExplorePanelProps) {
+  const [viewMode, setViewMode] = useState<'list' | 'graph'>('list');
+  
   return (
     <div className="space-y-6">
       {/* Source visualisation */}
@@ -271,21 +274,51 @@ function ExplorePanel({
       {/* Metrics */}
       <ExploreMetrics clientId={clientId} />
 
-      {/* Data Sources section */}
-      <div className="bg-slate-800 border border-slate-700 rounded-xl p-4">
-        <div className="flex items-center justify-between mb-4">
-          <h3 className="text-sm font-medium text-slate-300">Data Sources</h3>
-          <div className="flex items-center gap-2">
-            <button
-              onClick={() => setShowAddSource(!showAddSource)}
-              className="flex items-center gap-1.5 text-xs px-3 py-1.5 bg-slate-700 text-slate-300 hover:text-white rounded-lg transition-colors"
-            >
-              <Plus className="w-3.5 h-3.5" />
-              Add Source
-            </button>
-            <StartExploreButton clientId={clientId} />
-          </div>
+      {/* View mode toggle */}
+      <div className="flex gap-2">
+        <button
+          onClick={() => setViewMode('list')}
+          className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
+            viewMode === 'list'
+              ? 'bg-blue-600 text-white'
+              : 'bg-slate-700 text-slate-300 hover:text-white'
+          }`}
+        >
+          📋 List View
+        </button>
+        <button
+          onClick={() => setViewMode('graph')}
+          className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
+            viewMode === 'graph'
+              ? 'bg-blue-600 text-white'
+              : 'bg-slate-700 text-slate-300 hover:text-white'
+          }`}
+        >
+          🕸️ Graph View
+        </button>
+      </div>
+
+      {viewMode === 'graph' ? (
+        <div className="bg-slate-800 border border-slate-700 rounded-xl overflow-hidden" style={{ height: '600px' }}>
+          <VisualizationGraph clientId={clientId as Id<'clients'>} type="exploration" />
         </div>
+      ) : (
+        <>
+          {/* Data Sources section */}
+          <div className="bg-slate-800 border border-slate-700 rounded-xl p-4">
+            <div className="flex items-center justify-between mb-4">
+              <h3 className="text-sm font-medium text-slate-300">Data Sources</h3>
+              <div className="flex items-center gap-2">
+                <button
+                  onClick={() => setShowAddSource(!showAddSource)}
+                  className="flex items-center gap-1.5 text-xs px-3 py-1.5 bg-slate-700 text-slate-300 hover:text-white rounded-lg transition-colors"
+                >
+                  <Plus className="w-3.5 h-3.5" />
+                  Add Source
+                </button>
+                <StartExploreButton clientId={clientId} />
+              </div>
+            </div>
 
         {/* Add source form */}
         {showAddSource && (
@@ -350,43 +383,62 @@ function ExplorePanel({
 
       {/* Agent Event Feed */}
       <AgentEventFeed clientId={clientId} />
+        </>
+      )}
     </div>
   );
 }
 
 function StructurePanel({ clientId }: { clientId: string }) {
   const [selectedNodeId, setSelectedNodeId] = useState<string | null>(null);
-  const [selectedNodeName, setSelectedNodeName] = useState<string | null>(null);
-  const [selectedNodeReadme, setSelectedNodeReadme] = useState<string | null>(null);
-  const [selectedNodeType, setSelectedNodeType] = useState<string | null>(null);
-
-  const handleSelectNode = (nodeId: string | null, readme?: string, name?: string, type?: string) => {
-    setSelectedNodeId(nodeId ?? null);
-    setSelectedNodeName(name ?? null);
-    setSelectedNodeReadme(readme ?? null);
-    setSelectedNodeType(type ?? null);
-  };
+  const [viewMode, setViewMode] = useState<'tree' | 'graph'>('tree');
 
   return (
     <div className="space-y-6">
-      <div className="relative">
-        <KnowledgeGraph clientId={clientId} onSelectNode={handleSelectNode} />
-        <NodeDetailPanel
-          nodeId={selectedNodeId}
-          nodeName={selectedNodeName}
-          nodeReadme={selectedNodeReadme}
-          nodeType={selectedNodeType}
-          onClose={() => handleSelectNode(null)}
-        />
+      <ExploreMetrics clientId={clientId} />
+
+      {/* View mode toggle */}
+      <div className="flex gap-2">
+        <button
+          onClick={() => setViewMode('tree')}
+          className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
+            viewMode === 'tree'
+              ? 'bg-blue-600 text-white'
+              : 'bg-slate-700 text-slate-300 hover:text-white'
+          }`}
+        >
+          🌳 Tree View
+        </button>
+        <button
+          onClick={() => setViewMode('graph')}
+          className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
+            viewMode === 'graph'
+              ? 'bg-blue-600 text-white'
+              : 'bg-slate-700 text-slate-300 hover:text-white'
+          }`}
+        >
+          🕸️ Graph View
+        </button>
       </div>
 
-      <ContradictionsList clientId={clientId} />
-
-      {selectedNodeId && (
-        <div>
-          <h3 className="text-sm font-medium text-slate-300 mb-3">Entries</h3>
-          <KnowledgeEntryList treeNodeId={selectedNodeId} />
+      {viewMode === 'graph' ? (
+        <div className="bg-slate-800 border border-slate-700 rounded-xl overflow-hidden h-[600px]">
+          <VisualizationGraph clientId={clientId as Id<'clients'>} type="knowledge" />
         </div>
+      ) : (
+        <>
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+            <KnowledgeTree clientId={clientId} onSelectNode={setSelectedNodeId} selectedNodeId={selectedNodeId} />
+            <ContradictionsList clientId={clientId} />
+          </div>
+
+          {selectedNodeId && (
+            <div>
+              <h3 className="text-sm font-medium text-slate-300 mb-3">Entries</h3>
+              <KnowledgeEntryList treeNodeId={selectedNodeId} />
+            </div>
+          )}
+        </>
       )}
 
       <AgentEventFeed clientId={clientId} />
@@ -396,6 +448,7 @@ function StructurePanel({ clientId }: { clientId: string }) {
 
 function VerifyPanel({ clientId }: { clientId: string }) {
   const { user } = useAuth();
+  const [viewMode, setViewMode] = useState<'questionnaire' | 'graph'>('questionnaire');
   const questionnaires = useQuery(api.questionnaires.listByClient, {
     clientId: clientId as Id<'clients'>,
   });
@@ -406,16 +459,48 @@ function VerifyPanel({ clientId }: { clientId: string }) {
     <div className="space-y-6">
       <ExploreMetrics clientId={clientId} />
 
-      {!questionnaires || questionnaires.length === 0 ? (
-        <div className="bg-slate-800 border border-slate-700 rounded-xl p-6 text-center">
-          <p className="text-sm text-slate-400">Waiting for the agent to generate a verification questionnaire...</p>
+      {/* View mode toggle */}
+      <div className="flex gap-2">
+        <button
+          onClick={() => setViewMode('questionnaire')}
+          className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
+            viewMode === 'questionnaire'
+              ? 'bg-blue-600 text-white'
+              : 'bg-slate-700 text-slate-300 hover:text-white'
+          }`}
+        >
+          📝 Questionnaire
+        </button>
+        <button
+          onClick={() => setViewMode('graph')}
+          className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
+            viewMode === 'graph'
+              ? 'bg-blue-600 text-white'
+              : 'bg-slate-700 text-slate-300 hover:text-white'
+          }`}
+        >
+          🔗 Contradictions Graph
+        </button>
+      </div>
+
+      {viewMode === 'graph' ? (
+        <div className="bg-slate-800 border border-slate-700 rounded-xl overflow-hidden h-[600px]">
+          <VisualizationGraph clientId={clientId as Id<'clients'>} type="contradictions" />
         </div>
-      ) : latestQuestionnaire ? (
-        <QuestionnaireView
-          questionnaireId={latestQuestionnaire._id}
-          respondedBy={user?.email ?? 'anonymous'}
-        />
-      ) : null}
+      ) : (
+        <>
+          {!questionnaires || questionnaires.length === 0 ? (
+            <div className="bg-slate-800 border border-slate-700 rounded-xl p-6 text-center">
+              <p className="text-sm text-slate-400">Waiting for the agent to generate a verification questionnaire...</p>
+            </div>
+          ) : latestQuestionnaire ? (
+            <QuestionnaireView
+              questionnaireId={latestQuestionnaire._id}
+              respondedBy={user?.email ?? 'anonymous'}
+            />
+          ) : null}
+        </>
+      )}
 
       <ContradictionsList clientId={clientId} />
       <AgentEventFeed clientId={clientId} />
