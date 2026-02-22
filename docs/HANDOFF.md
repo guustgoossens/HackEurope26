@@ -61,6 +61,8 @@ Comportement :
 - Sur **`/demo`** : bouton « Accueil » (TopNav) → retour vers **`/`**.
 - Pas de router externe : géré par `useState` + `history.pushState` dans `src/DemoApp.tsx`.
 
+**i18n** : Landing et démo sont bilingues (EN/FR). `src/i18n.ts` + `src/locales/{en,fr}.json`. `LanguageSwitcher` dans la TopNav démo et sur la landing.
+
 ---
 
 ## 3. Ce qui est en place
@@ -167,6 +169,9 @@ Pour repasser en mode « avec login » :
 | `src/components/AgentFeed.tsx` | Feed temps réel des événements agents (Phase 2) |
 | `src/components/landing/LandingGraph.tsx` | Graph D3 hero landing (nœuds blob, liens courbes) |
 | `src/hooks/useComposioConnect.ts` | Hook OAuth Composio (crée data source + popup + poll) |
+| `src/i18n.ts` | Config i18next (EN/FR) |
+| `src/locales/{en,fr}.json` | Traductions landing + démo |
+| `src/components/LanguageSwitcher.tsx` | Sélecteur langue (TopNav + landing) |
 | `src/App.tsx` | App avec auth (Dashboard, ClientDetail, 5 phases) |
 | `convex/clients.ts` | `getDemo`, `get` — queries clients |
 | `convex/demoData.ts` | Seed démo : `createDemoClient`, `insertDemoMessy`, `insertDemoClean`, `clearDemo` |
@@ -188,4 +193,4 @@ Pour repasser en mode « avec login » :
 
 ---
 
-*Dernière mise à jour : refonte UI/UX démo + fix blank page.*
+*Dernière mise à jour : i18n EN/FR (landing + démo), polish composants (ExploreMetrics, AgentEventFeed, VerifyPhase, KnowledgeGraph, TopNav), 22 fév. 2026.*

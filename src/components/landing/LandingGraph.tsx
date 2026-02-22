@@ -11,10 +11,10 @@ const NAVY = '#0b172a';
 const NODE_R: Record<number, number> = { 0: 24, 1: 14, 2: 8 };
 
 const GROUP_POS: Record<string, { x: number; y: number }> = {
-  finance: { x: -200, y: -130 },
-  compliance: { x: 200, y: -130 },
-  clients: { x: 220, y: 110 },
-  operations: { x: -200, y: 130 },
+  finance: { x: -140, y: -95 },
+  compliance: { x: 140, y: -95 },
+  clients: { x: 155, y: 78 },
+  operations: { x: -140, y: 92 },
 };
 
 const EDGE_STYLE: Record<string, { stroke: string; width: number; dash?: string; opacity: number }> = {
@@ -37,6 +37,7 @@ export default function LandingGraph({ visibleCount, className }: Props) {
   const gRef = useRef<SVGGElement | null>(null);
   const simRef = useRef<d3.Simulation<any, any> | null>(null);
   const posRef = useRef<Map<string, { x: number; y: number }>>(new Map());
+  const boundsRef = useRef<{ xMin: number; xMax: number; yMin: number; yMax: number } | null>(null);
   const ready = useRef(false);
 
   useEffect(() => {
@@ -93,6 +94,7 @@ export default function LandingGraph({ visibleCount, className }: Props) {
     const xMax = (w - cx) / scale - padding;
     const yMin = -(cy - shiftUp) / scale + padding;
     const yMax = (h - (cy - shiftUp)) / scale - padding;
+    boundsRef.current = { xMin, xMax, yMin, yMax };
 
     if (visibleCount === 0) {
       simRef.current?.stop();
@@ -100,6 +102,7 @@ export default function LandingGraph({ visibleCount, className }: Props) {
       g.select('.nodes').selectAll('.node').remove();
       g.select('.labels').selectAll('text').remove();
       posRef.current.clear();
+      boundsRef.current = null;
       return;
     }
 
@@ -112,8 +115,8 @@ export default function LandingGraph({ visibleCount, className }: Props) {
       const gp = GROUP_POS[n.group] || { x: 0, y: 0 };
       return { 
         ...n, 
-        x: s?.x ?? gp.x + (Math.random() - 0.5) * 70, 
-        y: s?.y ?? gp.y + (Math.random() - 0.5) * 70,
+        x: s?.x ?? gp.x + (Math.random() - 0.5) * 50, 
+        y: s?.y ?? gp.y + (Math.random() - 0.5) * 50,
         blobIndex: i % BLOBS.length 
       };
     });
@@ -132,8 +135,8 @@ export default function LandingGraph({ visibleCount, className }: Props) {
       )
       .force('charge', d3.forceManyBody().strength((d: any) => (d.depth === 0 ? -320 : d.depth === 1 ? -120 : -50)))
       .force('collide', d3.forceCollide().radius((d: any) => (NODE_R[d.depth] || 8) + 12))
-      .force('x', d3.forceX((d: any) => GROUP_POS[d.group]?.x || 0).strength(0.06))
-      .force('y', d3.forceY((d: any) => GROUP_POS[d.group]?.y || 0).strength(0.06))
+      .force('x', d3.forceX((d: any) => GROUP_POS[d.group]?.x || 0).strength(0.1))
+      .force('y', d3.forceY((d: any) => GROUP_POS[d.group]?.y || 0).strength(0.1))
       .alpha(visibleCount <= 4 ? 1 : 0.08)
       .alphaDecay(0); // Never stop: keeps nodes always draggable and simulation responsive
     simRef.current = sim;
@@ -174,9 +177,15 @@ export default function LandingGraph({ visibleCount, className }: Props) {
         d.fy = event.y;
       })
       .on('end', function (event, d) {
-        if (!event.active) sim.alphaTarget(0.08).restart(); // Keep sim ticking so drag stays responsive
-        d.fx = null;
-        d.fy = null;
+        if (!event.active) sim.alphaTarget(0.08).restart();
+        // Keep node where user dropped it (don't snap back), clamped to bounds
+        const b = boundsRef.current;
+        const x = b ? Math.max(b.xMin, Math.min(b.xMax, event.x)) : event.x;
+        const y = b ? Math.max(b.yMin, Math.min(b.yMax, event.y)) : event.y;
+        d.x = x;
+        d.y = y;
+        d.fx = x;
+        d.fy = y;
         d3.select(this).style('cursor', 'grab');
       });
 

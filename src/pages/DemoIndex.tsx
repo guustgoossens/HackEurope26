@@ -1,5 +1,6 @@
 import { useState, useCallback, useEffect, useMemo } from 'react';
 import { useQuery } from 'convex/react';
+import { useTranslation } from 'react-i18next';
 import { api } from '../../convex/_generated/api';
 import type { Id } from '../../convex/_generated/dataModel';
 import TopNav from '@/components/TopNav';
@@ -10,26 +11,26 @@ import { NodeDetailPanel } from '@/components/NodeDetailPanel';
 import VerifyPhase from '@/components/VerifyPhase';
 import { FolioDatabase, FolioLink, FolioSparkles } from '@/components/icons/FolioIcons';
 
-const phaseInfo: Record<number, { title: string; subtitle: string }> = {
-    1: { title: 'Exploration des données', subtitle: 'Analyse de vos sources et identification des éléments clés' },
-    2: { title: 'Structuration', subtitle: 'Construction du graphe de connaissances' },
-    3: { title: 'Vérification', subtitle: 'Validation des ambiguïtés détectées' },
-};
-
-const RESTRUCTURE_LINES = [
-    'Suppression des doublons…',
-    'Regroupement par domaine…',
-    'Validation des liens…',
-];
-
 interface DemoIndexProps {
     clientId: string;
     onBack: () => void;
 }
 
 export default function DemoIndex({ clientId, onBack }: DemoIndexProps) {
+    const { t } = useTranslation();
     const client = useQuery(api.clients.get, { id: clientId as Id<'clients'> });
     const treeNodes = useQuery(api.knowledge.getTree, { clientId: clientId as Id<'clients'> });
+
+    const phaseInfo: Record<number, { title: string; subtitle: string }> = useMemo(() => ({
+        1: { title: t('demo.phase1Title'), subtitle: t('demo.phase1Subtitle') },
+        2: { title: t('demo.phase2Title'), subtitle: t('demo.phase2Subtitle') },
+        3: { title: t('demo.phase3Title'), subtitle: t('demo.phase3Subtitle') },
+    }), [t]);
+    const RESTRUCTURE_LINES = useMemo(() => [
+        t('demo.restructure1'),
+        t('demo.restructure2'),
+        t('demo.restructure3'),
+    ], [t]);
 
     const [phase, setPhase] = useState(1);
     const [isPlaying, setIsPlaying] = useState(false);

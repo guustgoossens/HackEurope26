@@ -11,7 +11,7 @@ import type { Id } from '../convex/_generated/dataModel';
 import { useState } from 'react';
 import { VisualizationGraph } from './components/VisualizationGraph';
 
-const convex = new ConvexReactClient(import.meta.env.VITE_CONVEX_URL);
+const convex = new ConvexReactClient(import.meta.env.VITE_CONVEX_URL ?? '');
 
 // The messy demo client (42 nodes, 4 contradictions)
 const DEMO_CLIENT_ID = 'kn721r3ty78a9hxjwr3vp438w581kb94' as Id<'clients'>;

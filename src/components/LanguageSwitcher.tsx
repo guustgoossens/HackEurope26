@@ -1,6 +1,6 @@
 import { useTranslation } from 'react-i18next';
 
-export function LanguageSwitcher({ className }: { className?: string }) {
+export function LanguageSwitcher({ className, style }: { className?: string; style?: React.CSSProperties }) {
   const { i18n } = useTranslation();
 
   const toggle = () => {
@@ -18,6 +18,7 @@ export function LanguageSwitcher({ className }: { className?: string }) {
       type="button"
       onClick={toggle}
       className={className}
+      style={style}
       title={i18n.language === 'en' ? 'Français' : 'English'}
       aria-label={i18n.language === 'en' ? 'Switch to French' : 'Passer en anglais'}
     >

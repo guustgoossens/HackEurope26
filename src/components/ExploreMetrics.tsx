@@ -1,5 +1,6 @@
 import { useQuery } from 'convex/react';
 import { api } from '../../convex/_generated/api';
+import { useTranslation } from 'react-i18next';
 import { Activity, Bot, Clock } from 'lucide-react';
 import clsx from 'clsx';
 import type { Id } from '../../convex/_generated/dataModel';
@@ -9,6 +10,7 @@ interface ExploreMetricsProps {
 }
 
 export function ExploreMetrics({ clientId }: ExploreMetricsProps) {
+  const { t } = useTranslation();
   const pipeline = useQuery(api.pipeline.getByClient, {
     clientId: clientId as Id<'clients'>,
   });
@@ -30,8 +32,8 @@ export function ExploreMetrics({ clientId }: ExploreMetricsProps) {
     return (
       <div className="bg-slate-800 border border-slate-700 rounded-xl p-6 text-center">
         <Activity className="w-8 h-8 text-slate-600 mx-auto mb-3" />
-        <h3 className="text-sm font-medium text-slate-300 mb-1">Ready to explore</h3>
-        <p className="text-xs text-slate-500">Add data sources and start an exploration to see metrics here.</p>
+        <h3 className="text-sm font-medium text-slate-300 mb-1">{t('metrics.readyToExplore')}</h3>
+        <p className="text-xs text-slate-500">{t('metrics.readyToExploreP')}</p>
       </div>
     );
   }
@@ -51,7 +53,7 @@ export function ExploreMetrics({ clientId }: ExploreMetricsProps) {
       <div className="bg-slate-800 border border-slate-700 rounded-xl p-4">
         <div className="flex items-center gap-2 mb-3">
           <Activity className="w-4 h-4 text-blue-400" />
-          <h3 className="text-sm font-medium text-slate-300">Phase Progress</h3>
+          <h3 className="text-sm font-medium text-slate-300">{t('metrics.phaseProgress')}</h3>
         </div>
         <div className="flex items-end gap-2 mb-2">
           <span className="text-2xl font-bold text-white">{Math.round(pipeline.phaseProgress)}%</span>
@@ -69,10 +71,10 @@ export function ExploreMetrics({ clientId }: ExploreMetricsProps) {
       <div className="bg-slate-800 border border-slate-700 rounded-xl p-4">
         <div className="flex items-center gap-2 mb-3">
           <Bot className="w-4 h-4 text-purple-400" />
-          <h3 className="text-sm font-medium text-slate-300">Active Agents</h3>
+          <h3 className="text-sm font-medium text-slate-300">{t('metrics.activeAgents')}</h3>
         </div>
         {pipeline.activeAgents.length === 0 ? (
-          <p className="text-xs text-slate-500">No agents active</p>
+          <p className="text-xs text-slate-500">{t('metrics.noAgentsActive')}</p>
         ) : (
           <div className="flex flex-wrap gap-1.5">
             {pipeline.activeAgents.map((agent) => (
@@ -91,7 +93,7 @@ export function ExploreMetrics({ clientId }: ExploreMetricsProps) {
       <div className="bg-slate-800 border border-slate-700 rounded-xl p-4">
         <div className="flex items-center gap-2 mb-3">
           <Clock className="w-4 h-4 text-emerald-400" />
-          <h3 className="text-sm font-medium text-slate-300">Last Activity</h3>
+          <h3 className="text-sm font-medium text-slate-300">{t('metrics.lastActivity')}</h3>
         </div>
         <span className="text-sm text-white">{lastActivityStr}</span>
       </div>

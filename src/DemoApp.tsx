@@ -1,6 +1,7 @@
 import { useQuery, useMutation } from 'convex/react';
 import { api } from '../convex/_generated/api';
 import { useEffect, useState, useRef } from 'react';
+import { useTranslation } from 'react-i18next';
 import type { Id } from '../convex/_generated/dataModel';
 import Landing from '@/pages/Landing';
 import DemoIndex from '@/pages/DemoIndex';
@@ -48,6 +49,7 @@ export function DemoApp() {
 }
 
 function DemoClientView({ onBack }: { onBack: () => void }) {
+  const { t } = useTranslation();
   const demoClient = useQuery(api.clients.getDemo);
   const createDemoClient = useMutation(api.demoData.createDemoClient);
   const insertDemoMessy = useMutation(api.demoData.insertDemoMessy);
@@ -93,7 +95,7 @@ function DemoClientView({ onBack }: { onBack: () => void }) {
   if (demoClient === undefined) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-slate-900">
-        <div className="text-slate-400">Chargement de la démo…</div>
+        <div className="text-slate-400">{t('demo.loading')}</div>
       </div>
     );
   }
@@ -102,7 +104,7 @@ function DemoClientView({ onBack }: { onBack: () => void }) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-slate-900">
         <div className="text-slate-400">
-          {reseedInProgress ? 'Mise à jour des données démo…' : 'Création des données démo…'}
+          {reseedInProgress ? t('demo.updating') : t('demo.creating')}
         </div>
       </div>
     );

@@ -1,12 +1,8 @@
 import { cn } from '@/lib/utils';
+import { useTranslation } from 'react-i18next';
 import folioMark from '@/assets/folio-mark.svg';
 import { FolioPlay as Play, FolioPause as Pause, FolioChevronLeft as ChevronLeft, FolioChevronRight as ChevronRight, FolioArrowLeft as ArrowLeft } from '@/components/icons/FolioIcons';
-
-const PHASES = [
-    { id: 1, label: 'Explorer' },
-    { id: 2, label: 'Structurer' },
-    { id: 3, label: 'Vérifier' },
-];
+import { LanguageSwitcher } from '@/components/LanguageSwitcher';
 
 interface TopNavProps {
     clientName: string;
@@ -18,6 +14,8 @@ interface TopNavProps {
     onBack: () => void;
 }
 
+const PHASE_KEYS = ['explorer', 'structurer', 'verifier'] as const;
+
 export default function TopNav({
     clientName,
     currentPhase,
@@ -26,6 +24,9 @@ export default function TopNav({
     onTogglePlay,
     onBack,
 }: TopNavProps) {
+    const { t } = useTranslation();
+    const PHASES = PHASE_KEYS.map((key, i) => ({ id: i + 1, label: t(`topNav.${key}`) }));
+
     return (
         <header
             className="h-14 flex items-center px-6 shrink-0 z-20 relative"
@@ -125,17 +126,22 @@ export default function TopNav({
                     }}
                 >
                     {isPlaying ? <Pause className="h-6 w-6" /> : <Play className="h-6 w-6" />}
-                    {isPlaying ? 'Pause' : 'Démo'}
+                    {isPlaying ? t('topNav.pause') : t('topNav.demo')}
                 </button>
 
                 <div className="w-px h-5 mx-1.5" style={{ background: 'hsl(217 20% 88%)' }} />
+
+                <LanguageSwitcher
+                    className="h-8 px-3 text-xs font-medium rounded-full border transition-colors text-muted-foreground hover:text-foreground hover:border-primary/30"
+                    style={{ borderColor: 'hsl(217 30% 88%)' }}
+                />
 
                 <button
                     onClick={onBack}
                     className="flex items-center gap-1 h-8 px-3 text-xs text-muted-foreground hover:text-foreground rounded-full transition-colors ml-1"
                 >
                     <ArrowLeft className="h-6 w-6" />
-                    <span className="hidden sm:inline">Accueil</span>
+                    <span className="hidden sm:inline">{t('topNav.home')}</span>
                 </button>
             </div>
         </header>

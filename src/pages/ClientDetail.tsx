@@ -1,7 +1,8 @@
 import { useQuery, useMutation, useAction } from 'convex/react';
 import { api } from '../../convex/_generated/api';
 import { useState } from 'react';
-import { ArrowLeft, Plus, Play, Mail, HardDrive, Sheet, Loader2, Network } from 'lucide-react';
+import { useTranslation } from 'react-i18next';
+import { ArrowLeft, Plus, Play, Mail, HardDrive, Sheet, Loader2 } from 'lucide-react';
 import { useAuth } from '@workos-inc/authkit-react';
 import { PhaseIndicator } from '@/components/PhaseIndicator';
 import { AgentEventFeed } from '@/components/AgentEventFeed';
@@ -13,8 +14,6 @@ import { KnowledgeEntryList } from '@/components/KnowledgeEntry';
 import { VisualizationGraph } from '@/components/VisualizationGraph';
 import { useComposioConnect } from '@/hooks/useComposioConnect';
 import { ExploreVisualization } from '@/components/ExploreVisualization';
-import { KnowledgeGraph } from '@/components/KnowledgeGraph';
-import { NodeDetailPanel } from '@/components/NodeDetailPanel';
 import type { Id } from '../../convex/_generated/dataModel';
 
 interface ClientDetailProps {
@@ -25,6 +24,7 @@ interface ClientDetailProps {
 const sourceTypes = ['gmail', 'drive', 'sheets'] as const;
 
 export function ClientDetail({ clientId, onBack }: ClientDetailProps) {
+  const { t } = useTranslation();
   const client = useQuery(api.clients.get, { id: clientId as Id<'clients'> });
   const dataSources = useQuery(api.dataSources.listByClient, { clientId: clientId as Id<'clients'> });
   const createDataSource = useMutation(api.dataSources.create);
@@ -53,9 +53,9 @@ export function ClientDetail({ clientId, onBack }: ClientDetailProps) {
       <div className="p-8">
         <button onClick={onBack} className="flex items-center gap-2 text-slate-400 hover:text-white transition-colors mb-6">
           <ArrowLeft className="w-4 h-4" />
-          Back to Dashboard
+          {t('client.backToDashboard')}
         </button>
-        <p className="text-slate-400">Client not found.</p>
+        <p className="text-slate-400">{t('client.clientNotFound')}</p>
       </div>
     );
   }
@@ -93,7 +93,7 @@ export function ClientDetail({ clientId, onBack }: ClientDetailProps) {
         className="flex items-center gap-2 text-slate-400 hover:text-white transition-colors mb-6 text-sm"
       >
         <ArrowLeft className="w-4 h-4" />
-        Back to Dashboard
+        {t('client.backToDashboard')}
       </button>
 
       <div className="flex items-start justify-between mb-6">
@@ -151,19 +151,19 @@ function OnboardPanel({
     dataSources?.filter((ds) => ds.connectionStatus === 'connected').map((ds) => ds.type) ?? [],
   );
 
+  const { t } = useTranslation();
   const sourceButtons = [
-    { type: 'gmail' as const, label: 'Connect Gmail', icon: Mail, color: 'bg-red-500/10 border-red-500/30 hover:bg-red-500/20 text-red-400' },
-    { type: 'drive' as const, label: 'Connect Drive', icon: HardDrive, color: 'bg-green-500/10 border-green-500/30 hover:bg-green-500/20 text-green-400' },
-    { type: 'sheets' as const, label: 'Connect Sheets', icon: Sheet, color: 'bg-purple-500/10 border-purple-500/30 hover:bg-purple-500/20 text-purple-400' },
+    { type: 'gmail' as const, label: t('client.connectGmail'), icon: Mail, color: 'bg-red-500/10 border-red-500/30 hover:bg-red-500/20 text-red-400' },
+    { type: 'drive' as const, label: t('client.connectDrive'), icon: HardDrive, color: 'bg-green-500/10 border-green-500/30 hover:bg-green-500/20 text-green-400' },
+    { type: 'sheets' as const, label: t('client.connectSheets'), icon: Sheet, color: 'bg-purple-500/10 border-purple-500/30 hover:bg-purple-500/20 text-purple-400' },
   ];
 
   return (
     <div className="space-y-6">
       <div className="bg-slate-800 border border-slate-700 rounded-xl p-6">
-        <h3 className="text-lg font-medium text-white mb-2">Welcome</h3>
+        <h3 className="text-lg font-medium text-white mb-2">{t('client.welcome')}</h3>
         <p className="text-sm text-slate-400 mb-6">
-          Connect Google Workspace data sources to begin making this client's data AI-ready. Click a button below to
-          authenticate via OAuth, then start the exploration.
+          {t('client.welcomeP')}
         </p>
 
         {/* Connect buttons */}
@@ -186,7 +186,7 @@ function OnboardPanel({
                 } disabled:opacity-70`}
               >
                 {isConnecting ? <Loader2 className="w-6 h-6 animate-spin" /> : <Icon className="w-6 h-6" />}
-                <span className="text-xs font-medium">{isConnected ? 'Connected' : label}</span>
+                <span className="text-xs font-medium">{isConnected ? t('common.connected') : label}</span>
               </button>
             );
           })}
@@ -217,12 +217,12 @@ function OnboardPanel({
             {pipelineStarting ? (
               <>
                 <Loader2 className="w-4 h-4 animate-spin" />
-                Starting Pipeline...
+                {t('client.startingPipeline')}
               </>
             ) : (
               <>
                 <Play className="w-4 h-4" />
-                Start Exploration
+                {t('client.startExploration')}
               </>
             )}
           </button>
@@ -264,6 +264,7 @@ function ExplorePanel({
   creating,
   onAddSource,
 }: ExplorePanelProps) {
+  const { t } = useTranslation();
   const [viewMode, setViewMode] = useState<'list' | 'graph'>('list');
   
   return (
@@ -284,7 +285,7 @@ function ExplorePanel({
               : 'bg-slate-700 text-slate-300 hover:text-white'
           }`}
         >
-          📋 List View
+          {t('client.listView')}
         </button>
         <button
           onClick={() => setViewMode('graph')}
@@ -294,7 +295,7 @@ function ExplorePanel({
               : 'bg-slate-700 text-slate-300 hover:text-white'
           }`}
         >
-          🕸️ Graph View
+          {t('client.graphView')}
         </button>
       </div>
 
@@ -307,14 +308,14 @@ function ExplorePanel({
           {/* Data Sources section */}
           <div className="bg-slate-800 border border-slate-700 rounded-xl p-4">
             <div className="flex items-center justify-between mb-4">
-              <h3 className="text-sm font-medium text-slate-300">Data Sources</h3>
+              <h3 className="text-sm font-medium text-slate-300">{t('client.dataSources')}</h3>
               <div className="flex items-center gap-2">
                 <button
                   onClick={() => setShowAddSource(!showAddSource)}
                   className="flex items-center gap-1.5 text-xs px-3 py-1.5 bg-slate-700 text-slate-300 hover:text-white rounded-lg transition-colors"
                 >
                   <Plus className="w-3.5 h-3.5" />
-                  Add Source
+                  {t('client.addSource')}
                 </button>
                 <StartExploreButton clientId={clientId} />
               </div>
@@ -335,7 +336,7 @@ function ExplorePanel({
               </select>
               <input
                 type="text"
-                placeholder="Label (e.g., Company Inbox)"
+                placeholder={t('client.labelPlaceholder')}
                 value={sourceLabel}
                 onChange={(e) => setSourceLabel(e.target.value)}
                 className="flex-1 px-3 py-2 bg-slate-800 border border-slate-600 rounded-lg text-sm text-white placeholder-slate-500 focus:outline-none focus:border-blue-500"
@@ -349,7 +350,7 @@ function ExplorePanel({
                 disabled={creating || !sourceLabel.trim()}
                 className="px-4 py-2 bg-blue-600 text-white rounded-lg text-sm font-medium hover:bg-blue-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
               >
-                {creating ? 'Adding...' : 'Add'}
+                {creating ? t('common.adding') : t('common.add')}
               </button>
             </div>
           </div>
@@ -363,7 +364,7 @@ function ExplorePanel({
             ))}
           </div>
         ) : dataSources.length === 0 ? (
-          <p className="text-xs text-slate-500 text-center py-4">No data sources yet. Add one to get started.</p>
+          <p className="text-xs text-slate-500 text-center py-4">{t('client.noDataSources')}</p>
         ) : (
           <div className="space-y-2">
             {dataSources.map((source) => (
@@ -390,6 +391,7 @@ function ExplorePanel({
 }
 
 function StructurePanel({ clientId }: { clientId: string }) {
+  const { t } = useTranslation();
   const [selectedNodeId, setSelectedNodeId] = useState<string | null>(null);
   const [viewMode, setViewMode] = useState<'tree' | 'graph'>('tree');
 
@@ -407,7 +409,7 @@ function StructurePanel({ clientId }: { clientId: string }) {
               : 'bg-slate-700 text-slate-300 hover:text-white'
           }`}
         >
-          🌳 Tree View
+          {t('client.treeView')}
         </button>
         <button
           onClick={() => setViewMode('graph')}
@@ -417,7 +419,7 @@ function StructurePanel({ clientId }: { clientId: string }) {
               : 'bg-slate-700 text-slate-300 hover:text-white'
           }`}
         >
-          🕸️ Graph View
+          {t('client.graphView')}
         </button>
       </div>
 
@@ -434,7 +436,7 @@ function StructurePanel({ clientId }: { clientId: string }) {
 
           {selectedNodeId && (
             <div>
-              <h3 className="text-sm font-medium text-slate-300 mb-3">Entries</h3>
+              <h3 className="text-sm font-medium text-slate-300 mb-3">{t('client.entries')}</h3>
               <KnowledgeEntryList treeNodeId={selectedNodeId} />
             </div>
           )}
@@ -447,6 +449,7 @@ function StructurePanel({ clientId }: { clientId: string }) {
 }
 
 function VerifyPanel({ clientId }: { clientId: string }) {
+  const { t } = useTranslation();
   const { user } = useAuth();
   const [viewMode, setViewMode] = useState<'questionnaire' | 'graph'>('questionnaire');
   const questionnaires = useQuery(api.questionnaires.listByClient, {
@@ -469,7 +472,7 @@ function VerifyPanel({ clientId }: { clientId: string }) {
               : 'bg-slate-700 text-slate-300 hover:text-white'
           }`}
         >
-          📝 Questionnaire
+          {t('client.questionnaire')}
         </button>
         <button
           onClick={() => setViewMode('graph')}
@@ -479,7 +482,7 @@ function VerifyPanel({ clientId }: { clientId: string }) {
               : 'bg-slate-700 text-slate-300 hover:text-white'
           }`}
         >
-          🔗 Contradictions Graph
+          {t('client.contradictionsGraph')}
         </button>
       </div>
 
@@ -491,7 +494,7 @@ function VerifyPanel({ clientId }: { clientId: string }) {
         <>
           {!questionnaires || questionnaires.length === 0 ? (
             <div className="bg-slate-800 border border-slate-700 rounded-xl p-6 text-center">
-              <p className="text-sm text-slate-400">Waiting for the agent to generate a verification questionnaire...</p>
+              <p className="text-sm text-slate-400">{t('client.waitingQuestionnaire')}</p>
             </div>
           ) : latestQuestionnaire ? (
             <QuestionnaireView
@@ -515,6 +518,7 @@ function QuestionnaireView({
   questionnaireId: string;
   respondedBy: string;
 }) {
+  const { t } = useTranslation();
   const data = useQuery(api.questionnaires.getWithResponses, {
     id: questionnaireId as Id<'questionnaires'>,
   });
@@ -539,7 +543,7 @@ function QuestionnaireView({
       <div className="flex items-center justify-between mb-3">
         <h3 className="text-lg font-medium text-white">{questionnaire.title}</h3>
         <span className="text-xs text-slate-400">
-          {answeredCount}/{totalCount} answered
+          {t('client.answeredCount', { answered: answeredCount, total: totalCount })}
         </span>
       </div>
 
@@ -559,8 +563,8 @@ function QuestionnaireView({
           <div className="w-12 h-12 rounded-full bg-emerald-500/20 flex items-center justify-center mx-auto mb-3">
             <span className="text-emerald-400 text-xl">✓</span>
           </div>
-          <h4 className="text-white font-semibold mb-1">All questions answered</h4>
-          <p className="text-sm text-slate-400">The knowledge base is ready for deployment.</p>
+          <h4 className="text-white font-semibold mb-1">{t('client.allAnswered')}</h4>
+          <p className="text-sm text-slate-400">{t('client.allAnsweredP')}</p>
         </div>
       ) : (
         <div className="space-y-4">
@@ -580,6 +584,7 @@ function QuestionnaireView({
 }
 
 function UsePanel({ clientId }: { clientId: string }) {
+  const { t } = useTranslation();
   const [selectedNodeId, setSelectedNodeId] = useState<string | null>(null);
 
   return (
@@ -595,7 +600,7 @@ function UsePanel({ clientId }: { clientId: string }) {
             <KnowledgeEntryList treeNodeId={selectedNodeId} />
           ) : (
             <div className="bg-slate-800 border border-slate-700 rounded-xl p-6 text-center">
-              <p className="text-sm text-slate-400">Select a node from the tree to view knowledge entries.</p>
+              <p className="text-sm text-slate-400">{t('client.selectNode')}</p>
             </div>
           )}
         </div>
@@ -607,6 +612,7 @@ function UsePanel({ clientId }: { clientId: string }) {
 }
 
 function StartExploreButton({ clientId }: { clientId: string }) {
+  const { t } = useTranslation();
   const triggerPipeline = useAction(api.triggerPipeline.start);
   const [starting, setStarting] = useState(false);
 
@@ -626,21 +632,23 @@ function StartExploreButton({ clientId }: { clientId: string }) {
       className="flex items-center gap-1.5 text-xs px-3 py-1.5 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors disabled:opacity-50"
     >
       {starting ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Play className="w-3.5 h-3.5" />}
-      {starting ? 'Starting...' : 'Start Exploration'}
+      {starting ? t('client.starting') : t('client.startExplore')}
     </button>
   );
 }
 
 function StatusBadge({ status }: { status: string }) {
+  const { t } = useTranslation();
   const styles: Record<string, string> = {
     pending: 'bg-amber-500/10 text-amber-400 border-amber-500/20',
     connected: 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20',
     error: 'bg-red-500/10 text-red-400 border-red-500/20',
   };
+  const label = t(`client.status_${status}` as 'client.status_pending');
 
   return (
     <span className={`text-xs px-2 py-0.5 rounded-full border ${styles[status] ?? styles.pending}`}>
-      {status}
+      {label}
     </span>
   );
 }

@@ -1,5 +1,7 @@
 import { useAuth } from '@workos-inc/authkit-react';
 import { LayoutDashboard, LogOut, Database, MessageSquare } from 'lucide-react';
+import { useTranslation } from 'react-i18next';
+import { LanguageSwitcher } from './LanguageSwitcher';
 
 interface LayoutProps {
   children: React.ReactNode;
@@ -10,6 +12,7 @@ interface LayoutProps {
 
 export function Layout({ children, onNavigateHome, onToggleForum, forumOpen }: LayoutProps) {
   const { user, signOut } = useAuth();
+  const { t } = useTranslation();
 
   return (
     <div className="min-h-screen flex bg-slate-900">
@@ -21,9 +24,9 @@ export function Layout({ children, onNavigateHome, onToggleForum, forumOpen }: L
         >
           <div className="flex items-center gap-3">
             <Database className="w-6 h-6 text-blue-400" />
-            <span className="text-lg font-bold text-white">HackEurope26</span>
+            <span className="text-lg font-bold text-white">{t('layout.appName')}</span>
           </div>
-          <p className="text-xs text-slate-400 mt-1">AI-Ready Company Data</p>
+          <p className="text-xs text-slate-400 mt-1">{t('layout.subtitle')}</p>
         </div>
 
         <nav className="flex-1 p-3">
@@ -32,7 +35,7 @@ export function Layout({ children, onNavigateHome, onToggleForum, forumOpen }: L
             className="w-full flex items-center gap-3 px-3 py-2.5 text-sm text-slate-300 hover:text-white hover:bg-slate-700/50 rounded-lg transition-colors"
           >
             <LayoutDashboard className="w-4 h-4" />
-            Dashboard
+            {t('layout.dashboard')}
           </button>
           {onToggleForum && (
             <button
@@ -44,25 +47,26 @@ export function Layout({ children, onNavigateHome, onToggleForum, forumOpen }: L
               }`}
             >
               <MessageSquare className="w-4 h-4" />
-              MoltBook Forum
+              {t('layout.forum')}
             </button>
           )}
         </nav>
 
         {/* User section at bottom */}
         <div className="p-4 border-t border-slate-700">
-          <div className="flex items-center justify-between">
+          <div className="flex items-center justify-between gap-2">
             <div className="min-w-0 flex-1">
               <p className="text-sm font-medium text-white truncate">
-                {user ? `${user.firstName ?? ''} ${user.lastName ?? ''}`.trim() || user.email : 'Demo'}
+                {user ? `${user.firstName ?? ''} ${user.lastName ?? ''}`.trim() || user.email : t('layout.demoUser')}
               </p>
-              <p className="text-xs text-slate-400 truncate">{user?.email ?? 'demo@demo'}</p>
+              <p className="text-xs text-slate-400 truncate">{user?.email ?? t('layout.demoEmail')}</p>
             </div>
+            <LanguageSwitcher className="px-2 py-1 text-xs font-medium text-slate-400 hover:text-white rounded transition-colors" />
             {user && (
               <button
                 onClick={() => signOut()}
-                className="ml-3 p-2 text-slate-400 hover:text-white hover:bg-slate-700 rounded-lg transition-colors"
-                title="Sign out"
+                className="p-2 text-slate-400 hover:text-white hover:bg-slate-700 rounded-lg transition-colors"
+                title={t('common.signOut')}
               >
                 <LogOut className="w-4 h-4" />
               </button>

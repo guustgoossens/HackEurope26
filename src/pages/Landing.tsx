@@ -1,5 +1,7 @@
 import { useState, useEffect } from 'react';
+import { useTranslation } from 'react-i18next';
 import LandingGraph from '@/components/landing/LandingGraph';
+import { LanguageSwitcher } from '@/components/LanguageSwitcher';
 import { SORTED_NODES } from '@/data/landingGraphData';
 import { useInView } from '@/hooks/useInView';
 import { useCountUp } from '@/hooks/useCountUp';
@@ -140,29 +142,30 @@ function BubbleChart() {
 }
 
 function HierarchyVisual() {
+  const { t } = useTranslation();
   const { isInView } = useInView(0.2);
   const lines = [
     <div key="root" className="flex items-center gap-2">
       <span className="w-3 h-3 rounded-full" style={{ background: 'hsl(var(--primary))' }} />
-      <span className="font-medium" style={{ color: 'hsl(var(--foreground))' }}>Finance</span>
-      <span className="ml-auto text-xs" style={{ color: 'hsl(var(--muted-foreground))' }}>12 docs</span>
+      <span className="font-medium" style={{ color: 'hsl(var(--foreground))' }}>{t('landing.hierarchyFinance')}</span>
+      <span className="ml-auto text-xs" style={{ color: 'hsl(var(--muted-foreground))' }}>{t('landing.hierarchyDocs')}</span>
     </div>,
     <div key="inv" className="flex items-center gap-2" style={{ color: 'hsl(var(--muted-foreground))' }}>
       <span className="w-2 h-2 rounded-full" style={{ background: 'hsl(var(--primary))' }} />
-      Invoices
-      <span className="ml-auto text-[10px] font-medium" style={{ color: 'hsl(var(--primary))' }}>verified</span>
+      {t('landing.hierarchyInvoices')}
+      <span className="ml-auto text-[10px] font-medium" style={{ color: 'hsl(var(--primary))' }}>{t('landing.hierarchyVerified')}</span>
     </div>,
     <div key="q" className="text-xs" style={{ color: 'hsl(var(--muted-foreground) / 0.5)' }}>
       <div>├── Q1 2024</div><div>├── Q2 2024</div><div>└── Q3 2024</div>
     </div>,
     <div key="vat" className="flex items-center gap-2" style={{ color: 'hsl(var(--muted-foreground))' }}>
       <span className="w-2 h-2 rounded-full" style={{ background: 'hsl(var(--accent))' }} />
-      VAT Filings
-      <span className="ml-auto text-[10px] font-medium" style={{ color: 'hsl(var(--accent))' }}>draft</span>
+      {t('landing.hierarchyVat')}
+      <span className="ml-auto text-[10px] font-medium" style={{ color: 'hsl(var(--accent))' }}>{t('landing.hierarchyDraft')}</span>
     </div>,
     <div key="ann" className="flex items-center gap-2" style={{ color: 'hsl(var(--muted-foreground))' }}>
       <span className="w-2 h-2 rounded-full" style={{ background: 'hsl(var(--accent))' }} />
-      Annual Reports
+      {t('landing.hierarchyAnnual')}
     </div>,
   ];
 
@@ -186,12 +189,13 @@ function HierarchyVisual() {
 }
 
 function VerifyCard({ selected, onSelect }: { selected: number | null; onSelect: (i: number) => void }) {
-  const opts = ['Invoice reference', 'Client code', 'Internal batch ID'];
+  const { t } = useTranslation();
+  const opts = [t('landing.verifyOptRef'), t('landing.verifyOptClient'), t('landing.verifyOptBatch')];
   return (
     <div className="rounded-xl border p-6 space-y-4 shadow-sm" style={{ background: 'hsl(var(--card))', borderColor: 'hsl(var(--border))' }}>
-      <div className="text-[11px] font-mono tracking-wider uppercase" style={{ color: 'hsl(var(--muted-foreground))' }}>Verification required</div>
+      <div className="text-[11px] font-mono tracking-wider uppercase" style={{ color: 'hsl(var(--muted-foreground))' }}>{t('landing.verifyRequired')}</div>
       <p className="text-sm leading-relaxed" style={{ color: 'hsl(var(--foreground))' }}>
-        340 entries are labeled &ldquo;Ref&rdquo;. Is this an invoice reference, client code, or internal ID?
+        {t('landing.verifyQuestion')}
       </p>
       <div className="space-y-2">
         {opts.map((o, i) => (
@@ -214,18 +218,19 @@ function VerifyCard({ selected, onSelect }: { selected: number | null; onSelect:
 }
 
 function DeployVisual() {
+  const { t } = useTranslation();
   return (
     <div className="rounded-xl border p-5 font-mono text-sm space-y-3 shadow-sm" style={{ background: 'hsl(var(--card))', borderColor: 'hsl(var(--border))' }}>
       <div style={{ color: 'hsl(var(--muted-foreground))' }}>
-        <span className="font-semibold" style={{ color: 'hsl(var(--primary))' }}>→</span> agent.query(&quot;Martin SARL latest invoice?&quot;)
+        <span className="font-semibold" style={{ color: 'hsl(var(--primary))' }}>→</span> {t('landing.deployQuery')}
         <span className="inline-block w-[2px] h-4 ml-0.5 align-middle animate-cursor" style={{ background: 'hsl(var(--primary))' }} />
       </div>
       <div className="leading-relaxed" style={{ color: 'hsl(var(--foreground))' }}>
-        Invoice #2024-0847 — March 15, 2024<br />
-        Status: <span className="font-medium" style={{ color: 'hsl(var(--primary))' }}>Paid</span> · €12,400 · VAT 20%
+        {t('landing.deployResult')}<br />
+        {t('landing.deployStatus')} <span className="font-medium" style={{ color: 'hsl(var(--primary))' }}>{t('landing.deployPaid')}</span> · €12,400 · VAT 20%
       </div>
       <div className="text-xs pt-2" style={{ borderTop: '1px solid hsl(var(--border))', color: 'hsl(var(--muted-foreground) / 0.5)' }}>
-        Source: Finance → Invoices → Q1 2024 → invoice_0847.pdf
+        {t('landing.deploySource')}
       </div>
     </div>
   );
@@ -265,8 +270,9 @@ function ComparisonCard({ title, items, icon, highlight }: { title: React.ReactN
 }
 
 function DataMoatFlow() {
+  const { t } = useTranslation();
   const { ref, isInView } = useInView(0.2);
-  const steps = ['Agent learns', 'Writes guide', 'Next agent reads', 'Better outcome'];
+  const steps = [t('landing.dataMoatStep1'), t('landing.dataMoatStep2'), t('landing.dataMoatStep3'), t('landing.dataMoatStep4')];
   return (
     <div ref={ref} className="flex items-center justify-center gap-2 flex-wrap">
       {steps.map((s, i, a) => (
@@ -287,8 +293,9 @@ function DataMoatFlow() {
 
 /* ─── Page ─── */
 export default function Landing({ onSignIn, authLoading = false }: LandingProps) {
+  const { t } = useTranslation();
   const [gVis, setGVis] = useState(0);
-  const [navVisible, setNavVisible] = useState(true); // true on first paint so content is never blank
+  const [navVisible] = useState(true); // true on first paint so content is never blank
   const [verifyOpt, setVerifyOpt] = useState<number | null>(null);
   const [demoSubmitted, setDemoSubmitted] = useState(false);
 
@@ -314,18 +321,16 @@ export default function Landing({ onSignIn, authLoading = false }: LandingProps)
     <FolioShield className="h-8 w-8" />,
     <FolioSparkles className="h-8 w-8" />,
   ];
+  const flatLeft = [t('landing.flat1'), t('landing.flat2'), t('landing.flat3'), t('landing.flat4'), t('landing.flat5')];
+  const folioRight = [t('landing.folio1'), t('landing.folio2'), t('landing.folio3'), t('landing.folio4'), t('landing.folio5')];
+
   const steps = [
-    { n: '01', name: 'Connect', text: 'Link your existing tools in minutes. Google Drive, Gmail, Pennylane, OneDrive, Outlook. Nothing moves. Nothing breaks.', visual: <ConnectVisual />, flip: false, icon: stepIcons[0] },
-    { n: '02', name: 'Explore', text: "AI agents map everything that's there. Volume, structure, relationships, inconsistencies, gaps. For the first time, you see your company's knowledge as a whole.", visual: <BubbleChart />, flip: true, icon: stepIcons[1] },
-    { n: '03', name: 'Structure', text: 'The agent organizes everything into a hierarchical knowledge base with context at every level — READMEs, cross-references, domain clusters. Not a search index. A navigable map.', visual: <HierarchyVisual />, flip: false, icon: stepIcons[2] },
-    { n: '04', name: 'Verify', text: "The agent surfaces what it can't resolve alone. You answer a few precise questions. The knowledge base becomes verified, paradox-free, and complete.", visual: <VerifyCard selected={verifyOpt} onSelect={setVerifyOpt} />, flip: true, icon: stepIcons[3] },
-    { n: '05', name: 'Deploy', text: 'Any AI agent can now navigate your company with precision. Build email agents, compliance agents, client communication agents — all drawing from the same verified source.', visual: <DeployVisual />, flip: false, icon: stepIcons[4] },
+    { n: '01', name: t('landing.step01'), text: t('landing.step01Text'), visual: <ConnectVisual />, flip: false, icon: stepIcons[0] },
+    { n: '02', name: t('landing.step02'), text: t('landing.step02Text'), visual: <BubbleChart />, flip: true, icon: stepIcons[1] },
+    { n: '03', name: t('landing.step03'), text: t('landing.step03Text'), visual: <HierarchyVisual />, flip: false, icon: stepIcons[2] },
+    { n: '04', name: t('landing.step04'), text: t('landing.step04Text'), visual: <VerifyCard selected={verifyOpt} onSelect={setVerifyOpt} />, flip: true, icon: stepIcons[3] },
+    { n: '05', name: t('landing.step05'), text: t('landing.step05Text'), visual: <DeployVisual />, flip: false, icon: stepIcons[4] },
   ];
-
-  const flatLeft = ['Dumps data into a vector store', 'Similarity search across everything', 'Returns noisy, contradictory results', 'Agents hallucinate from context overload', 'Breaks on complex, document-heavy domains'];
-  const folioRight = ['Organizes into navigable folder structure', 'Agent reads READMEs, drills to exact location', 'Verified, paradox-free, precise retrieval', 'Cross-references between domains preserved', 'Built for document-heavy industries'];
-
-  const heroLines = ['Make your company', 'navigable.'];
 
   return (
     <div className="landing relative min-h-screen overflow-x-hidden" style={{ background: 'hsl(var(--background))', color: 'hsl(var(--foreground))' }}>
@@ -339,17 +344,18 @@ export default function Landing({ onSignIn, authLoading = false }: LandingProps)
             <img src={folioMark} alt="Folio" className="w-[60px] h-[60px]" />
             <span className="text-[38px] tracking-tight" style={{ fontFamily: "'Newsreader', serif", fontWeight: 500, color: 'hsl(var(--foreground))' }}>folio</span>
           </div>
-          <div className="flex items-center gap-8">
-            <a href="#product" className="text-sm hidden sm:block transition-colors" style={{ color: 'hsl(var(--muted-foreground))' }}>Product</a>
-            <a href="#vision" className="text-sm hidden sm:block transition-colors" style={{ color: 'hsl(var(--muted-foreground))' }}>Vision</a>
-            <a href="#early-access" className="text-sm hidden sm:block transition-colors" style={{ color: 'hsl(var(--muted-foreground))' }}>Early Access</a>
+          <div className="flex items-center gap-6">
+            <LanguageSwitcher className="text-sm font-medium transition-colors hover:opacity-80" style={{ color: 'hsl(var(--muted-foreground))' }} />
+            <a href="#product" className="text-sm hidden sm:block transition-colors" style={{ color: 'hsl(var(--muted-foreground))' }}>{t('landing.product')}</a>
+            <a href="#vision" className="text-sm hidden sm:block transition-colors" style={{ color: 'hsl(var(--muted-foreground))' }}>{t('landing.vision')}</a>
+            <a href="#early-access" className="text-sm hidden sm:block transition-colors" style={{ color: 'hsl(var(--muted-foreground))' }}>{t('landing.earlyAccess')}</a>
             <button
               onClick={onSignIn}
               disabled={authLoading}
               className="btn-organic px-4 py-2 text-sm font-medium transition-colors disabled:opacity-60 disabled:cursor-not-allowed"
               style={{ background: 'hsl(var(--primary))', color: 'hsl(var(--primary-foreground))' }}
             >
-              {authLoading ? 'Chargement…' : 'Get Started'}
+              {authLoading ? t('common.loading') : t('landing.getStarted')}
             </button>
           </div>
         </div>
@@ -359,7 +365,7 @@ export default function Landing({ onSignIn, authLoading = false }: LandingProps)
       <section className="pt-28 md:pt-36 pb-4 px-6 relative z-[1]">
         <div className="max-w-4xl mx-auto text-center">
           <h1 className="text-5xl md:text-7xl font-bold tracking-[-0.03em] leading-[1.05]" style={{ fontFamily: "'Newsreader', serif", color: 'hsl(var(--foreground))' }}>
-            {heroLines.map((line, i) => (
+            {[t('landing.hero1'), t('landing.hero2')].map((line, i) => (
               <span
                 key={i}
                 className="block transition-all duration-700 ease-out"
@@ -378,7 +384,7 @@ export default function Landing({ onSignIn, authLoading = false }: LandingProps)
             className="mt-6 text-lg md:text-xl max-w-2xl mx-auto leading-relaxed transition-all duration-700"
             style={{ color: 'hsl(var(--muted-foreground))', opacity: navVisible ? 1 : 0, transform: navVisible ? 'translateY(0)' : 'translateY(12px)', transitionDelay: '500ms' }}
           >
-            Your agents are ready. Your data isn't. Folio connects to your existing tools, maps what's there, and builds a verified knowledge base any AI agent can navigate.
+            {t('landing.heroSub')}
           </p>
           <div
             className="mt-8 flex items-center justify-center gap-4 flex-wrap transition-all duration-700"
@@ -390,14 +396,14 @@ export default function Landing({ onSignIn, authLoading = false }: LandingProps)
               className="btn-organic px-6 py-3 font-medium transition-colors text-sm disabled:opacity-60 disabled:cursor-not-allowed"
               style={{ background: 'hsl(var(--primary))', color: 'hsl(var(--primary-foreground))' }}
             >
-              {authLoading ? 'Chargement…' : 'Voir la démo'}
+              {authLoading ? t('common.loading') : t('landing.seeDemo')}
             </button>
             <a
               href="#product"
               className="btn-organic-secondary px-6 py-3 font-medium transition-colors text-sm border"
               style={{ borderColor: 'hsl(var(--border))', color: 'hsl(var(--foreground))', background: 'transparent' }}
             >
-              See how it works
+              {t('landing.seeHowItWorks')}
             </a>
           </div>
         </div>
@@ -416,14 +422,14 @@ export default function Landing({ onSignIn, authLoading = false }: LandingProps)
             onKeyDown={(e) => e.key === 'Enter' && !authLoading && onSignIn()}
             role="button"
             tabIndex={0}
-            aria-label="Voir la démo"
+            aria-label={t('landing.viewDemo')}
           >
             <span className="relative flex h-2 w-2">
               <span className="absolute inline-flex h-full w-full rounded-full animate-ping opacity-50" style={{ background: 'hsl(var(--primary))' }} />
               <span className="relative inline-flex h-2 w-2 rounded-full" style={{ background: 'hsl(var(--primary))' }} />
             </span>
             <span className="text-xs sm:text-sm" style={{ color: 'hsl(var(--muted-foreground))' }}>
-              Agent is structuring <span className="font-medium" style={{ color: 'hsl(var(--foreground))' }}>Cabinet Dupont &amp; Associés</span>…
+              {t('landing.agentStructuring')} <span className="font-medium" style={{ color: 'hsl(var(--foreground))' }}>Cabinet Dupont &amp; Associés</span>…
             </span>
             <ArrowRight className="h-7 w-7 opacity-0 group-hover:opacity-100 transition-opacity" style={{ color: 'hsl(var(--primary))' }} />
           </div>
@@ -436,20 +442,20 @@ export default function Landing({ onSignIn, authLoading = false }: LandingProps)
           <FadeIn>
             <div className="flex items-center gap-3 mb-4">
               <FolioEye className="h-14 w-14" style={{ color: 'hsl(var(--primary))' }} />
-              <span className="text-xs font-mono tracking-widest uppercase" style={{ color: 'hsl(var(--primary))' }}>The problem</span>
+              <span className="text-xs font-mono tracking-widest uppercase" style={{ color: 'hsl(var(--primary))' }}>{t('landing.theProblem')}</span>
             </div>
             <h2 className="text-3xl md:text-[2.5rem] leading-tight tracking-tight" style={{ fontFamily: "'Newsreader', serif", color: 'hsl(var(--foreground))' }}>
-              AI is only as good as the data behind it.
+              {t('landing.problemTitle')}
             </h2>
           </FadeIn>
           <FadeIn delay={150}>
             <p className="text-lg md:text-xl leading-relaxed max-w-2xl" style={{ color: 'hsl(var(--muted-foreground))' }}>
-              Most companies have years of knowledge locked in scattered tools, legacy systems, and undocumented processes. Without structure, even the best models can't deliver.
+              {t('landing.problemP1')}
             </p>
           </FadeIn>
           <FadeIn delay={300}>
             <p className="text-lg md:text-xl leading-relaxed max-w-2xl" style={{ color: 'hsl(var(--muted-foreground))' }}>
-              <span className="font-medium" style={{ color: 'hsl(var(--foreground))' }}>Folio builds the foundation</span> — so your agents actually understand your business.
+              <span className="font-medium" style={{ color: 'hsl(var(--foreground))' }}>{t('landing.problemP2')}</span>
             </p>
           </FadeIn>
         </div>
@@ -461,10 +467,10 @@ export default function Landing({ onSignIn, authLoading = false }: LandingProps)
           <FadeIn>
             <div className="flex items-center gap-2 justify-center mb-3">
               <FolioCompass className="h-10 w-10" style={{ color: 'hsl(var(--primary))' }} />
-              <p className="text-xs font-mono tracking-widest uppercase" style={{ color: 'hsl(var(--primary))' }}>How it works</p>
+              <p className="text-xs font-mono tracking-widest uppercase" style={{ color: 'hsl(var(--primary))' }}>{t('landing.howItWorks')}</p>
             </div>
             <h2 className="text-3xl md:text-4xl font-semibold tracking-tight text-center mb-20" style={{ fontFamily: "'Newsreader', serif", color: 'hsl(var(--foreground))' }}>
-              Five steps to a navigable company.
+              {t('landing.fiveSteps')}
             </h2>
           </FadeIn>
           <div className="space-y-28">
@@ -490,13 +496,13 @@ export default function Landing({ onSignIn, authLoading = false }: LandingProps)
         <div className="max-w-5xl mx-auto">
           <FadeIn>
             <h2 className="text-3xl md:text-4xl font-semibold tracking-tight text-center mb-16" style={{ fontFamily: "'Newsreader', serif", color: 'hsl(var(--foreground))' }}>
-              Not another search tool.
+              {t('landing.comparisonTitle')}
             </h2>
           </FadeIn>
           <FadeIn delay={100}>
             <div className="grid md:grid-cols-2 gap-6">
-              <ComparisonCard title={<>Flat search <span style={{ color: 'hsl(var(--muted-foreground))', fontWeight: 400 }}>(everyone else)</span></>} items={flatLeft} icon="x" />
-              <ComparisonCard title="Folio's hierarchical KB" items={folioRight} icon="check" highlight />
+              <ComparisonCard title={<>{t('landing.flatSearch')} <span style={{ color: 'hsl(var(--muted-foreground))', fontWeight: 400 }}>{t('landing.everyoneElse')}</span></>} items={flatLeft} icon="x" />
+              <ComparisonCard title={t('landing.folioKb')} items={folioRight} icon="check" highlight />
             </div>
           </FadeIn>
         </div>
@@ -508,18 +514,18 @@ export default function Landing({ onSignIn, authLoading = false }: LandingProps)
           <FadeIn>
             <FolioDatabase className="h-10 w-10 mx-auto mb-4" style={{ color: 'hsl(var(--primary))' }} />
             <h2 className="text-3xl md:text-4xl font-semibold tracking-tight mb-8" style={{ fontFamily: "'Newsreader', serif", color: 'hsl(var(--foreground))' }}>
-              Gets smarter with every engagement.
+              {t('landing.dataMoatTitle')}
             </h2>
             <p className="text-lg leading-relaxed mb-6" style={{ color: 'hsl(var(--muted-foreground))' }}>
-              When Folio's agents figure out how to handle a new data format, resolve a recurring ambiguity, or connect a new source — that knowledge enters a shared guide library available to every future deployment.
+              {t('landing.dataMoatP1')}
             </p>
             <p className="text-lg leading-relaxed mb-12" style={{ color: 'hsl(var(--muted-foreground))' }}>
-              Every cabinet onboarded makes the next one faster. Every edge case solved becomes a pattern.
+              {t('landing.dataMoatP2')}
             </p>
           </FadeIn>
           <FadeIn delay={200}>
             <DataMoatFlow />
-            <p className="text-xs mt-3" style={{ color: 'hsl(var(--muted-foreground))' }}>↻ Continuous improvement loop</p>
+            <p className="text-xs mt-3" style={{ color: 'hsl(var(--muted-foreground))' }}>{t('landing.dataMoatLoop')}</p>
           </FadeIn>
         </div>
       </section>
@@ -530,21 +536,21 @@ export default function Landing({ onSignIn, authLoading = false }: LandingProps)
           <FadeIn>
             <FolioBuilding className="h-10 w-10 mx-auto mb-3" style={{ color: 'hsl(var(--primary))' }} />
             <h2 className="text-3xl md:text-4xl font-semibold tracking-tight text-center mb-6" style={{ fontFamily: "'Newsreader', serif", color: 'hsl(var(--foreground))' }}>
-              Built for businesses AI was supposed to help first.
+              {t('landing.whoTitle')}
             </h2>
             <p className="text-base text-center max-w-3xl mx-auto mb-4 leading-relaxed" style={{ color: 'hsl(var(--muted-foreground))' }}>
-              Traditional businesses — accounting firms, law practices, consulting agencies — have the most to gain from AI and the least-ready data to support it.
+              {t('landing.whoP1')}
             </p>
             <p className="text-sm text-center max-w-3xl mx-auto mb-16 leading-relaxed" style={{ color: 'hsl(var(--muted-foreground))' }}>
-              We started with French accounting firms. 19,000 cabinets. 3 million SME clients. Complex regulation, fragmented tools, and an industry that knows AI is coming.
+              {t('landing.whoP2')}
             </p>
           </FadeIn>
           <FadeIn delay={150}>
             <div className="grid md:grid-cols-3 gap-6">
               {[
-                { t: 'Expertise Comptable', p: 'Mountains of client documents. Regulatory complexity. Excel everywhere.', icon: <FileSpreadsheet className="h-10 w-10" style={{ color: 'hsl(var(--primary))' }} /> },
-                { t: 'Cabinet Juridique', p: 'Case files across decades. Contracts referencing contracts. Nothing linked.', icon: <FolioScale className="h-10 w-10" style={{ color: 'hsl(var(--primary))' }} /> },
-                { t: 'Conseil & Audit', p: 'Client data scattered across projects. No institutional memory.', icon: <FolioGlobe className="h-10 w-10" style={{ color: 'hsl(var(--primary))' }} /> },
+                { t: t('landing.whoExpertise'), p: t('landing.whoExpertiseP'), icon: <FileSpreadsheet className="h-10 w-10" style={{ color: 'hsl(var(--primary))' }} /> },
+                { t: t('landing.whoCabinet'), p: t('landing.whoCabinetP'), icon: <FolioScale className="h-10 w-10" style={{ color: 'hsl(var(--primary))' }} /> },
+                { t: t('landing.whoConseil'), p: t('landing.whoConseilP'), icon: <FolioGlobe className="h-10 w-10" style={{ color: 'hsl(var(--primary))' }} /> },
               ].map((c) => (
                 <div
                   key={c.t}
@@ -569,22 +575,22 @@ export default function Landing({ onSignIn, authLoading = false }: LandingProps)
           <FadeIn>
             <FolioZap className="h-16 w-16 mx-auto mb-4" style={{ color: 'hsl(var(--primary))' }} />
             <p className="text-3xl md:text-[2.5rem] font-light leading-snug" style={{ fontFamily: "'Newsreader', serif", color: 'hsl(var(--foreground))' }}>
-              The agentic workforce is arriving.
+              {t('landing.visionTitle')}
             </p>
           </FadeIn>
           <FadeIn delay={150}>
-            <p className="text-lg leading-relaxed" style={{ color: 'hsl(var(--muted-foreground))' }}>Companies with structured, verified, navigable knowledge will deploy AI agents in days.</p>
-            <p className="text-lg leading-relaxed mt-4" style={{ color: 'hsl(var(--muted-foreground))' }}>Companies without it will spend months just getting their data ready.</p>
+            <p className="text-lg leading-relaxed" style={{ color: 'hsl(var(--muted-foreground))' }}>{t('landing.visionP1')}</p>
+            <p className="text-lg leading-relaxed mt-4" style={{ color: 'hsl(var(--muted-foreground))' }}>{t('landing.visionP2')}</p>
           </FadeIn>
           <FadeIn delay={300}>
-            <p className="text-xl font-semibold" style={{ fontFamily: "'Newsreader', serif", color: 'hsl(var(--foreground))' }}>Folio is the layer that closes that gap.</p>
+            <p className="text-xl font-semibold" style={{ fontFamily: "'Newsreader', serif", color: 'hsl(var(--foreground))' }}>{t('landing.visionP3')}</p>
           </FadeIn>
           <FadeIn delay={380}>
             <div className="flex items-center justify-center gap-6" style={{ color: 'hsl(var(--muted-foreground))' }}>
               {[
-                { icon: <FolioLink className="h-10 w-10" />, label: 'Connected' },
-                { icon: <FolioShield className="h-10 w-10" />, label: 'Verified' },
-                { icon: <FolioSparkles className="h-10 w-10" />, label: 'Navigable' },
+                { icon: <FolioLink className="h-10 w-10" />, label: t('landing.visionConnected') },
+                { icon: <FolioShield className="h-10 w-10" />, label: t('landing.visionVerified') },
+                { icon: <FolioSparkles className="h-10 w-10" />, label: t('landing.visionNavigable') },
               ].map(({ icon, label }) => (
                 <div key={label} className="flex flex-col items-center gap-1">
                   {icon}
@@ -594,7 +600,7 @@ export default function Landing({ onSignIn, authLoading = false }: LandingProps)
             </div>
           </FadeIn>
           <FadeIn delay={450}>
-            <p className="text-sm" style={{ color: 'hsl(var(--muted-foreground))' }}>Not a chatbot. Not a search tool. The knowledge infrastructure for the agentic enterprise.</p>
+            <p className="text-sm" style={{ color: 'hsl(var(--muted-foreground))' }}>{t('landing.visionTagline')}</p>
           </FadeIn>
         </div>
       </section>
@@ -608,18 +614,18 @@ export default function Landing({ onSignIn, authLoading = false }: LandingProps)
                 <div className="w-12 h-12 rounded-full flex items-center justify-center mx-auto mb-4" style={{ background: 'hsl(var(--primary) / 0.1)' }}>
                   <Check className="w-12 h-12" style={{ color: 'hsl(var(--primary))' }} />
                 </div>
-                <h2 className="text-3xl font-semibold tracking-tight mb-4" style={{ fontFamily: "'Newsreader', serif", color: 'hsl(var(--foreground))' }}>You're in.</h2>
-                <p className="text-sm" style={{ color: 'hsl(var(--muted-foreground))' }}>We'll reach out within 24 hours to schedule your demo.</p>
+                <h2 className="text-3xl font-semibold tracking-tight mb-4" style={{ fontFamily: "'Newsreader', serif", color: 'hsl(var(--foreground))' }}>{t('landing.earlyAccessDone')}</h2>
+                <p className="text-sm" style={{ color: 'hsl(var(--muted-foreground))' }}>{t('landing.earlyAccessDoneP')}</p>
               </>
             ) : (
               <>
                 <h2 className="text-3xl font-semibold tracking-tight mb-6" style={{ fontFamily: "'Newsreader', serif", color: 'hsl(var(--foreground))' }}>
-                  Get started with Folio.
+                  {t('landing.earlyAccessTitle')}
                 </h2>
                 <div className="flex gap-3 mt-6">
                   <input
                     type="email"
-                    placeholder="Enter your work email"
+                    placeholder={t('landing.earlyAccessPlaceholder')}
                     className="input-organic flex-1 px-4 py-3 text-sm shadow-sm outline-none"
                     style={{
                       background: 'hsl(var(--card))',
@@ -632,11 +638,11 @@ export default function Landing({ onSignIn, authLoading = false }: LandingProps)
                     className="btn-organic px-6 py-3 font-medium transition-colors text-sm whitespace-nowrap"
                     style={{ background: 'hsl(var(--primary))', color: 'hsl(var(--primary-foreground))' }}
                   >
-                    Request a demo
+                    {t('landing.earlyAccessSubmit')}
                   </button>
                 </div>
-                <p className="text-sm mt-4" style={{ color: 'hsl(var(--muted-foreground))' }}>Free pilot for accounting, legal, and consulting firms. Set up in under a day.</p>
-                <p className="text-xs mt-2" style={{ color: 'hsl(var(--muted-foreground) / 0.5)' }}>Your data never leaves your environment.</p>
+                <p className="text-sm mt-4" style={{ color: 'hsl(var(--muted-foreground))' }}>{t('landing.earlyAccessNote')}</p>
+                <p className="text-xs mt-2" style={{ color: 'hsl(var(--muted-foreground) / 0.5)' }}>{t('landing.earlyAccessPrivacy')}</p>
               </>
             )}
           </FadeIn>
@@ -651,15 +657,15 @@ export default function Landing({ onSignIn, authLoading = false }: LandingProps)
               <img src={folioMark} alt="Folio" className="w-[54px] h-[54px]" />
               <span className="text-[38px]" style={{ fontFamily: "'Newsreader', serif", fontWeight: 500, color: 'hsl(var(--foreground))' }}>folio</span>
             </div>
-            <p className="text-sm mt-1" style={{ color: 'hsl(var(--muted-foreground))' }}>Make your company navigable.</p>
+            <p className="text-sm mt-1" style={{ color: 'hsl(var(--muted-foreground))' }}>{t('landing.footerTagline')}</p>
           </div>
           <div className="flex items-center gap-6 text-sm" style={{ color: 'hsl(var(--muted-foreground))' }}>
-            <a href="#product" className="transition-colors hover:text-foreground">Product</a>
-            <a href="#vision" className="transition-colors hover:text-foreground">Vision</a>
-            <span>Privacy</span>
+            <a href="#product" className="transition-colors hover:text-foreground">{t('landing.product')}</a>
+            <a href="#vision" className="transition-colors hover:text-foreground">{t('landing.vision')}</a>
+            <span>{t('landing.footerPrivacy')}</span>
             <span>product@folio.ai</span>
           </div>
-          <p className="text-xs" style={{ color: 'hsl(var(--muted-foreground) / 0.4)' }}>© 2025 Folio</p>
+          <p className="text-xs" style={{ color: 'hsl(var(--muted-foreground) / 0.4)' }}>{t('landing.footerCopyright')}</p>
         </div>
       </footer>
     </div>

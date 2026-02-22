@@ -57,6 +57,7 @@
     "deployStatus": "Status:",
     "deployPaid": "Paid",
     "deploySource": "Source: Finance → Invoices → Q1 2024 → invoice_0847.pdf",
+    "comparisonTitle": "Not another search tool.",
     "flatSearch": "Flat search",
     "everyoneElse": "(everyone else)",
     "folioKb": "Folio's hierarchical KB",
@@ -206,5 +207,19 @@
   "agentFeed": {
     "title": "Agent Activity",
     "live": "Live"
+  },
+  "demo": {
+    "loading": "Loading demo…",
+    "creating": "Creating demo data…",
+    "updating": "Updating demo data…",
+    "phase1Title": "Data exploration",
+    "phase1Subtitle": "Analysis of your sources and identification of key elements",
+    "phase2Title": "Structuring",
+    "phase2Subtitle": "Building the knowledge graph",
+    "phase3Title": "Verification",
+    "phase3Subtitle": "Validating detected ambiguities",
+    "restructure1": "Removing duplicates…",
+    "restructure2": "Grouping by domain…",
+    "restructure3": "Validating links…"
   }
 }

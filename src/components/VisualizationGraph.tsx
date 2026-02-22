@@ -146,9 +146,8 @@ export function VisualizationGraph({
           };
 
           const icon = fileIcons[node.type || node.fileType || 'other'] || '📎';
-          const bgColor = statusColors[
-            node.processingStatus || node.status || 'discovered'
-          ] || '#555555';
+          const statusKey = (node.processingStatus || node.status || 'discovered') as keyof typeof statusColors;
+          const bgColor = statusColors[statusKey] || '#555555';
 
           // Highlight effect
           const isHighlight = highlightNodes.has(node.id);

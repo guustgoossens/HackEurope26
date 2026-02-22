@@ -224,7 +224,7 @@ export function KnowledgeGraph({ clientId, onSelectNode, cleanMode = false }: Kn
           .attr('transform', 'scale(0) translate(-50,-50)')
           .attr('fill', fill)
           .attr('opacity', 0.38)
-          .transition().duration(350).ease(d3.easeOut)
+          .transition().duration(350).ease(d3.easeCubicOut)
           .attr('transform', `scale(${r / 50}) translate(-50,-50)`);
       }
     });
@@ -250,16 +250,21 @@ export function KnowledgeGraph({ clientId, onSelectNode, cleanMode = false }: Kn
     labelEnter.transition().delay(250).duration(400).attr('opacity', 1);
     const allLabels = labelEnter.merge(labelSel);
 
-    // ─── Drag ──────────────────────────────────────────────────────────────
+    // ─── Drag: resistance (node lags behind cursor); release keeps position, no snap-back ───
+    const DRAG_SMOOTHING = 0.32; // 0 = no move, 1 = no resistance
     const drag = d3.drag<SVGGElement, any>()
       .on('start', function(e, d) {
         if (!e.active) sim.alphaTarget(0.3).restart();
         d.fx = d.x; d.fy = d.y;
         d3.select(this).style('cursor', 'grabbing');
       })
-      .on('drag', (_e, d) => { d.fx = _e.x; d.fy = _e.y; })
+      .on('drag', (_e, d) => {
+        d.fx = (d.fx ?? d.x) + (_e.x - (d.fx ?? d.x)) * DRAG_SMOOTHING;
+        d.fy = (d.fy ?? d.y) + (_e.y - (d.fy ?? d.y)) * DRAG_SMOOTHING;
+      })
       .on('end', function(e, d) {
         if (!e.active) sim.alphaTarget(0);
+        d.x = d.fx ?? d.x; d.y = d.fy ?? d.y;
         d.fx = null; d.fy = null;
         d3.select(this).style('cursor', 'grab');
       });

@@ -57,6 +57,7 @@
     "deployStatus": "Statut :",
     "deployPaid": "Payée",
     "deploySource": "Source : Finance → Factures → T1 2024 → invoice_0847.pdf",
+    "comparisonTitle": "Pas un outil de recherche de plus.",
     "flatSearch": "Recherche plate",
     "everyoneElse": "(les autres)",
     "folioKb": "Base Folio hiérarchique",
@@ -206,5 +207,19 @@
   "agentFeed": {
     "title": "Activité agent",
     "live": "En direct"
+  },
+  "demo": {
+    "loading": "Chargement de la démo…",
+    "creating": "Création des données démo…",
+    "updating": "Mise à jour des données démo…",
+    "phase1Title": "Exploration des données",
+    "phase1Subtitle": "Analyse de vos sources et identification des éléments clés",
+    "phase2Title": "Structuration",
+    "phase2Subtitle": "Construction du graphe de connaissances",
+    "phase3Title": "Vérification",
+    "phase3Subtitle": "Validation des ambiguïtés détectées",
+    "restructure1": "Suppression des doublons…",
+    "restructure2": "Regroupement par domaine…",
+    "restructure3": "Validation des liens…"
   }
 }
