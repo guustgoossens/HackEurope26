@@ -35,7 +35,53 @@ class ExplorerAgent:
         self._tool_names = tool_names or []
         self._auth_mode = auth_mode
         self._workspace_path = workspace_path
-        self.max_turns = 10
+        self.max_turns = 15
+
+    def _get_discovery_strategy(self) -> str:
+        """Return source-specific discovery instructions."""
+        common_ending = (
+            "When you have enough information, call `report_metrics` with a `discovered_files` array "
+            "listing every resource you found (include id, name, and mimeType where known)."
+        )
+
+        if self.source_type == "gmail":
+            return (
+                "## Discovery Strategy (Gmail)\n"
+                "1. Call `GMAIL_FETCH_EMAILS` with `max_results: 5` and WITHOUT `include_payload` (metadata only).\n"
+                "   This gives you subjects, senders, dates — enough to understand the mailbox.\n"
+                "2. Use search queries to find business-relevant emails: `has:attachment`, `subject:facture`,\n"
+                "   `subject:invoice`, `from:comptable`, `subject:bilan`.\n"
+                "3. For emails that look relevant, use `GMAIL_FETCH_MESSAGE_BY_MESSAGE_ID` to read individual messages.\n"
+                "4. Check the forum for known patterns before spending time on hard problems.\n"
+                f"5. {common_ending}"
+            )
+        elif self.source_type == "sheets":
+            return (
+                "## Discovery Strategy (Sheets)\n"
+                "1. FIRST call `GOOGLEDRIVE_LIST_FILES` to discover available spreadsheets.\n"
+                "   You can filter by mimeType `application/vnd.google-apps.spreadsheet`.\n"
+                "2. THEN use `GOOGLESHEETS_BATCH_GET` with the discovered spreadsheet IDs to read their contents.\n"
+                "3. Use sandbox tools (run_command, read_local_file) for local processing of downloaded data.\n"
+                "4. Check the forum for known patterns before spending time on hard problems.\n"
+                f"5. {common_ending}"
+            )
+        elif self.source_type == "drive":
+            return (
+                "## Discovery Strategy (Drive)\n"
+                "1. Call `GOOGLEDRIVE_LIST_FILES` with no filters to see all available files.\n"
+                "2. Filter by mime type to find specific file categories (PDFs, spreadsheets, documents).\n"
+                "3. Use `download_file` to fetch files locally, then inspect with sandbox tools.\n"
+                "4. Check the forum for known patterns before spending time on hard problems.\n"
+                f"5. {common_ending}"
+            )
+        else:
+            return (
+                "## Strategy\n"
+                "1. If Google Workspace tools are listed above, call them immediately — they are live and authenticated.\n"
+                "2. Use sandbox tools (run_command, read_local_file) for processing files locally.\n"
+                "3. Check the forum for known patterns before spending time on hard problems.\n"
+                f"4. {common_ending}"
+            )
 
     def _build_system_prompt(self) -> str:
         # Categorize tools for clear presentation
@@ -99,13 +145,13 @@ class ExplorerAgent:
             f"{sandbox_section}"
             f"{utility_section}\n"
 
-            f"## Strategy\n"
-            f"1. If Google Workspace tools are listed above, call them immediately — they are live and authenticated.\n"
-            f"2. Use sandbox tools (run_command, read_local_file) for processing files locally.\n"
-            f"3. Check the forum for known patterns before spending time on hard problems.\n"
-            f"4. When you have enough information, call report_metrics to finish.\n\n"
+            f"{self._get_discovery_strategy()}\n\n"
 
-            f"Do NOT spend turns trying to set up authentication — it is already done."
+            f"## Rules\n"
+            f"- Do NOT use `run_command` to grep for credentials, tokens, or env vars.\n"
+            f"- Do NOT install google SDK packages (google-auth, google-api-python-client, etc.).\n"
+            f"- Do NOT request full email bodies in bulk — fetch metadata first, then read selectively.\n"
+            f"- Do NOT spend turns trying to set up authentication — it is already done."
         )
 
     async def run(self) -> SubAgentReport:
@@ -122,7 +168,10 @@ class ExplorerAgent:
             {
                 "role": "user",
                 "content": (
-                    f"Explore the {self.source_type} source '{self.source_label}' and report what you find."
+                    f"Explore the {self.source_type} source '{self.source_label}'.\n"
+                    f"1. List available resources first (don't read everything in detail).\n"
+                    f"2. Inspect the most relevant items selectively.\n"
+                    f"3. Call report_metrics with a summary AND a discovered_files array of what you found."
                 ),
             }
         ]

@@ -81,8 +81,21 @@ EXPLORER_TOOLS = [
                 "sheet_count": {"type": "integer", "description": "Number of spreadsheets found"},
                 "folder_structure": {"type": "string", "description": "Summary of folder structure"},
                 "summary": {"type": "string", "description": "Brief summary of findings"},
+                "discovered_files": {
+                    "type": "array",
+                    "description": "Resources discovered — include IDs and names for downstream processing",
+                    "items": {
+                        "type": "object",
+                        "properties": {
+                            "id": {"type": "string", "description": "Resource ID (Drive file ID, email message ID)"},
+                            "name": {"type": "string", "description": "Resource name or subject line"},
+                            "mimeType": {"type": "string", "description": "MIME type if known"},
+                        },
+                        "required": ["id", "name"],
+                    },
+                },
             },
-            "required": ["summary"],
+            "required": ["summary", "discovered_files"],
         },
     ),
     ToolDefinition(

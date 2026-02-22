@@ -4,12 +4,14 @@ logger = logging.getLogger(__name__)
 
 GOOGLE_TOOL_PREFIXES = ("GMAIL_", "GOOGLEDRIVE_", "GOOGLESHEETS_")
 
-# Maps data source type → Composio toolkit slug
-SOURCE_TOOLKIT: dict[str, str] = {
-    "gmail": "gmail",
-    "drive": "googledrive",
-    "sheets": "googlesheets",
+# Maps data source type → Composio toolkit slugs (some sources need cross-toolkit discovery)
+SOURCE_TOOLKITS: dict[str, list[str]] = {
+    "gmail": ["gmail"],
+    "drive": ["googledrive"],
+    "sheets": ["googlesheets", "googledrive"],
 }
+
+MAX_RESULT_CHARS = 30_000
 
 
 class ComposioIntegration:
@@ -28,14 +30,14 @@ class ComposioIntegration:
 
     def get_tools_for_source(self, user_id: str, source_type: str) -> list[dict]:
         """Get Composio tool schemas for a specific data source type."""
-        toolkit = SOURCE_TOOLKIT.get(source_type)
-        if not toolkit:
+        toolkits = SOURCE_TOOLKITS.get(source_type)
+        if not toolkits:
             logger.warning(f"No Composio toolkit mapped for source_type '{source_type}'")
             return []
         try:
-            tools = self.composio.tools.get(user_id=user_id, toolkits=[toolkit])
+            tools = self.composio.tools.get(user_id=user_id, toolkits=toolkits)
             tool_names = [t.get("name", "?") for t in tools]
-            logger.info(f"Got {len(tools)} {source_type} tools from Composio: {tool_names}")
+            logger.info(f"Got {len(tools)} {source_type} tools from Composio (toolkits={toolkits}): {tool_names}")
             return tools
         except Exception as e:
             logger.error(f"Failed to get Composio tools for {source_type}: {e}")
@@ -64,7 +66,12 @@ class ComposioIntegration:
             error = result.error
         logger.info(f"Composio {name} result: successful={successful}, data={str(data)[:200]}")
         if successful:
-            return str(data) if data is not None else ""
+            text = str(data) if data is not None else ""
+            if len(text) > MAX_RESULT_CHARS:
+                original_len = len(text)
+                text = text[:MAX_RESULT_CHARS] + f"\n... (truncated from {original_len} chars)"
+                logger.warning(f"Composio {name} result truncated: {original_len} -> {MAX_RESULT_CHARS}")
+            return text
         return f"Composio error: {error}"
 
     @staticmethod
