@@ -18,10 +18,11 @@ class StructurerAgent:
         self,
         claude: AnthropicAdapter,
         gemini: GeminiAdapter,
-        executor: ToolExecutor,
+        executor,
         convex: ConvexClient,
         client_id: str,
         file_refs: list[dict],
+        tools: list[dict] | None = None,
     ):
         self.claude = claude
         self.gemini = gemini
@@ -29,6 +30,7 @@ class StructurerAgent:
         self.convex = convex
         self.client_id = client_id
         self.file_refs = file_refs
+        self._tools = tools
         self.max_turns = 20
 
     async def run(self) -> SubAgentReport:
@@ -39,46 +41,46 @@ class StructurerAgent:
             f"Starting structurer with {len(self.file_refs)} files to process",
         )
 
+        tools = self._tools or (
+            [get_tool_schema(t) for t in STRUCTURER_TOOLS]
+            + [get_tool_schema(t) for t in SANDBOX_TOOLS]
+        )
+        tool_names = [t["name"] for t in tools]
+
         file_summary = json.dumps(self.file_refs, indent=2, default=str)
 
+        # Build system prompt dynamically from available tools
+        tool_list = "\n".join(f"  - {name}" for name in tool_names)
         system = (
-            "You are a structurer agent responsible for extracting and classifying content from business files.\n\n"
+            "You are a structurer agent responsible for extracting and classifying content "
+            "from business data sources (emails, files, spreadsheets).\n\n"
 
-            "## Primary Tools\n"
-            "- extract_content: Use Gemini to extract text/data from files (PDFs, images, spreadsheets)\n"
-            "- classify_relevance: Classify whether extracted content is relevant to the knowledge base\n"
-            "- add_contradiction: Report contradictions found between data sources\n"
-            "- message_master: Send findings or questions to the master agent\n"
-            "- check_forum: Search the agent forum for relevant context\n"
-            "- write_to_forum: Share discoveries with other agents\n\n"
-
-            "## Sandbox Tools (local file processing)\n"
-            "- download_file: Download a file from Google Drive to the local workspace\n"
-            "- run_command: Execute shell commands (ffmpeg, pdftotext, tesseract, python, etc.)\n"
-            "- read_local_file: Read a file from the workspace\n"
-            "- list_workspace: List files in the workspace\n"
-            "- install_package: Install a Python package via uv\n\n"
+            f"## Available Tools\n{tool_list}\n\n"
 
             "## Workflow\n"
-            "For each file:\n"
-            "1. Extract its content using extract_content\n"
+            "For each resource in your batch:\n"
+            "1. Fetch/read its content using the available tools\n"
             "2. Classify its relevance using classify_relevance\n"
-            "3. If you find contradicting information between files, report it with add_contradiction\n"
+            "3. If you find contradicting information between sources, report with add_contradiction\n"
             "4. Share important discoveries on the forum\n"
-            "5. When done processing all files, send a summary to the master via message_master"
+            "5. When done processing all resources, send a summary to the master via message_master\n\n"
+
+            "## Rules\n"
+            "- Only use the tools listed above — they are the complete set available to you.\n"
+            "- Do NOT install Google SDK packages or look for credentials.\n"
+            "- Tools prefixed with GMAIL_ or GOOGLEDRIVE_ are pre-authenticated — call them directly."
         )
 
         messages = [
             {
                 "role": "user",
                 "content": (
-                    f"Process the following {len(self.file_refs)} files, extract their content, "
+                    f"Process the following {len(self.file_refs)} resources, extract their content, "
                     f"classify relevance, and report any contradictions you find.\n\n"
-                    f"Files:\n{file_summary}"
+                    f"Resources:\n{file_summary}"
                 ),
             }
         ]
-        tools = [get_tool_schema(t) for t in STRUCTURER_TOOLS] + [get_tool_schema(t) for t in SANDBOX_TOOLS]
         report = SubAgentReport(agent_name="structurer", source_type="mixed")
 
         detector = ToolLoopDetector()

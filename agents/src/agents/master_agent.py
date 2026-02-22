@@ -105,7 +105,8 @@ class MasterAgent:
                 return f"Successfully installed {package}"
             raise RuntimeError(f"Failed to install {package}: {result['stderr']}")
 
-        executor.register("download_file", download_file)
+        if google is not None:
+            executor.register("download_file", download_file)
         executor.register("run_command", run_command)
         executor.register("read_local_file", read_local_file)
         executor.register("list_workspace", list_workspace)
@@ -223,9 +224,11 @@ class MasterAgent:
 
     # ── Structurer tool executor ────────────────────────────────────
 
-    def _build_structurer_executor(self, workspace_path: str) -> ToolExecutor:
+    def _build_structurer_executor(self, workspace_path: str) -> HybridToolExecutor:
         executor = ToolExecutor()
-        executor.register("extract_content", self._make_extract_content(workspace_path))
+        # Only register tools that require self.google when it's available
+        if self.google:
+            executor.register("extract_content", self._make_extract_content(workspace_path))
         executor.register("classify_relevance", self._tool_classify_relevance)
         executor.register("add_contradiction", self._tool_add_contradiction)
         executor.register("message_master", self._tool_message_master)
@@ -233,7 +236,40 @@ class MasterAgent:
         executor.register("write_to_forum", self._tool_write_forum_structurer)
         # Sandbox tools — isolated to this workspace
         self._register_sandbox_tools(executor, workspace_path)
-        return executor
+        return HybridToolExecutor(
+            custom_executor=executor,
+            composio=self.composio,
+            composio_user_id=self.composio_user_id,
+        )
+
+    def _get_structurer_tools(
+        self, executor: HybridToolExecutor, source_types: list[str]
+    ) -> list[dict]:
+        """Get tool schemas for structurer, scoped to available capabilities."""
+        # Custom tools — only include those that are actually registered
+        custom_tools = [
+            t for t in STRUCTURER_TOOLS
+            if t.name != "extract_content" or self.google
+        ]
+        sandbox_tools = [
+            t for t in SANDBOX_TOOLS
+            if t.name != "download_file" or self.google
+        ]
+        custom_schemas = [get_tool_schema(t) for t in custom_tools] + [
+            get_tool_schema(t) for t in sandbox_tools
+        ]
+        if not self.composio:
+            return custom_schemas
+        # Add Composio tools for all relevant source types
+        composio_tools = []
+        seen = set()
+        for st in source_types:
+            for tool in self.composio.get_tools_for_source(self.composio_user_id, st):
+                name = tool.get("name", "")
+                if name not in seen:
+                    composio_tools.append(tool)
+                    seen.add(name)
+        return composio_tools + custom_schemas
 
     async def _tool_classify_relevance(
         self, content: str, context: str
@@ -601,12 +637,16 @@ class MasterAgent:
                 for i in range(0, len(all_file_refs), batch_size)
             ]
 
+            # Determine source types for scoping Composio tools
+            source_types = list({r.source_type for r in self.state.sub_agent_reports})
+
             structurers = []
             structurer_workspaces = []
             for i, batch in enumerate(batches):
                 ws = self.file_manager.create_workspace(f"{self.client_id}_structurer_{i}")
                 structurer_workspaces.append(ws)
                 structurer_executor = self._build_structurer_executor(ws)
+                structurer_tools = self._get_structurer_tools(structurer_executor, source_types)
                 agent = StructurerAgent(
                     claude=self.claude,
                     gemini=self.gemini,
@@ -614,6 +654,7 @@ class MasterAgent:
                     convex=self.convex,
                     client_id=self.client_id,
                     file_refs=batch,
+                    tools=structurer_tools,
                 )
                 structurers.append(agent)
 
