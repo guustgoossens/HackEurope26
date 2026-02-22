@@ -46,21 +46,38 @@ export function useComposioConnect({ clientId, onSuccess, onError }: UseComposio
           console.log('[composio] navigating popup to:', result.redirectUrl);
           popup.location.href = result.redirectUrl;
 
+          const markConnected = async () => {
+            clearInterval(pollInterval);
+            popup?.close();
+            console.log('[composio] OAuth complete, updating connection to connected');
+            await updateConnection({
+              id: sourceId!,
+              connectionStatus: 'connected',
+              composioEntityId: result.userId,
+            });
+            setConnecting(null);
+            onSuccess?.();
+          };
+
           const pollInterval = setInterval(async () => {
-            const closed = popup.closed;
-            console.log('[composio] polling popup.closed:', closed);
-            if (closed) {
-              clearInterval(pollInterval);
-              console.log('[composio] popup closed, updating connection to connected');
-              await updateConnection({
-                id: sourceId!,
-                connectionStatus: 'connected',
-                composioEntityId: result.userId,
-              });
-              setConnecting(null);
-              onSuccess?.();
+            if (popup.closed) {
+              // User manually closed the popup
+              await markConnected();
+              return;
             }
-          }, 1000);
+            try {
+              // This throws with a SecurityError while the popup is on Composio's domain.
+              // Once OAuth completes, Composio redirects back to our callbackUrl (same origin),
+              // so we can read href — that means OAuth is done.
+              const href = popup.location.href;
+              if (href && href !== 'about:blank' && href.startsWith(window.location.origin)) {
+                console.log('[composio] popup returned to our origin, OAuth complete');
+                await markConnected();
+              }
+            } catch {
+              // Still on Composio's domain — keep polling
+            }
+          }, 500);
 
           setTimeout(() => {
             clearInterval(pollInterval);
