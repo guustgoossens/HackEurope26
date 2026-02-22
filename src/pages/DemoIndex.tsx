@@ -154,20 +154,26 @@ export default function DemoIndex({ clientId, onBack, onSwitchToLive }: DemoInde
     if (!client) return null;
 
     return (
-        <div className="landing h-screen flex flex-col overflow-hidden relative" style={{ background: 'hsl(220 20% 98%)' }}>
-            <div className="absolute inset-0 pointer-events-none z-0"
-                style={{ background: 'radial-gradient(ellipse at 50% 0%, hsl(217 71% 30% / 0.04), transparent 70%)' }} />
+        <div className="landing h-screen flex flex-col overflow-hidden relative" style={{ background: phase === 4 ? 'hsl(0 0% 100%)' : 'hsl(220 20% 98%)' }}>
+            {phase !== 4 && (
+                <>
+                    <div className="absolute inset-0 pointer-events-none z-0"
+                        style={{ background: 'radial-gradient(ellipse at 50% 0%, hsl(217 71% 30% / 0.04), transparent 70%)' }} />
 
-            <TopNav
-                clientName={client.name}
-                currentPhase={phase}
-                isPlaying={isPlaying}
-                isComplete={isVerifyComplete}
-                onPhaseChange={handlePhaseChange}
-                onTogglePlay={handleTogglePlay}
-                onBack={onBack}
-                onSwitchToLive={onSwitchToLive}
-            />
+                    <TopNav
+                        clientName={client.name}
+                        currentPhase={phase}
+                        isPlaying={isPlaying}
+                        isComplete={isVerifyComplete}
+                        onPhaseChange={handlePhaseChange}
+                        onTogglePlay={handleTogglePlay}
+                        onBack={onBack}
+                        onSwitchToLive={onSwitchToLive}
+                        activePhaseTitle={info.title}
+                        activePhaseSubtitle={info.subtitle}
+                    />
+                </>
+            )}
 
             <main className="flex-1 relative overflow-hidden flex z-10 w-full">
 
@@ -310,20 +316,10 @@ export default function DemoIndex({ clientId, onBack, onSwitchToLive }: DemoInde
                 {/* ── Phase 4: Use / Pulse ── */}
                 {phase === 4 && (
                     <div className="flex w-full h-full">
-                        <UsePhase clientId={clientId} />
+                        <UsePhase clientId={clientId} onBack={onBack} />
                     </div>
                 )}
 
-                {/* Phase subtitle — only for phases 2 + 3 */}
-                {phase > 1 && phase < 4 && (
-                    <div
-                        className="absolute top-4 left-1/2 -translate-x-1/2 text-center pointer-events-none z-20"
-                        key={phase}
-                        style={{ animation: 'fade-in 0.5s ease-out' }}
-                    >
-                        <p className="text-xs text-muted-foreground">{info.subtitle}</p>
-                    </div>
-                )}
             </main>
         </div>
     );

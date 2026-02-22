@@ -12,30 +12,30 @@ interface VisualizationGraphProps {
   onNodeClick?: (nodeId: string) => void;
 }
 
-export function VisualizationGraph({ 
-  clientId, 
+export function VisualizationGraph({
+  clientId,
   type = 'knowledge',
-  onNodeClick 
+  onNodeClick
 }: VisualizationGraphProps) {
   // Query based on visualization type
   const knowledgeData = useQuery(
     api.visualizationGraph.getKnowledgeTree,
     type === 'knowledge' ? { clientId } : 'skip'
   );
-  
+
   const explorationData = useQuery(
     api.visualizationGraph.getExplorationGraph,
     type === 'exploration' ? { clientId } : 'skip'
   );
-  
+
   const contradictionsData = useQuery(
     api.visualizationGraph.getContradictionsGraph,
     type === 'contradictions' ? { clientId } : 'skip'
   );
 
-  const graphData = type === 'knowledge' ? knowledgeData 
+  const graphData = type === 'knowledge' ? knowledgeData
     : type === 'exploration' ? explorationData
-    : contradictionsData;
+      : contradictionsData;
 
   const graphRef = useRef<any>(null);
   const [highlightNodes, setHighlightNodes] = useState(new Set());
@@ -78,7 +78,7 @@ export function VisualizationGraph({
   if (!graphData) {
     return (
       <div className="flex items-center justify-center h-full">
-        <p className="text-slate-400">Loading visualization...</p>
+        <p className="text-slate-500">Loading visualization...</p>
       </div>
     );
   }
@@ -92,11 +92,11 @@ export function VisualizationGraph({
   }
 
   return (
-    <div className="w-full h-full relative bg-slate-900 rounded-lg overflow-hidden">
+    <div className="w-full h-full relative bg-white border border-slate-200 rounded-lg overflow-hidden shadow-sm">
       <ForceGraph2D
         ref={graphRef}
         graphData={graphData}
-        backgroundColor="#0f172a"
+        backgroundColor="#ffffff"
         linkColor={(link: any) => {
           const colors = {
             parent_of: '#3b82f6',
@@ -108,7 +108,7 @@ export function VisualizationGraph({
           };
           return colors[link.relationship as keyof typeof colors] || '#6b7280';
         }}
-        linkDirectionalArrowLength={(link: any) => 
+        linkDirectionalArrowLength={(link: any) =>
           link.relationship === 'parent_of' ? 6 : 0
         }
         nodeCanvasObject={(node: any, ctx, globalScale) => {
@@ -169,7 +169,7 @@ export function VisualizationGraph({
 
           // Draw border
           if (isHover) {
-            ctx.strokeStyle = '#fff';
+            ctx.strokeStyle = '#333';
             ctx.lineWidth = 2;
             ctx.stroke();
           }
@@ -182,11 +182,11 @@ export function VisualizationGraph({
 
           // Draw label below icon
           if (globalScale > 0.6 || isHover) {
-            ctx.font = `${fontSize}px Sans-Serif`;
+            ctx.font = `600 ${fontSize}px Newsreader, serif`;
             ctx.textAlign = 'center';
             ctx.textBaseline = 'top';
-            ctx.fillStyle = '#ffffff';
-            ctx.shadowColor = '#000000';
+            ctx.fillStyle = '#0f172a'; // Dark text for light mode
+            ctx.shadowColor = 'rgba(255, 255, 255, 0.8)';
             ctx.shadowBlur = 4;
             ctx.fillText(label, node.x, node.y + iconSize + 4);
             ctx.shadowBlur = 0;
@@ -203,15 +203,15 @@ export function VisualizationGraph({
         enableZoomInteraction={true}
         enablePanInteraction={true}
       />
-      
+
       {/* Legend */}
-      <div className="absolute top-4 right-4 bg-slate-800/90 rounded-lg p-4 text-sm">
-        <h3 className="font-semibold text-white mb-2">
+      <div className="absolute top-4 right-4 bg-white/90 border border-slate-200 rounded-lg p-4 text-sm shadow-md backdrop-blur-sm">
+        <h3 className="font-semibold text-slate-800 mb-2">
           {type === 'knowledge' && 'Knowledge Tree'}
           {type === 'exploration' && 'Data Sources'}
           {type === 'contradictions' && 'Contradictions'}
         </h3>
-        <div className="space-y-1 text-slate-300">
+        <div className="space-y-1 text-slate-600">
           {type === 'knowledge' && (
             <>
               <div className="flex items-center gap-2">

@@ -33,11 +33,11 @@ export function KnowledgeTree({ clientId, onSelectNode, selectedNodeId }: Knowle
 
   if (allNodes === undefined) {
     return (
-      <div className="bg-slate-800 border border-slate-700 rounded-xl p-4">
-        <h3 className="text-sm font-medium text-slate-300 mb-3">Knowledge Tree</h3>
-        <div className="animate-pulse space-y-2">
+      <div className="card-organic border p-4" style={{ background: 'hsl(var(--card))', borderColor: 'hsl(var(--border))' }}>
+        <h3 className="text-base font-medium mb-4" style={{ color: 'hsl(var(--foreground))' }}>Knowledge Tree</h3>
+        <div className="animate-pulse space-y-3">
           {[1, 2, 3].map((i) => (
-            <div key={i} className="h-8 bg-slate-700 rounded" />
+            <div key={i} className="h-10 rounded" style={{ background: 'hsl(var(--muted))' }} />
           ))}
         </div>
       </div>
@@ -46,10 +46,10 @@ export function KnowledgeTree({ clientId, onSelectNode, selectedNodeId }: Knowle
 
   if (allNodes.length === 0) {
     return (
-      <div className="bg-slate-800 border border-slate-700 rounded-xl p-6 text-center">
-        <BookOpen className="w-8 h-8 text-slate-600 mx-auto mb-3" />
-        <h3 className="text-sm font-medium text-slate-300 mb-1">No knowledge tree yet</h3>
-        <p className="text-xs text-slate-500">The structure phase will generate the knowledge tree.</p>
+      <div className="card-organic border rounded-xl p-8 text-center" style={{ background: 'hsl(var(--card))', borderColor: 'hsl(var(--border))' }}>
+        <BookOpen className="w-10 h-10 mx-auto mb-4" style={{ color: 'hsl(var(--muted-foreground))' }} />
+        <h3 className="text-base font-medium mb-1" style={{ color: 'hsl(var(--foreground))' }}>No knowledge tree yet</h3>
+        <p className="text-sm" style={{ color: 'hsl(var(--muted-foreground))' }}>The structure phase will generate the knowledge tree.</p>
       </div>
     );
   }
@@ -66,9 +66,9 @@ export function KnowledgeTree({ clientId, onSelectNode, selectedNodeId }: Knowle
   }
 
   return (
-    <div className="bg-slate-800 border border-slate-700 rounded-xl p-4">
-      <h3 className="text-sm font-medium text-slate-300 mb-3">Knowledge Tree</h3>
-      <div className="space-y-0.5">
+    <div className="card-organic border p-4" style={{ background: 'hsl(var(--card))', borderColor: 'hsl(var(--border))' }}>
+      <h3 className="text-base font-medium mb-4" style={{ color: 'hsl(var(--foreground))' }}>Knowledge Tree</h3>
+      <div className="space-y-1">
         {rootNodes.map((node) => (
           <TreeNodeRow
             key={node._id}
@@ -108,10 +108,10 @@ function TreeNodeRow({
     <div>
       <button
         className={clsx(
-          'w-full flex items-center gap-2 px-2 py-1.5 rounded-md text-sm transition-colors',
-          isSelected ? 'bg-blue-600/20 text-white' : 'text-slate-300 hover:bg-slate-700/50 hover:text-white',
+          'w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-base transition-colors',
+          isSelected ? 'bg-primary/10 text-primary font-medium' : 'hover:bg-slate-100 hover:text-slate-900',
         )}
-        style={{ paddingLeft: `${depth * 16 + 8}px` }}
+        style={{ paddingLeft: `${depth * 20 + 12}px`, color: isSelected ? 'hsl(var(--primary))' : 'hsl(var(--muted-foreground))' }}
         onClick={() => {
           if (hasChildren) setExpanded(!expanded);
           onSelect?.(node._id);
@@ -119,18 +119,18 @@ function TreeNodeRow({
       >
         {hasChildren ? (
           expanded ? (
-            <ChevronDown className="w-3.5 h-3.5 text-slate-500 shrink-0" />
+            <ChevronDown className="w-5 h-5 shrink-0" style={{ color: 'hsl(var(--muted-foreground))' }} />
           ) : (
-            <ChevronRight className="w-3.5 h-3.5 text-slate-500 shrink-0" />
+            <ChevronRight className="w-5 h-5 shrink-0" style={{ color: 'hsl(var(--muted-foreground))' }} />
           )
         ) : (
-          <span className="w-3.5" />
+          <span className="w-5" />
         )}
-        <div className={clsx('w-5 h-5 rounded flex items-center justify-center shrink-0', config.bgColor)}>
-          <Icon className={clsx('w-3 h-3', config.color)} />
+        <div className={clsx('w-8 h-8 rounded-md flex items-center justify-center shrink-0', config.bgColor)}>
+          <Icon className={clsx('w-4 h-4', config.color)} />
         </div>
-        <span className="truncate">{node.name}</span>
-        <span className="ml-auto text-xs text-slate-500 capitalize">{node.type.replace('_', ' ')}</span>
+        <span className="truncate" style={{ color: isSelected ? 'hsl(var(--primary))' : 'hsl(var(--foreground))' }}>{node.name}</span>
+        <span className="ml-auto text-xs capitalize" style={{ color: 'hsl(var(--muted-foreground))' }}>{node.type.replace('_', ' ')}</span>
       </button>
       {expanded &&
         children.map((child) => (

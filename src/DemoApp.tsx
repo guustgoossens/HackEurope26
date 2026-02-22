@@ -7,28 +7,38 @@ import Landing from '@/pages/Landing';
 import DemoIndex from '@/pages/DemoIndex';
 import { ClientDetail } from '@/pages/ClientDetail';
 
-const DEMO_PATH = '/demo';
+const DEMO_NARRATIVE_PATH = '/demo/narrative';
+const DASHBOARD_PATH = '/dashboard';
 const OLD_DEMO_NAME = 'Cabinet Dupont & Associés';
 
 /**
  * In demo mode (VITE_DEMO_SKIP_AUTH=true):
  * - / or "" → Landing (design marketing)
- * - /demo → DemoClientView (viewMode: 'live' → real pipeline, 'narrative' → scripted animation)
- * No WorkOS; "Voir la démo" envoie vers /demo.
+ * - /demo/narrative → Scripted animation
+ * - /dashboard → Real pipeline view
  */
 export function DemoApp() {
-  const [path, setPath] = useState(() =>
-    window.location.pathname === DEMO_PATH ? DEMO_PATH : '/',
-  );
+  const [path, setPath] = useState(() => {
+    const p = window.location.pathname;
+    if (p === '/demo') return DEMO_NARRATIVE_PATH;
+    if (p.startsWith('/demo') || p === DASHBOARD_PATH) return p;
+    return '/';
+  });
+
   useEffect(() => {
     const onPopState = () => setPath(window.location.pathname);
     window.addEventListener('popstate', onPopState);
     return () => window.removeEventListener('popstate', onPopState);
   }, []);
 
-  const goToDemo = () => {
-    window.history.pushState({}, '', DEMO_PATH);
-    setPath(DEMO_PATH);
+  const goToNarrative = () => {
+    window.history.pushState({}, '', DEMO_NARRATIVE_PATH);
+    setPath(DEMO_NARRATIVE_PATH);
+  };
+
+  const goToDashboard = () => {
+    window.history.pushState({}, '', DASHBOARD_PATH);
+    setPath(DASHBOARD_PATH);
   };
 
   const goToLanding = () => {
@@ -36,16 +46,30 @@ export function DemoApp() {
     setPath('/');
   };
 
-  if (path !== DEMO_PATH) {
+  if (path === '/' || (!path.startsWith('/demo') && path !== DASHBOARD_PATH)) {
     return (
       <Landing
-        onSignIn={goToDemo}
+        onSignIn={goToNarrative}
         authLoading={false}
       />
     );
   }
 
-  return <DemoClientView onBack={goToLanding} />;
+  if (path === DASHBOARD_PATH) {
+    return (
+      <LivePipelineView
+        onBack={goToLanding}
+        onSwitchToNarrative={goToNarrative}
+      />
+    );
+  }
+
+  return (
+    <NarrativeClientView
+      onBack={goToLanding}
+      onSwitchToLive={goToDashboard}
+    />
+  );
 }
 
 // ─── Scripted narrative demo (existing) ───────────────────────────────────────
@@ -82,7 +106,7 @@ function NarrativeClientView({ onBack, onSwitchToLive }: { onBack: () => void; o
         await clearDemo({ clientId });
         await updateDemoClient({
           id: clientId,
-          name: 'Hartley & Associates LLP',
+          name: 'Cabinet Dupont & Associés',
           industry: 'Accountancy',
           phase: 'explore',
         });
@@ -173,21 +197,13 @@ function LivePipelineView({ onBack, onSwitchToNarrative }: { onBack: () => void;
           <button
             onClick={() => void handleReset()}
             disabled={resetting}
-            className="text-xs px-3 py-1.5 rounded-lg transition-colors disabled:opacity-50"
-            style={{
-              border: '1px solid hsl(217 20% 88%)',
-              color: 'hsl(217 20% 50%)',
-            }}
+            className="text-xs px-3 py-1.5 btn-organic-secondary transition-colors disabled:opacity-50"
           >
             {resetting ? 'Réinitialisation…' : 'Réinitialiser'}
           </button>
           <button
             onClick={onSwitchToNarrative}
-            className="text-xs text-white px-3 py-1.5 rounded-lg transition-all duration-200"
-            style={{
-              background: 'linear-gradient(135deg, hsl(217 65% 52%), hsl(217 75% 43%))',
-              boxShadow: '0 1px 4px hsl(217 60% 50% / 0.3)',
-            }}
+            className="text-xs text-white px-3 py-1.5 btn-organic transition-all duration-200"
           >
             Voir la démo narrative →
           </button>
@@ -202,24 +218,4 @@ function LivePipelineView({ onBack, onSwitchToNarrative }: { onBack: () => void;
   );
 }
 
-// ─── Router: picks narrative or live ─────────────────────────────────────────
-
-function DemoClientView({ onBack }: { onBack: () => void }) {
-  const [viewMode, setViewMode] = useState<'narrative' | 'live'>('live');
-
-  if (viewMode === 'live') {
-    return (
-      <LivePipelineView
-        onBack={onBack}
-        onSwitchToNarrative={() => setViewMode('narrative')}
-      />
-    );
-  }
-
-  return (
-    <NarrativeClientView
-      onBack={onBack}
-      onSwitchToLive={() => setViewMode('live')}
-    />
-  );
-}
+// (DemoClientView removed, replaced by DemoApp routing directly inside there)

@@ -37,7 +37,7 @@ The company being onboarded. Every other client-scoped table references back to 
 
 | Field | Type | Description |
 |-------|------|-------------|
-| name | string | Company name, e.g. "Hartley & Associates LLP" |
+| name | string | Company name, e.g. "Cabinet Dupont & Associés" |
 | industry | string | e.g. "Accountancy", "Legal", "Consulting" |
 | phase | `"onboard"` \| `"explore"` \| `"structure"` \| `"verify"` \| `"use"` | Current onboarding phase |
 | createdBy | string | WorkOS user ID of the account manager who created this client |
@@ -61,7 +61,7 @@ Each external system connected to a client (Google Drive, Gmail, Sheets).
 |-------|------|-------------|
 | clientId | reference | Links to `clients` |
 | type | `"gmail"` \| `"drive"` \| `"sheets"` | Which system |
-| label | string | User-facing name, e.g. "Hartley Main Drive" |
+| label | string | User-facing name, e.g. "Dupont Main Drive" |
 | connectionStatus | `"pending"` \| `"connected"` \| `"error"` | Current connection state |
 | composioEntityId | string? | Composio integration entity ID (if using Composio connector) |
 
@@ -307,7 +307,7 @@ Three views are available in `ClientDetail`, each behind a toggle button:
 
 ## Demo Data
 
-Use `convex/demoData.ts` to seed Hartley & Associates LLP (fictional accountancy firm):
+Use `convex/demoData.ts` to seed Cabinet Dupont & Associés (fictional accountancy firm):
 
 ```bash
 # Create the client

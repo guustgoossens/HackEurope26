@@ -1,7 +1,7 @@
 import { useQuery } from 'convex/react';
 import { api } from '../../convex/_generated/api';
 import { useCountUp } from '@/hooks/useCountUp';
-import { Mail, HardDrive, Sheet, FileText } from 'lucide-react';
+import { FolioMail as Mail, FolioHardDrive as HardDrive, FolioFileSpreadsheet as Sheet, FolioFileText as FileText } from '@/components/icons/FolioIcons';
 import type { Id } from '../../convex/_generated/dataModel';
 
 interface ExploreVisualizationProps {
@@ -46,26 +46,26 @@ function DataSourceCard({
 
   return (
     <div
-      className="rounded-2xl p-5 flex flex-col items-center text-center transition-all duration-300 hover:-translate-y-1"
+      className="rounded-2xl p-5 flex flex-col items-center text-center transition-all duration-300 hover:-translate-y-1 bg-white"
       style={{
-        background: 'linear-gradient(135deg, hsl(0 0% 100% / 0.05), hsl(217 30% 20% / 0.3))',
-        border: '1px solid hsl(217 20% 35%)',
+        border: '1px solid hsl(217 20% 91%)',
+        boxShadow: '0 2px 8px -2px hsl(217 30% 70% / 0.08)'
       }}
     >
       <div className="relative w-12 h-12 mb-3">
         <svg viewBox="0 0 100 100" className="absolute inset-0 w-full h-full">
-          <path d={blobs[index % blobs.length]} fill="hsl(217 60% 50% / 0.15)" />
+          <path d={blobs[index % blobs.length]} fill="hsl(217 60% 96%)" />
         </svg>
         <div className="absolute inset-0 flex items-center justify-center">
-          <Icon className="h-5 w-5 text-blue-400" />
+          <Icon className="h-5 w-5 text-primary" />
         </div>
       </div>
-      <p className="text-sm font-medium text-white capitalize">{label}</p>
-      <p className="text-2xl font-bold text-white mt-1" style={{ fontFamily: "'Newsreader', serif" }}>
+      <p className="text-sm font-medium text-slate-600 capitalize">{label}</p>
+      <p className="text-2xl font-bold text-slate-800 mt-1" style={{ fontFamily: "'Newsreader', serif" }}>
         {total > 0 ? count.toLocaleString() : exploration === undefined ? '…' : '—'}
       </p>
       {exploration?.status && (
-        <span className={`text-[10px] mt-1 px-2 py-0.5 rounded-full ${exploration.status === 'completed' ? 'bg-emerald-500/10 text-emerald-400' : exploration.status === 'running' ? 'bg-blue-500/10 text-blue-400' : 'bg-slate-700 text-slate-400'}`}>
+        <span className={`text-[10px] mt-1 px-2 py-0.5 rounded-full ${exploration.status === 'completed' ? 'bg-emerald-50 text-emerald-600 border border-emerald-100' : exploration.status === 'running' ? 'bg-blue-50 text-blue-600 border border-blue-100' : 'bg-slate-50 text-slate-500 border border-slate-200'}`}>
           {exploration.status}
         </span>
       )}
@@ -81,8 +81,8 @@ export function ExploreVisualization({ clientId }: ExploreVisualizationProps) {
   }
 
   return (
-    <div className="bg-slate-800 border border-slate-700 rounded-xl p-6 space-y-6">
-      <h3 className="text-sm font-medium text-slate-300">Data Sources Overview</h3>
+    <div className="card-organic p-6 space-y-6">
+      <h3 className="text-sm font-medium text-foreground tracking-tight" style={{ fontFamily: "'Newsreader', serif" }}>Data Sources Overview</h3>
 
       {/* Source cards */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
@@ -132,8 +132,8 @@ function BarRow({ clientId, sourceId, label }: { clientId: string; sourceId: str
 
   return (
     <div className="flex items-center gap-3">
-      <span className="text-xs w-24 text-slate-400 text-right truncate">{label}</span>
-      <div className="flex-1 h-2 rounded-full overflow-hidden bg-slate-700">
+      <span className="text-xs w-24 text-slate-500 text-right truncate">{label}</span>
+      <div className="flex-1 h-2 rounded-full overflow-hidden bg-slate-100 border border-slate-200">
         <div
           className="h-full rounded-full transition-all duration-1000 ease-out"
           style={{
@@ -142,7 +142,7 @@ function BarRow({ clientId, sourceId, label }: { clientId: string; sourceId: str
           }}
         />
       </div>
-      <span className="text-xs font-medium w-12 text-white">{total > 0 ? total.toLocaleString() : '—'}</span>
+      <span className="text-xs font-medium w-12 text-slate-700">{total > 0 ? total.toLocaleString() : '—'}</span>
     </div>
   );
 }

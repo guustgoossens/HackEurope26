@@ -110,7 +110,6 @@ export function KnowledgeGraph({ clientId, onSelectNode, cleanMode = false }: Kn
   useEffect(() => {
     if (!initDone.current || !gRef.current || !treeNodes || treeNodes.length === 0) return;
     const g = d3.select(gRef.current);
-
     // Visible set depends on mode
     const visibleNodes = cleanMode
       ? treeNodes.filter((n) => n.type === 'domain' || n.type === 'skill')
@@ -184,7 +183,7 @@ export function KnowledgeGraph({ clientId, onSelectNode, cleanMode = false }: Kn
       .transition().duration(450).style('opacity', 0).remove();
     const nodeEnter = node.enter().append('g').attr('class', 'node').style('cursor', 'pointer');
 
-    nodeEnter.each(function(d: any) {
+    nodeEnter.each(function (d: any) {
       const el = d3.select(this);
       const r = NODE_R[d.type] || 7;
       const { fill, light } = d.palette;
@@ -253,7 +252,7 @@ export function KnowledgeGraph({ clientId, onSelectNode, cleanMode = false }: Kn
     // ─── Drag: resistance (node lags behind cursor); release keeps position, no snap-back ───
     const DRAG_SMOOTHING = 0.32; // 0 = no move, 1 = no resistance
     const drag = d3.drag<SVGGElement, any>()
-      .on('start', function(e, d) {
+      .on('start', function (e, d) {
         if (!e.active) sim.alphaTarget(0.3).restart();
         d.fx = d.x; d.fy = d.y;
         d3.select(this).style('cursor', 'grabbing');
@@ -262,7 +261,7 @@ export function KnowledgeGraph({ clientId, onSelectNode, cleanMode = false }: Kn
         d.fx = (d.fx ?? d.x) + (_e.x - (d.fx ?? d.x)) * DRAG_SMOOTHING;
         d.fy = (d.fy ?? d.y) + (_e.y - (d.fy ?? d.y)) * DRAG_SMOOTHING;
       })
-      .on('end', function(e, d) {
+      .on('end', function (e, d) {
         if (!e.active) sim.alphaTarget(0);
         d.x = d.fx ?? d.x; d.y = d.fy ?? d.y;
         d.fx = null; d.fy = null;
