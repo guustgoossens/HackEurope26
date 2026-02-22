@@ -165,7 +165,7 @@ export default function ExplorePhase({ clientId, animationStep, onNextPhase, liv
                             <div className="flex flex-col items-center">
                                 <div
                                     className={cn(
-                                        'w-7 h-7 rounded-full flex items-center justify-center text-xs font-semibold shrink-0 transition-all duration-500',
+                                        'w-7 h-7 step-dot-organic flex items-center justify-center text-xs font-semibold shrink-0 transition-all duration-500',
                                         isDone ? 'bg-primary text-primary-foreground' : 'text-muted-foreground/40',
                                     )}
                                     style={
@@ -240,7 +240,7 @@ export default function ExplorePhase({ clientId, animationStep, onNextPhase, liv
                                         className={cn('transition-all duration-500', visible ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-4')}
                                     >
                                         <div
-                                            className="rounded-2xl p-4 flex flex-col gap-3 h-full"
+                                            className="card-organic-elevated p-4 flex flex-col gap-3 h-full"
                                             style={{
                                                 background: 'linear-gradient(135deg, hsl(0 0% 100%), hsl(217 30% 97%))',
                                                 border: isConnected ? '1px solid hsl(152 40% 78%)' : '1px solid hsl(217 20% 91%)',
@@ -248,7 +248,7 @@ export default function ExplorePhase({ clientId, animationStep, onNextPhase, liv
                                             }}
                                         >
                                             <div className="flex items-center gap-2.5">
-                                                <div className="w-9 h-9 rounded-lg flex items-center justify-center shrink-0" style={{ background: 'hsl(217 60% 95%)' }}>
+                                                <div className="w-9 h-9 step-icon-organic flex items-center justify-center shrink-0" style={{ background: 'hsl(217 60% 95%)' }}>
                                                     <Icon className="h-5 w-5 text-primary" />
                                                 </div>
                                                 <div className="min-w-0">
@@ -349,7 +349,7 @@ export default function ExplorePhase({ clientId, animationStep, onNextPhase, liv
 
                         {/* Scan log */}
                         <div
-                            className="rounded-2xl overflow-hidden"
+                            className="card-organic overflow-hidden"
                             style={{
                                 background: 'linear-gradient(135deg, hsl(0 0% 100%), hsl(217 30% 97%))',
                                 border: '1px solid hsl(217 20% 91%)',
@@ -411,7 +411,7 @@ export default function ExplorePhase({ clientId, animationStep, onNextPhase, liv
                         {/* Two mini-cards */}
                         <div className="grid sm:grid-cols-2 gap-4">
                             <div
-                                className="rounded-2xl p-5"
+                                className="card-organic-elevated p-5"
                                 style={{
                                     background: 'linear-gradient(135deg, hsl(0 0% 100%), hsl(217 30% 97%))',
                                     border: '1px solid hsl(217 20% 91%)',
@@ -433,7 +433,7 @@ export default function ExplorePhase({ clientId, animationStep, onNextPhase, liv
                             </div>
 
                             <div
-                                className="rounded-2xl p-5"
+                                className="card-organic-elevated p-5"
                                 style={{
                                     background: 'linear-gradient(135deg, hsl(38 80% 98%), hsl(38 60% 95%))',
                                     border: '1px solid hsl(38 40% 88%)',
@@ -460,7 +460,7 @@ export default function ExplorePhase({ clientId, animationStep, onNextPhase, liv
                             <div className="flex justify-center pt-1">
                                 <button
                                     onClick={onNextPhase}
-                                    className="flex items-center gap-2 px-6 py-3 rounded-full text-sm font-medium transition-all duration-300 hover:-translate-y-0.5 active:scale-[0.98]"
+                                    className="flex items-center gap-2 px-6 py-3 btn-organic-pill text-sm font-medium transition-all duration-300 hover:-translate-y-0.5 active:scale-[0.98]"
                                     style={{
                                         background: 'linear-gradient(135deg, hsl(217 65% 52%), hsl(217 75% 43%))',
                                         color: 'hsl(0 0% 100%)',

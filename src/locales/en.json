@@ -21,7 +21,7 @@
     "seeHowItWorks": "See how it works",
     "hero1": "Make your company",
     "hero2": "navigable.",
-    "heroSub": "Your agents are ready. Your data isn't. Folio connects to your existing tools, maps what's there, and builds a verified knowledge base any AI agent can navigate.",
+    "heroSub": "We built the infrastructure layer that makes companies agent-ready.",
     "viewDemo": "View demo",
     "agentStructuring": "Agent is structuring",
     "theProblem": "The problem",
@@ -206,7 +206,8 @@
   },
   "agentFeed": {
     "title": "Agent Activity",
-    "live": "Live"
+    "live": "Live",
+    "waiting": "Waiting for first activities…"
   },
   "demo": {
     "loading": "Loading demo…",
@@ -220,6 +221,57 @@
     "phase3Subtitle": "Validating detected ambiguities",
     "restructure1": "Removing duplicates…",
     "restructure2": "Grouping by domain…",
-    "restructure3": "Validating links…"
+    "restructure3": "Validating links…",
+    "nodes": "nodes",
+    "domains": "domains",
+    "contradiction": "contradiction",
+    "duplicatesDetected": "duplicates detected",
+    "contradictions": "contradictions",
+    "links": "links",
+    "structureBtn": "Structure ▶"
+  },
+  "explore": {
+    "step1Label": "Connection",
+    "step1Desc": "Secure access to sources",
+    "step2Label": "Exploration",
+    "step2Desc": "Data mapping",
+    "step3Label": "Summary",
+    "step3Desc": "Overview",
+    "step1Title": "Source connection",
+    "step1Sub": "Folio accesses your existing tools without migration. Your data stays with you.",
+    "step2Title": "Exploration in progress",
+    "step2Sub": "The agent maps your data without modifying a single line.",
+    "step3Title": "Exploration summary",
+    "step3Sub": "Starting point identified. The agent can now build the structure.",
+    "elements": "items",
+    "connected": "Connected",
+    "connecting": "Connecting…",
+    "connectVia": "Connect via Composio",
+    "discovering": "Discovering files…",
+    "totalAnalyzed": "items analyzed",
+    "discoveredTitle": "Discovered items",
+    "flaggedTitle": "Flagged by agent",
+    "findingPDF": "PDF Files",
+    "findingExcel": "Excel Sheets",
+    "findingEmails": "Emails",
+    "findingPresentations": "Presentations",
+    "flaggedMissing": "Missing data",
+    "flaggedContradictions": "Contradictions",
+    "flaggedDuplicates": "Potential duplicates",
+    "goToStructure": "Move to structuring",
+    "oauthNote": "OAuth Connection · Read-only · No data modified"
+  },
+  "verify": {
+    "title": "Human verification",
+    "subtitle": "The agent detected ambiguities. Your answers will finalize the base.",
+    "generating": "Generating verification questionnaire…",
+    "baseVerified": "Base verified",
+    "allResolved": "All ambiguities resolved.",
+    "readyForAgents": "Ready for agents.",
+    "kbOperational": "Knowledge base operational",
+    "contradictionDetected": "Contradiction detected",
+    "questionOf": "Question {{current}} of {{total}}",
+    "sourceA": "Source A",
+    "sourceB": "Source B"
   }
 }

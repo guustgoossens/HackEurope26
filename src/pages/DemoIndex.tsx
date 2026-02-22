@@ -1,5 +1,5 @@
 import { useState, useCallback, useEffect, useMemo } from 'react';
-import { useQuery } from 'convex/react';
+import { useQuery, useMutation } from 'convex/react';
 import { useTranslation } from 'react-i18next';
 import { api } from '../../convex/_generated/api';
 import type { Id } from '../../convex/_generated/dataModel';
@@ -21,6 +21,7 @@ export default function DemoIndex({ clientId, onBack, onSwitchToLive }: DemoInde
     const { t } = useTranslation();
     const client = useQuery(api.clients.get, { id: clientId as Id<'clients'> });
     const treeNodes = useQuery(api.knowledge.getTree, { clientId: clientId as Id<'clients'> });
+    const restructureKnowledge = useMutation(api.demoData.restructureKnowledge);
 
     const phaseInfo: Record<number, { title: string; subtitle: string }> = useMemo(() => ({
         1: { title: t('demo.phase1Title'), subtitle: t('demo.phase1Subtitle') },
@@ -76,12 +77,13 @@ export default function DemoIndex({ clientId, onBack, onSwitchToLive }: DemoInde
             if (lineIdx >= RESTRUCTURE_LINES.length) {
                 clearInterval(lineInterval);
                 setTimeout(() => {
+                    void restructureKnowledge({ clientId: clientId as Id<'clients'> });
                     setCleanMode(true);
                     setIsRestructuring(false);
                 }, 400);
             }
         }, 750);
-    }, [isRestructuring, cleanMode]);
+    }, [isRestructuring, cleanMode, RESTRUCTURE_LINES.length, restructureKnowledge, clientId]);
 
     // Manual phase change
     const handlePhaseChange = useCallback((p: number) => {
@@ -189,7 +191,7 @@ export default function DemoIndex({ clientId, onBack, onSwitchToLive }: DemoInde
                             {/* Restructure animation overlay */}
                             {isRestructuring && (
                                 <div
-                                    className="absolute inset-0 flex items-center justify-center z-10 rounded-xl"
+                                    className="absolute inset-0 flex items-center justify-center z-10 card-organic"
                                     style={{
                                         background: 'hsl(220 20% 98% / 0.88)',
                                         backdropFilter: 'blur(6px)',

@@ -327,7 +327,7 @@ export function KnowledgeGraph({ clientId, onSelectNode, cleanMode = false }: Kn
   // ── Loading / empty states ──
   if (treeNodes === undefined) {
     return (
-      <div ref={containerRef} className="w-full h-full flex items-center justify-center rounded-xl"
+      <div ref={containerRef} className="w-full h-full flex items-center justify-center card-organic"
         style={{ background: 'hsl(215 65% 97%)', border: '1px solid hsl(217 20% 91%)' }}>
         <div className="text-sm text-muted-foreground animate-pulse">Chargement du graphe…</div>
       </div>
@@ -336,7 +336,7 @@ export function KnowledgeGraph({ clientId, onSelectNode, cleanMode = false }: Kn
 
   if (treeNodes.length === 0) {
     return (
-      <div ref={containerRef} className="w-full h-full flex items-center justify-center rounded-xl min-h-[400px]"
+      <div ref={containerRef} className="w-full h-full flex items-center justify-center card-organic min-h-[400px]"
         style={{ background: 'hsl(215 65% 97%)', border: '1px solid hsl(217 20% 91%)' }}>
         <div className="text-center space-y-1.5">
           <div className="text-sm text-muted-foreground">Construction de la base de connaissances…</div>
@@ -360,7 +360,7 @@ export function KnowledgeGraph({ clientId, onSelectNode, cleanMode = false }: Kn
 
       {/* Domain legend — top-left floating card */}
       <div
-        className="absolute top-3 left-3 z-10 flex flex-col gap-1.5 rounded-2xl px-3 py-2.5"
+        className="absolute top-3 left-3 z-10 flex flex-col gap-1.5 card-organic px-3 py-2.5"
         style={{
           background: 'linear-gradient(135deg, rgba(255,255,255,0.94), hsl(215 50% 97% / 0.94))',
           backdropFilter: 'blur(12px)',
@@ -384,7 +384,7 @@ export function KnowledgeGraph({ clientId, onSelectNode, cleanMode = false }: Kn
 
       {/* Node count — bottom-right chip */}
       <div
-        className="absolute bottom-3 right-3 z-10 text-xs px-2.5 py-1 rounded-full font-medium"
+        className="absolute bottom-3 right-3 z-10 text-xs px-2.5 py-1 btn-organic-pill font-medium"
         style={{
           background: 'rgba(255,255,255,0.82)',
           backdropFilter: 'blur(8px)',
@@ -406,7 +406,7 @@ export function KnowledgeGraph({ clientId, onSelectNode, cleanMode = false }: Kn
       {/* Graph canvas */}
       <div
         ref={containerRef}
-        className="w-full h-full rounded-xl overflow-hidden"
+        className="w-full h-full card-organic overflow-hidden"
         style={{ border: '1px solid hsl(215 20% 90%)' }}
       >
         <svg ref={svgRef} className="w-full h-full" />

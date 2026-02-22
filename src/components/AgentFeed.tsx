@@ -1,5 +1,6 @@
 import { useRef, useEffect } from 'react';
 import { useQuery } from 'convex/react';
+import { useTranslation } from 'react-i18next';
 import { api } from '../../convex/_generated/api';
 import type { Id } from '../../convex/_generated/dataModel';
 import {
@@ -23,6 +24,7 @@ interface Props {
 }
 
 export default function AgentFeed({ clientId }: Props) {
+    const { t } = useTranslation();
     const events = useQuery(api.agentEvents.listByClient, {
         clientId: clientId as Id<'clients'>,
     });
@@ -51,14 +53,14 @@ export default function AgentFeed({ clientId }: Props) {
             >
                 <Bot className="h-8 w-8 text-primary" />
                 <span className="text-sm font-medium text-foreground" style={{ fontFamily: "'Newsreader', serif" }}>
-                    Activité de l'agent
+                    {t('agentFeed.title')}
                 </span>
             </div>
             <div className="flex-1 overflow-y-auto">
                 <div className="p-3 space-y-1">
                     {entries.length === 0 && (
                         <p className="text-xs text-muted-foreground text-center py-6 px-2">
-                            En attente des premières activités…
+                            {t('agentFeed.waiting')}
                         </p>
                     )}
                     {entries.map((entry) => {
@@ -66,7 +68,7 @@ export default function AgentFeed({ clientId }: Props) {
                         return (
                             <div
                                 key={entry._id}
-                                className={cn('text-xs py-2 px-2.5 rounded-lg flex items-start gap-1.5 transition-all duration-300')}
+                                className={cn('text-xs py-2 px-2.5 card-organic flex items-start gap-1.5 transition-all duration-300')}
                                 style={{
                                     animation: 'fade-in 0.3s ease-out',
                                     background:
