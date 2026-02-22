@@ -597,9 +597,9 @@ export default function UsePhase({ clientId: _clientId, onBack }: Props) {
                         </div>
 
                         <div className="space-y-1 pl-1">
-                            <div className="text-[11px] font-mono text-slate-600 truncate"><span className="text-slate-800">{t('use.searchKnowledge')}</span> <span className="text-slate-400">{t('use.searchKnowledgeDesc')}</span></div>
-                            <div className="text-[11px] font-mono text-slate-600 truncate"><span className="text-slate-800">{t('use.getNode')}</span> <span className="text-slate-400">{t('use.getNodeDesc')}</span></div>
-                            <div className="text-[11px] font-mono text-slate-600 truncate"><span className="text-slate-800">{t('use.listChildren')}</span> <span className="text-slate-400">{t('use.listChildrenDesc')}</span></div>
+                            <div className="text-[11px] font-mono text-slate-600 truncate"><span className="text-slate-800">search_knowledge(query)</span> <span className="text-slate-400">{t('use.searchKnowledgeDesc')}</span></div>
+                            <div className="text-[11px] font-mono text-slate-600 truncate"><span className="text-slate-800">get_node(path)</span> <span className="text-slate-400">{t('use.getNodeDesc')}</span></div>
+                            <div className="text-[11px] font-mono text-slate-600 truncate"><span className="text-slate-800">list_children(parent_id)</span> <span className="text-slate-400">{t('use.listChildrenDesc')}</span></div>
                         </div>
                     </div>
 

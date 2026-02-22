@@ -53,7 +53,7 @@ En local avec `VITE_DEMO_SKIP_AUTH=true` :
 | URL | Contenu |
 |-----|---------|
 | **`/`** | **Landing** (marketing, thème clair, graph D3 hero animé, CTA « Voir la démo ») |
-| **`/demo`** | **DemoIndex** : UI démo complète, 3 phases (Explorer → Structurer → Vérifier), client Convex « Hartley & Associates LLP » |
+| **`/demo`** | **DemoIndex** : UI démo complète, 3 phases (Explorer → Structurer → Vérifier), client Convex « Cabinet Dupont & Associés » |
 
 Comportement :
 
@@ -106,7 +106,7 @@ Layout : `KnowledgeGraph` (flex-1) + `VerifyPhase` (w-96 droite) — panel laté
 
 ### Backend démo (Convex — inchangé)
 
-- **Client** : « Hartley & Associates LLP » (`createdBy: "demo"`).
+- **Client** : « Cabinet Dupont & Associés » (`createdBy: "demo"`).
 - **Seed** : `convex/demoData.ts` — `createDemoClient` + `insertDemoMessy` (knowledge tree 46 nœuds, contradictions, data_sources, explorations, agent_events).
 - **Query** : `api.clients.getDemo` récupère le client demo par `createdBy: "demo"`.
 - Schéma complet : `convex/SCHEMA.md`.

@@ -119,7 +119,7 @@ export const updatePhase = mutation({
   },
 });
 
-/** Patch demo client to Hartley + explore (used when reseeding from old minimal demo). */
+/** Patch demo client to Cabinet Dupont + explore (used when reseeding from old minimal demo). */
 export const updateDemoClient = mutation({
   args: {
     id: v.id('clients'),

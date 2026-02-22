@@ -82,7 +82,7 @@ function NarrativeClientView({ onBack, onSwitchToLive }: { onBack: () => void; o
         await clearDemo({ clientId });
         await updateDemoClient({
           id: clientId,
-          name: 'Hartley & Associates LLP',
+          name: 'Cabinet Dupont & Associés',
           industry: 'Accountancy',
           phase: 'explore',
         });

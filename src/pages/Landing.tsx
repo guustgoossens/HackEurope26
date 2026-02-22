@@ -15,6 +15,7 @@ import {
   FolioFileSpreadsheet as FileSpreadsheet,
   FolioCloud as Cloud,
   FolioSend as Send,
+  FolioFileText as FileText,
   FolioSparkles,
   FolioEye,
   FolioZap,
@@ -62,6 +63,7 @@ function ConnectVisual() {
     { name: 'Pennylane', icon: <FileSpreadsheet className="h-8 w-8" style={{ color: 'hsl(var(--muted-foreground))' }} /> },
     { name: 'OneDrive', icon: <Cloud className="h-8 w-8" style={{ color: 'hsl(var(--muted-foreground))' }} /> },
     { name: 'Outlook', icon: <Send className="h-8 w-8" style={{ color: 'hsl(var(--muted-foreground))' }} /> },
+    { name: 'Meeting notes', icon: <FileText className="h-8 w-8" style={{ color: 'hsl(var(--muted-foreground))' }} /> },
   ];
   return (
     <div ref={ref} className="flex flex-wrap gap-3 justify-center">
