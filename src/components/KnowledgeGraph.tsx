@@ -10,25 +10,33 @@ interface KnowledgeGraphProps {
   cleanMode?: boolean;
 }
 
-// Domain colors auto-assigned by top-level node index
-const DOMAIN_COLORS = [
-  'hsl(210, 80%, 52%)',   // blue
-  'hsl(38, 90%, 50%)',    // orange
-  'hsl(152, 55%, 42%)',   // green
-  'hsl(262, 55%, 58%)',   // purple
-  'hsl(0, 65%, 52%)',     // red
+// Domain palette — one per root domain, indexed by position
+const DOMAIN_PALETTE = [
+  { fill: '#1e40af', light: '#93c5fd', label: '#1e3a8a' }, // blue
+  { fill: '#b45309', light: '#fcd34d', label: '#78350f' }, // amber
+  { fill: '#065f46', light: '#6ee7b7', label: '#064e3b' }, // emerald
+  { fill: '#5b21b6', light: '#c4b5fd', label: '#4c1d95' }, // violet
+  { fill: '#991b1b', light: '#fca5a5', label: '#7f1d1d' }, // red
 ];
 
-// Node radius by type
+// Organic blob paths — normalized to 100×100, centered at (50,50)
+const BLOBS = [
+  'M50 4C72 3 96 14 98 38C100 62 84 96 54 98C24 100 4 78 2 52C0 26 28 5 50 4Z',
+  'M48 2C76 0 98 20 99 46C100 72 80 98 52 99C24 100 2 76 3 48C4 20 20 4 48 2Z',
+  'M52 3C74 2 97 18 98 44C99 70 78 97 50 98C22 99 3 74 2 46C1 18 30 4 52 3Z',
+];
+
+// Node visual radii by type
 const NODE_R: Record<string, number> = {
-  domain: 16,
-  skill: 11,
-  entry_group: 8,
+  domain: 22,
+  skill: 12,
+  entry_group: 7,
 };
 
 export function KnowledgeGraph({ clientId, onSelectNode, cleanMode = false }: KnowledgeGraphProps) {
   const treeNodes = useQuery(api.knowledge.getTree, { clientId: clientId as Id<'clients'> });
   const [selectedId, setSelectedId] = useState<string | null>(null);
+
   const containerRef = useRef<HTMLDivElement>(null);
   const svgRef = useRef<SVGSVGElement>(null);
   const gRef = useRef<SVGGElement | null>(null);
@@ -38,38 +46,51 @@ export function KnowledgeGraph({ clientId, onSelectNode, cleanMode = false }: Kn
   const cbRef = useRef(onSelectNode);
   useEffect(() => { cbRef.current = onSelectNode; });
 
-  // Init SVG + zoom once
+  // ── Init SVG, defs, layers, zoom — runs once ──
   useEffect(() => {
     const svg = d3.select(svgRef.current!);
-    const rect = containerRef.current!.getBoundingClientRect();
-    const w = rect.width || 800;
-    const h = rect.height || 600;
-    svg.attr('viewBox', `0 0 ${w} ${h}`);
+    const { width: w, height: h } = containerRef.current!.getBoundingClientRect();
+    const W = w || 800, H = h || 600;
+    svg.attr('viewBox', `0 0 ${W} ${H}`);
 
-    // Light gradient background
     const defs = svg.append('defs');
-    const radGrad = defs
-      .append('radialGradient')
-      .attr('id', 'kg-bg-grad')
-      .attr('cx', '50%')
-      .attr('cy', '50%')
-      .attr('r', '60%');
-    radGrad.append('stop').attr('offset', '0%').attr('stop-color', 'hsl(217, 50%, 96%)');
-    radGrad.append('stop').attr('offset', '100%').attr('stop-color', 'hsl(220, 20%, 98%)');
-    svg.insert('rect', ':first-child').attr('width', w).attr('height', h).attr('fill', 'url(#kg-bg-grad)');
+
+    // Soft radial gradient background — slightly warmer than plain white
+    const grad = defs.append('radialGradient')
+      .attr('id', 'kg-bg').attr('cx', '50%').attr('cy', '42%').attr('r', '62%');
+    grad.append('stop').attr('offset', '0%').attr('stop-color', 'hsl(215, 65%, 97%)');
+    grad.append('stop').attr('offset', '100%').attr('stop-color', 'hsl(220, 25%, 98%)');
+    svg.insert('rect', ':first-child').attr('width', W).attr('height', H).attr('fill', 'url(#kg-bg)');
+
+    // Glow filter for domain nodes
+    const glow = defs.append('filter')
+      .attr('id', 'kg-glow').attr('x', '-60%').attr('y', '-60%').attr('width', '220%').attr('height', '220%');
+    glow.append('feGaussianBlur').attr('stdDeviation', '5').attr('result', 'blur');
+    const merge = glow.append('feMerge');
+    merge.append('feMergeNode').attr('in', 'blur');
+    merge.append('feMergeNode').attr('in', 'SourceGraphic');
+
+    // Selection pulse filter
+    const selGlow = defs.append('filter')
+      .attr('id', 'kg-sel').attr('x', '-80%').attr('y', '-80%').attr('width', '260%').attr('height', '260%');
+    selGlow.append('feGaussianBlur').attr('stdDeviation', '8').attr('result', 'blur');
+    const selMerge = selGlow.append('feMerge');
+    selMerge.append('feMergeNode').attr('in', 'blur');
+    selMerge.append('feMergeNode').attr('in', 'SourceGraphic');
 
     const g = svg.append('g');
-    g.append('g').attr('class', 'links');
+    g.append('g').attr('class', 'links').style('pointer-events', 'none');
     g.append('g').attr('class', 'nodes');
+    g.append('g').attr('class', 'labels').style('pointer-events', 'none');
     gRef.current = g.node();
 
-    const zoom = d3
-      .zoom<SVGSVGElement, unknown>()
-      .scaleExtent([0.2, 4])
+    const zoom = d3.zoom<SVGSVGElement, unknown>()
+      .scaleExtent([0.15, 5])
       .on('zoom', (e) => g.attr('transform', e.transform));
     svg.call(zoom);
     // eslint-disable-next-line @typescript-eslint/unbound-method
-    svg.call(zoom.transform, d3.zoomIdentity.translate(w / 2, h / 2).scale(0.85));
+    svg.call(zoom.transform, d3.zoomIdentity.translate(W / 2, H / 2).scale(0.82));
+
     svg.on('click', (e) => {
       if (e.target === svgRef.current) {
         setSelectedId(null);
@@ -85,181 +106,224 @@ export function KnowledgeGraph({ clientId, onSelectNode, cleanMode = false }: Kn
     };
   }, []);
 
-  // Update data whenever treeNodes or cleanMode change
+  // ── Update graph when data or cleanMode changes ──
   useEffect(() => {
-    if (!initDone.current || !gRef.current || !treeNodes) return;
-    if (treeNodes.length === 0) return;
+    if (!initDone.current || !gRef.current || !treeNodes || treeNodes.length === 0) return;
     const g = d3.select(gRef.current);
 
-    // Filter nodes based on cleanMode
+    // Visible set depends on mode
     const visibleNodes = cleanMode
       ? treeNodes.filter((n) => n.type === 'domain' || n.type === 'skill')
       : treeNodes;
 
-    // Build domain color map from top-level nodes
+    // Build palette map indexed by root domain
     const domainNodes = visibleNodes.filter((n) => !n.parentId);
-    const domainColor: Record<string, string> = {};
-    domainNodes.forEach((n, i) => {
-      domainColor[n._id] = DOMAIN_COLORS[i % DOMAIN_COLORS.length];
-    });
+    const paletteMap: Record<string, typeof DOMAIN_PALETTE[0]> = {};
+    domainNodes.forEach((n, i) => { paletteMap[n._id] = DOMAIN_PALETTE[i % DOMAIN_PALETTE.length]; });
 
-    function getRootId(nodeId: string): string {
-      const node = visibleNodes.find((n) => n._id === nodeId);
-      if (!node) return nodeId;
-      if (!node.parentId) return nodeId;
+    function getRootId(id: string): string {
+      const node = visibleNodes.find((n) => n._id === id);
+      if (!node || !node.parentId) return id;
       return getRootId(node.parentId);
     }
 
-    const simNodes: any[] = visibleNodes.map((n) => {
+    const simNodes: any[] = visibleNodes.map((n, i) => {
       const rootId = getRootId(n._id);
-      const baseColor = domainColor[rootId] || DOMAIN_COLORS[0];
-      const color = cleanMode ? baseColor : baseColor;
-      const s = posRef.current.get(n._id);
+      const palette = paletteMap[rootId] || DOMAIN_PALETTE[0];
       const domainIdx = domainNodes.findIndex((d) => d._id === rootId);
       const angle = (domainIdx / Math.max(domainNodes.length, 1)) * Math.PI * 2;
-      const spread = cleanMode ? 180 : 250;
-      const jitter = cleanMode ? 30 : 80;
-      const defaultX = Math.cos(angle) * spread + (Math.random() - 0.5) * jitter;
-      const defaultY = Math.sin(angle) * spread + (Math.random() - 0.5) * jitter;
+      const spread = cleanMode ? 150 : 215;
+      const jitter = cleanMode ? 18 : 60;
+      const s = posRef.current.get(n._id);
       return {
-        id: n._id,
-        name: n.name,
-        type: n.type,
-        parentId: n.parentId,
-        readme: n.readme,
-        color,
-        domainAngle: angle,
-        x: s?.x ?? defaultX,
-        y: s?.y ?? defaultY,
+        id: n._id, name: n.name, type: n.type,
+        parentId: n.parentId, readme: n.readme,
+        palette, domainAngle: angle, blobIndex: i % BLOBS.length,
+        x: s?.x ?? Math.cos(angle) * spread + (Math.random() - 0.5) * jitter,
+        y: s?.y ?? Math.sin(angle) * spread + (Math.random() - 0.5) * jitter,
       };
     });
 
     const nodeIds = new Set(simNodes.map((n) => n.id));
     const simEdges = simNodes
       .filter((n) => n.parentId && nodeIds.has(n.parentId))
-      .map((n) => ({ source: n.parentId, target: n.id }));
+      .map((n) => ({ source: n.parentId, target: n.id, palette: n.palette }));
 
     simRef.current?.stop();
 
-    // Messy: stronger repulsion (more chaos); clean: tighter, organized
-    const chargeStrength = cleanMode ? -120 : -220;
-    const linkStrength = cleanMode ? 0.5 : 0.25;
-    const centerStrength = cleanMode ? 0.08 : 0.03;
-    const orbitRadius = cleanMode ? 200 : 240;
-
-    const sim = d3
-      .forceSimulation(simNodes)
-      .force('link', d3.forceLink(simEdges).id((d: any) => d.id).distance(70).strength(linkStrength))
-      .force('charge', d3.forceManyBody().strength(chargeStrength))
-      .force('collide', d3.forceCollide().radius((d: any) => (NODE_R[d.type] || 8) + 6))
-      .force('x', d3.forceX((d: any) => Math.cos(d.domainAngle) * orbitRadius).strength(centerStrength))
-      .force('y', d3.forceY((d: any) => Math.sin(d.domainAngle) * orbitRadius).strength(centerStrength))
-      .alpha(0.4)
-      .alphaDecay(0.025);
+    const sim = d3.forceSimulation(simNodes)
+      .force('link', d3.forceLink(simEdges).id((d: any) => d.id).distance(65).strength(cleanMode ? 0.5 : 0.22))
+      .force('charge', d3.forceManyBody().strength(cleanMode ? -165 : -265))
+      .force('collide', d3.forceCollide().radius((d: any) => (NODE_R[d.type] || 7) + 10))
+      .force('x', d3.forceX((d: any) => Math.cos(d.domainAngle) * (cleanMode ? 160 : 215)).strength(cleanMode ? 0.1 : 0.04))
+      .force('y', d3.forceY((d: any) => Math.sin(d.domainAngle) * (cleanMode ? 160 : 215)).strength(cleanMode ? 0.1 : 0.04))
+      .alpha(0.55)
+      .alphaDecay(0.018); // Slower decay — settles gently; drag restarts via alphaTarget
     simRef.current = sim;
 
-    // Links
-    const linkColor = cleanMode ? 'hsl(217, 30%, 80%)' : 'hsl(217, 20%, 82%)';
-    const link = g
-      .select('.links')
-      .selectAll<SVGLineElement, any>('line')
+    // ─── Links — bezier curved paths ───────────────────────────────────────
+    const link = g.select('.links')
+      .selectAll<SVGPathElement, any>('path')
       .data(simEdges, (d: any) => `${d.source.id ?? d.source}-${d.target.id ?? d.target}`);
-    link.exit().remove();
-    const linkEnter = link
-      .enter()
-      .append('line')
-      .attr('stroke', linkColor)
-      .attr('stroke-width', 1)
+    link.exit().transition().duration(300).attr('opacity', 0).remove();
+    const linkEnter = link.enter().append('path')
+      .attr('fill', 'none')
+      .attr('stroke-linecap', 'round')
+      .attr('stroke', (d: any) => d.palette.light)
+      .attr('stroke-width', 1.5)
       .attr('opacity', 0);
-    linkEnter.transition().duration(600).attr('opacity', cleanMode ? 0.4 : 0.28);
+    linkEnter.transition().duration(600).attr('opacity', cleanMode ? 0.65 : 0.38);
     const allLinks = linkEnter.merge(link);
 
-    // Nodes
-    const node = g.select('.nodes').selectAll<SVGGElement, any>('.node').data(simNodes, (d: any) => d.id);
-    node.exit().remove();
-
+    // ─── Nodes — organic blob shapes ───────────────────────────────────────
+    const node = g.select('.nodes')
+      .selectAll<SVGGElement, any>('.node')
+      .data(simNodes, (d: any) => d.id);
+    node.exit()
+      .style('pointer-events', 'none')
+      .transition().duration(450).style('opacity', 0).remove();
     const nodeEnter = node.enter().append('g').attr('class', 'node').style('cursor', 'pointer');
-    nodeEnter
-      .append('circle')
-      .attr('r', 0)
-      .attr('fill', (d: any) => d.color)
-      .attr('stroke', 'hsl(0, 0%, 100%)')
-      .attr('stroke-width', 2)
-      .style('filter', 'drop-shadow(0 1px 4px rgba(0,0,0,0.08))')
-      .transition()
-      .duration(500)
-      .attr('r', (d: any) => NODE_R[d.type] || 8);
 
-    nodeEnter
-      .append('text')
-      .text((d: any) => (d.name.length > 24 ? d.name.slice(0, 22) + '…' : d.name))
-      .attr('dx', (d: any) => (NODE_R[d.type] || 8) + 5)
-      .attr('dy', 3)
-      .attr('font-size', '10px')
-      .attr('fill', 'hsl(220, 15%, 45%)')
-      .attr('pointer-events', 'none')
-      .attr('opacity', 0)
-      .transition()
-      .delay(250)
-      .duration(400)
-      .attr('opacity', 0.85);
+    nodeEnter.each(function(d: any) {
+      const el = d3.select(this);
+      const r = NODE_R[d.type] || 7;
+      const { fill, light } = d.palette;
+
+      // Selection ring — dashed circle that appears on click
+      el.append('circle').attr('class', 'sel-ring')
+        .attr('r', r + 9)
+        .attr('fill', 'none')
+        .attr('stroke', light)
+        .attr('stroke-width', 2)
+        .attr('stroke-dasharray', '4 3')
+        .attr('opacity', 0);
+
+      if (d.type === 'domain') {
+        // Concentric ring treatment (matching landing hero aesthetic)
+        el.append('path')
+          .attr('d', BLOBS[d.blobIndex])
+          .attr('transform', `scale(${r / 50}) translate(-50,-50)`)
+          .attr('fill', fill)
+          .attr('filter', 'url(#kg-glow)')
+          .attr('opacity', 0)
+          .transition().duration(600).attr('opacity', 1);
+        el.append('circle').attr('r', r * 0.62).attr('fill', 'white');
+        el.append('circle').attr('r', r * 0.48).attr('fill', fill);
+        el.append('circle').attr('r', 3.5).attr('fill', 'white');
+      } else if (d.type === 'skill') {
+        el.append('path')
+          .attr('d', BLOBS[d.blobIndex])
+          .attr('transform', 'scale(0) translate(-50,-50)')
+          .attr('fill', fill)
+          .transition().duration(450).ease(d3.easeBackOut)
+          .attr('transform', `scale(${r / 50}) translate(-50,-50)`);
+      } else {
+        // entry_group — faint, lightweight blobs
+        el.append('path')
+          .attr('d', BLOBS[d.blobIndex])
+          .attr('transform', 'scale(0) translate(-50,-50)')
+          .attr('fill', fill)
+          .attr('opacity', 0.38)
+          .transition().duration(350).ease(d3.easeOut)
+          .attr('transform', `scale(${r / 50}) translate(-50,-50)`);
+      }
+    });
+
+    // ─── Labels — separate top layer, radially positioned ──────────────────
+    // Only domain + skill nodes get labels (entry_group is too dense)
+    const labelData = simNodes.filter((d: any) => d.type === 'domain' || d.type === 'skill');
+    const labelsGroup = g.select('.labels');
+    const labelSel = labelsGroup
+      .selectAll<SVGTextElement, any>('text')
+      .data(labelData, (d: any) => d.id);
+    labelSel.exit().transition().duration(300).attr('opacity', 0).remove();
+    const labelEnter = labelSel.enter().append('text')
+      .text((d: any) => d.name.length > 22 ? d.name.slice(0, 20) + '…' : d.name)
+      .attr('text-anchor', 'middle')
+      .attr('font-size', (d: any) => d.type === 'domain' ? '11px' : '9px')
+      .attr('font-weight', (d: any) => d.type === 'domain' ? '700' : '500')
+      .attr('fill', (d: any) => d.palette.label)
+      .attr('stroke', 'white')
+      .attr('stroke-width', 3)
+      .attr('paint-order', 'stroke')
+      .attr('opacity', 0);
+    labelEnter.transition().delay(250).duration(400).attr('opacity', 1);
+    const allLabels = labelEnter.merge(labelSel);
+
+    // ─── Drag ──────────────────────────────────────────────────────────────
+    const drag = d3.drag<SVGGElement, any>()
+      .on('start', function(e, d) {
+        if (!e.active) sim.alphaTarget(0.3).restart();
+        d.fx = d.x; d.fy = d.y;
+        d3.select(this).style('cursor', 'grabbing');
+      })
+      .on('drag', (_e, d) => { d.fx = _e.x; d.fy = _e.y; })
+      .on('end', function(e, d) {
+        if (!e.active) sim.alphaTarget(0);
+        d.fx = null; d.fy = null;
+        d3.select(this).style('cursor', 'grab');
+      });
 
     const allNodes = nodeEnter.merge(node);
-
-    // Drag
-    const drag = d3
-      .drag<SVGGElement, any>()
-      .on('start', (e, d) => {
-        if (!e.active) sim.alphaTarget(0.3).restart();
-        d.fx = d.x;
-        d.fy = d.y;
-      })
-      .on('drag', (e, d) => {
-        d.fx = e.x;
-        d.fy = e.y;
-      })
-      .on('end', (e, d) => {
-        if (!e.active) sim.alphaTarget(0);
-        d.fx = null;
-        d.fy = null;
-      });
     allNodes.call(drag);
-    allNodes.on('click', (e: any, d: any) => {
-      e.stopPropagation();
+    allNodes.on('click', (_e: any, d: any) => {
+      _e.stopPropagation();
       setSelectedId(d.id);
       cbRef.current?.(d.id, d.readme, d.name, d.type);
     });
 
+    // ─── Tick — position everything ────────────────────────────────────────
     sim.on('tick', () => {
-      allLinks
-        .attr('x1', (d: any) => d.source.x)
-        .attr('y1', (d: any) => d.source.y)
-        .attr('x2', (d: any) => d.target.x)
-        .attr('y2', (d: any) => d.target.y);
+      // Bezier curved edges, stopping short of node radii
+      allLinks.attr('d', (d: any) => {
+        const dx = d.target.x - d.source.x;
+        const dy = d.target.y - d.source.y;
+        const dr = Math.sqrt(dx * dx + dy * dy);
+        if (dr === 0) return '';
+        const nx = dx / dr, ny = dy / dr;
+        const sr = (NODE_R[d.source.type] || 7) + 3;
+        const tr = (NODE_R[d.target.type] || 7) + 6;
+        const sx = d.source.x + nx * sr, sy = d.source.y + ny * sr;
+        const ex = d.target.x - nx * tr, ey = d.target.y - ny * tr;
+        // Slight perpendicular offset for organic curved feel
+        const mx = (sx + ex) / 2 - ny * 10;
+        const my = (sy + ey) / 2 + nx * 10;
+        return `M${sx},${sy} Q${mx},${my} ${ex},${ey}`;
+      });
+
       allNodes.attr('transform', (d: any) => `translate(${d.x},${d.y})`);
+
+      // Labels: offset radially outward from simulation center (0,0)
+      const lo = 30;
+      allLabels
+        .attr('x', (d: any) => {
+          const n = Math.sqrt(d.x * d.x + d.y * d.y) || 1;
+          return d.x + (d.x / n) * lo;
+        })
+        .attr('y', (d: any) => {
+          const n = Math.sqrt(d.x * d.x + d.y * d.y) || 1;
+          return d.y + (d.y / n) * lo + 2;
+        });
+
       simNodes.forEach((n) => posRef.current.set(n.id, { x: n.x, y: n.y }));
     });
   }, [treeNodes, cleanMode]);
 
-  // Highlight selected node
+  // ── Selection ring highlight ──
   useEffect(() => {
     if (!gRef.current) return;
-    const g = d3.select(gRef.current);
-    g.selectAll<SVGGElement, any>('.node')
-      .select('circle')
-      .transition()
-      .duration(300)
-      .attr('stroke', (d: any) => (d.id === selectedId ? 'hsl(210, 80%, 52%)' : 'hsl(0, 0%, 100%)'))
-      .attr('stroke-width', (d: any) => (d.id === selectedId ? 3 : 2));
+    d3.select(gRef.current)
+      .selectAll<SVGGElement, any>('.node')
+      .select('.sel-ring')
+      .transition().duration(250)
+      .attr('opacity', (d: any) => (d.id === selectedId ? 1 : 0));
   }, [selectedId]);
 
+  // ── Loading / empty states ──
   if (treeNodes === undefined) {
     return (
-      <div
-        ref={containerRef}
-        className="w-full h-full flex items-center justify-center rounded-xl"
-        style={{ background: 'hsl(220 20% 98%)', border: '1px solid hsl(217 20% 91%)' }}
-      >
+      <div ref={containerRef} className="w-full h-full flex items-center justify-center rounded-xl"
+        style={{ background: 'hsl(215 65% 97%)', border: '1px solid hsl(217 20% 91%)' }}>
         <div className="text-sm text-muted-foreground animate-pulse">Chargement du graphe…</div>
       </div>
     );
@@ -267,61 +331,78 @@ export function KnowledgeGraph({ clientId, onSelectNode, cleanMode = false }: Kn
 
   if (treeNodes.length === 0) {
     return (
-      <div
-        ref={containerRef}
-        className="w-full h-full flex items-center justify-center rounded-xl min-h-[400px]"
-        style={{ background: 'hsl(220 20% 98%)', border: '1px solid hsl(217 20% 91%)' }}
-      >
-        <div className="text-center space-y-1">
+      <div ref={containerRef} className="w-full h-full flex items-center justify-center rounded-xl min-h-[400px]"
+        style={{ background: 'hsl(215 65% 97%)', border: '1px solid hsl(217 20% 91%)' }}>
+        <div className="text-center space-y-1.5">
           <div className="text-sm text-muted-foreground">Construction de la base de connaissances…</div>
-          <div className="text-xs" style={{ color: 'hsl(217 20% 70%)' }}>
-            Les nœuds apparaîtront ici
-          </div>
+          <div className="text-xs" style={{ color: 'hsl(217 20% 68%)' }}>Les nœuds apparaîtront ici</div>
         </div>
       </div>
     );
   }
 
-  // Legend: top-level nodes of the visible set
   const legendNodes = (cleanMode
     ? treeNodes.filter((n) => n.type === 'domain' || n.type === 'skill')
     : treeNodes
   ).filter((n) => !n.parentId);
 
-  const visibleCount = cleanMode ? treeNodes.filter((n) => n.type === 'domain' || n.type === 'skill').length : treeNodes.length;
+  const visibleCount = cleanMode
+    ? treeNodes.filter((n) => n.type === 'domain' || n.type === 'skill').length
+    : treeNodes.length;
 
   return (
     <div className="relative w-full h-full" style={{ minHeight: '400px' }}>
-      {/* Domain legend */}
+
+      {/* Domain legend — top-left floating card */}
       <div
-        className="absolute top-3 left-3 z-10 flex flex-col gap-1.5 rounded-xl p-2.5"
+        className="absolute top-3 left-3 z-10 flex flex-col gap-1.5 rounded-2xl px-3 py-2.5"
         style={{
-          background: 'linear-gradient(135deg, hsl(0 0% 100% / 0.92), hsl(217 30% 97% / 0.92))',
-          backdropFilter: 'blur(8px)',
-          border: '1px solid hsl(217 20% 90% / 0.6)',
-          boxShadow: '0 2px 8px hsl(217 30% 70% / 0.08)',
+          background: 'linear-gradient(135deg, rgba(255,255,255,0.94), hsl(215 50% 97% / 0.94))',
+          backdropFilter: 'blur(12px)',
+          border: '1px solid hsl(215 25% 90% / 0.6)',
+          boxShadow: '0 2px 12px hsl(215 40% 55% / 0.08)',
         }}
       >
-        {legendNodes.slice(0, 5).map((n, i) => (
-          <div key={n._id} className="flex items-center gap-2 text-xs">
-            <span className="w-2.5 h-2.5 rounded-full shrink-0" style={{ background: DOMAIN_COLORS[i % DOMAIN_COLORS.length] }} />
-            <span className="text-foreground/70">{n.name}</span>
-          </div>
-        ))}
+        {legendNodes.slice(0, 5).map((n, i) => {
+          const p = DOMAIN_PALETTE[i % DOMAIN_PALETTE.length];
+          return (
+            <div key={n._id} className="flex items-center gap-2 text-xs">
+              <span
+                className="w-2 h-2 rounded-sm shrink-0"
+                style={{ background: p.fill, boxShadow: `0 0 5px ${p.light}` }}
+              />
+              <span style={{ color: p.label, fontWeight: 600 }}>{n.name}</span>
+            </div>
+          );
+        })}
       </div>
 
-      {/* Stats */}
+      {/* Node count — bottom-right chip */}
       <div
-        className="absolute bottom-3 left-3 z-10 text-xs"
-        style={{ color: 'hsl(217 20% 60%)' }}
+        className="absolute bottom-3 right-3 z-10 text-xs px-2.5 py-1 rounded-full font-medium"
+        style={{
+          background: 'rgba(255,255,255,0.82)',
+          backdropFilter: 'blur(8px)',
+          border: '1px solid hsl(217 20% 88%)',
+          color: 'hsl(217 30% 55%)',
+        }}
       >
-        {visibleCount} nœuds · {visibleCount > 1 ? visibleCount - 1 : 0} liens
+        {visibleCount} nœuds
       </div>
 
+      {/* Zoom hint — bottom-left, very subtle */}
+      <div
+        className="absolute bottom-3 left-3 z-10 text-xs opacity-40 select-none"
+        style={{ color: 'hsl(217 20% 55%)' }}
+      >
+        scroll to zoom · drag nodes
+      </div>
+
+      {/* Graph canvas */}
       <div
         ref={containerRef}
         className="w-full h-full rounded-xl overflow-hidden"
-        style={{ border: '1px solid hsl(217 20% 91%)' }}
+        style={{ border: '1px solid hsl(215 20% 90%)' }}
       >
         <svg ref={svgRef} className="w-full h-full" />
       </div>

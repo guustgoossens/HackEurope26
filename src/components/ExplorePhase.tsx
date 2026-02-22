@@ -14,6 +14,7 @@ import {
     FolioArrowRight as ArrowRight,
 } from '@/components/icons/FolioIcons';
 import { useComposioConnect } from '@/hooks/useComposioConnect';
+import { useCountUp } from '@/hooks/useCountUp';
 import { cn } from '@/lib/utils';
 
 const SOURCE_TYPE_ICONS: Record<string, React.ComponentType<{ className?: string }>> = {
@@ -80,6 +81,7 @@ export default function ExplorePhase({ clientId, animationStep, onNextPhase }: P
     const sources = dataSources ?? [];
     const currentStep = animationStep < 2 ? 1 : animationStep < 4 ? 2 : 3;
     const totalItems = sources.reduce((sum, s) => sum + (SOURCE_COUNTS[s.type] ?? 50), 0) || 1297;
+    const animatedTotal = useCountUp(totalItems, 1800, currentStep === 3);
     const maxCount = Math.max(...sources.map((s) => SOURCE_COUNTS[s.type] ?? 50), 1);
 
     return (
@@ -255,20 +257,25 @@ export default function ExplorePhase({ clientId, animationStep, onNextPhase }: P
                         <div className="space-y-3">
                             {sources.map((source) => {
                                 const count = SOURCE_COUNTS[source.type] ?? 50;
+                                const pct = Math.round((count / maxCount) * 100);
+                                const active = animationStep >= 3;
                                 return (
                                     <div key={source._id} className="flex items-center gap-3">
                                         <span className="text-xs w-28 text-muted-foreground capitalize truncate">{source.label}</span>
-                                        <div className="flex-1 h-2 rounded-full overflow-hidden" style={{ background: 'hsl(217 20% 93%)' }}>
+                                        <div className="flex-1 h-2.5 rounded-full overflow-hidden" style={{ background: 'hsl(217 20% 93%)' }}>
                                             <div
-                                                className="h-full rounded-full"
                                                 style={{
-                                                    width: animationStep >= 3 ? `${(count / maxCount) * 100}%` : '0%',
-                                                    transition: 'width 1.2s ease-out',
-                                                    background: 'linear-gradient(90deg, hsl(217 55% 70%), hsl(217 65% 52%))',
+                                                    height: '100%',
+                                                    borderRadius: '9999px',
+                                                    width: active ? `${pct}%` : '0%',
+                                                    transition: 'width 1.3s ease-out',
+                                                    background: 'linear-gradient(90deg, hsl(217 55% 72%), hsl(217 70% 52%))',
+                                                    backgroundSize: '200% 100%',
+                                                    animation: active ? 'shimmer 2s linear infinite' : 'none',
                                                 }}
                                             />
                                         </div>
-                                        <span className="text-xs font-medium w-10 text-right" style={{ color: 'hsl(217 20% 55%)' }}>{count}</span>
+                                        <span className="text-xs font-medium w-10 text-right tabular-nums" style={{ color: 'hsl(217 20% 55%)' }}>{count}</span>
                                     </div>
                                 );
                             })}
@@ -327,10 +334,10 @@ export default function ExplorePhase({ clientId, animationStep, onNextPhase }: P
                             </p>
                         </div>
 
-                        {/* Big number */}
+                        {/* Big number — count-up animation */}
                         <div className="text-center py-2">
                             <div className="text-6xl font-bold text-foreground tracking-tight" style={{ fontFamily: "'Newsreader', serif" }}>
-                                {totalItems.toLocaleString('fr-FR')}
+                                {animatedTotal.toLocaleString('fr-FR')}
                             </div>
                             <p className="text-sm text-muted-foreground mt-1">éléments analysés</p>
                         </div>

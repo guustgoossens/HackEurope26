@@ -3,6 +3,7 @@ import { createRoot } from 'react-dom/client';
 import { AuthKitProvider, useAuth } from '@workos-inc/authkit-react';
 import { ConvexReactClient, ConvexProvider } from 'convex/react';
 import { ConvexProviderWithAuthKit } from './ConvexProviderWithAuthKit';
+import './i18n';
 import './index.css';
 import App from './App.tsx';
 import { DemoApp } from './DemoApp';

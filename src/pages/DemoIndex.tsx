@@ -299,17 +299,16 @@ export default function DemoIndex({ clientId, onBack }: DemoIndexProps) {
                     </div>
                 )}
 
-                {/* Phase info overlay — top centre */}
-                <div
-                    className="absolute top-6 left-1/2 -translate-x-1/2 text-center pointer-events-none z-20"
-                    key={phase}
-                    style={{ animation: 'fade-in 0.6s ease-out' }}
-                >
-                    <h2 className="text-lg font-medium text-foreground" style={{ fontFamily: "'Newsreader', serif" }}>
-                        {info.title}
-                    </h2>
-                    <p className="text-xs text-muted-foreground mt-0.5">{info.subtitle}</p>
-                </div>
+                {/* Phase subtitle — only for phases 2 + 3 (Phase 1 has its own header) */}
+                {phase > 1 && (
+                    <div
+                        className="absolute top-4 left-1/2 -translate-x-1/2 text-center pointer-events-none z-20"
+                        key={phase}
+                        style={{ animation: 'fade-in 0.5s ease-out' }}
+                    >
+                        <p className="text-xs text-muted-foreground">{info.subtitle}</p>
+                    </div>
+                )}
             </main>
         </div>
     );
