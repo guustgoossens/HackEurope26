@@ -7,7 +7,6 @@ import type { Id } from '../../convex/_generated/dataModel';
 interface KnowledgeGraphProps {
   clientId: string;
   onSelectNode?: (nodeId: string | null, readme?: string, name?: string, type?: string) => void;
-  cleanMode?: boolean;
 }
 
 // Domain palette — one per root domain, indexed by position
@@ -33,7 +32,7 @@ const NODE_R: Record<string, number> = {
   entry_group: 7,
 };
 
-export function KnowledgeGraph({ clientId, onSelectNode, cleanMode = false }: KnowledgeGraphProps) {
+export function KnowledgeGraph({ clientId, onSelectNode }: KnowledgeGraphProps) {
   const treeNodes = useQuery(api.knowledge.getTree, { clientId: clientId as Id<'clients'> });
   const [selectedId, setSelectedId] = useState<string | null>(null);
 
@@ -46,16 +45,20 @@ export function KnowledgeGraph({ clientId, onSelectNode, cleanMode = false }: Kn
   const cbRef = useRef(onSelectNode);
   useEffect(() => { cbRef.current = onSelectNode; });
 
-  // ── Init SVG, defs, layers, zoom — runs once ──
+  // ── Init SVG, defs, layers, zoom — runs once after mount ──
+  // IMPORTANT: SVG is always rendered (not conditional), so svgRef/containerRef
+  // always point to the same elements. This avoids the race where treeNodes
+  // arrives before the full-canvas SVG is rendered.
   useEffect(() => {
-    const svg = d3.select(svgRef.current!);
-    const { width: w, height: h } = containerRef.current!.getBoundingClientRect();
+    if (!svgRef.current || !containerRef.current) return;
+    const svg = d3.select(svgRef.current);
+    const { width: w, height: h } = containerRef.current.getBoundingClientRect();
     const W = w || 800, H = h || 600;
     svg.attr('viewBox', `0 0 ${W} ${H}`);
 
     const defs = svg.append('defs');
 
-    // Soft radial gradient background — slightly warmer than plain white
+    // Soft radial gradient background
     const grad = defs.append('radialGradient')
       .attr('id', 'kg-bg').attr('cx', '50%').attr('cy', '42%').attr('r', '62%');
     grad.append('stop').attr('offset', '0%').attr('stop-color', 'hsl(215, 65%, 97%)');
@@ -103,37 +106,35 @@ export function KnowledgeGraph({ clientId, onSelectNode, cleanMode = false }: Kn
       simRef.current?.stop();
       svg.selectAll('*').remove();
       initDone.current = false;
+      gRef.current = null;
     };
   }, []);
 
-  // ── Update graph when data or cleanMode changes ──
+  // ── Update graph when data changes (reactive to Convex) ──
   useEffect(() => {
     if (!initDone.current || !gRef.current || !treeNodes || treeNodes.length === 0) return;
     const g = d3.select(gRef.current);
 
-    // Visible set depends on mode
-    const visibleNodes = cleanMode
-      ? treeNodes.filter((n) => n.type === 'domain' || n.type === 'skill')
-      : treeNodes;
-
     // Build palette map indexed by root domain
-    const domainNodes = visibleNodes.filter((n) => !n.parentId);
+    const domainNodes = treeNodes.filter((n) => !n.parentId);
     const paletteMap: Record<string, typeof DOMAIN_PALETTE[0]> = {};
     domainNodes.forEach((n, i) => { paletteMap[n._id] = DOMAIN_PALETTE[i % DOMAIN_PALETTE.length]; });
 
     function getRootId(id: string): string {
-      const node = visibleNodes.find((n) => n._id === id);
+      const node = treeNodes.find((n) => n._id === id);
       if (!node || !node.parentId) return id;
       return getRootId(node.parentId);
     }
 
-    const simNodes: any[] = visibleNodes.map((n, i) => {
+    const simNodes: any[] = treeNodes.map((n, i) => {
       const rootId = getRootId(n._id);
       const palette = paletteMap[rootId] || DOMAIN_PALETTE[0];
       const domainIdx = domainNodes.findIndex((d) => d._id === rootId);
       const angle = (domainIdx / Math.max(domainNodes.length, 1)) * Math.PI * 2;
-      const spread = cleanMode ? 150 : 215;
-      const jitter = cleanMode ? 18 : 60;
+      // Clean data (few domains, no entry_group mess) → tighter layout
+      const isCompact = treeNodes.length <= 15;
+      const spread = isCompact ? 150 : 215;
+      const jitter = isCompact ? 18 : 60;
       const s = posRef.current.get(n._id);
       return {
         id: n._id, name: n.name, type: n.type,
@@ -151,14 +152,15 @@ export function KnowledgeGraph({ clientId, onSelectNode, cleanMode = false }: Kn
 
     simRef.current?.stop();
 
+    const isCompact = treeNodes.length <= 15;
     const sim = d3.forceSimulation(simNodes)
-      .force('link', d3.forceLink(simEdges).id((d: any) => d.id).distance(65).strength(cleanMode ? 0.5 : 0.22))
-      .force('charge', d3.forceManyBody().strength(cleanMode ? -165 : -265))
+      .force('link', d3.forceLink(simEdges).id((d: any) => d.id).distance(65).strength(isCompact ? 0.5 : 0.22))
+      .force('charge', d3.forceManyBody().strength(isCompact ? -165 : -265))
       .force('collide', d3.forceCollide().radius((d: any) => (NODE_R[d.type] || 7) + 10))
-      .force('x', d3.forceX((d: any) => Math.cos(d.domainAngle) * (cleanMode ? 160 : 215)).strength(cleanMode ? 0.1 : 0.04))
-      .force('y', d3.forceY((d: any) => Math.sin(d.domainAngle) * (cleanMode ? 160 : 215)).strength(cleanMode ? 0.1 : 0.04))
+      .force('x', d3.forceX((d: any) => Math.cos(d.domainAngle) * (isCompact ? 160 : 215)).strength(isCompact ? 0.1 : 0.04))
+      .force('y', d3.forceY((d: any) => Math.sin(d.domainAngle) * (isCompact ? 160 : 215)).strength(isCompact ? 0.1 : 0.04))
       .alpha(0.55)
-      .alphaDecay(0.018); // Slower decay — settles gently; drag restarts via alphaTarget
+      .alphaDecay(0.018);
     simRef.current = sim;
 
     // ─── Links — bezier curved paths ───────────────────────────────────────
@@ -172,7 +174,7 @@ export function KnowledgeGraph({ clientId, onSelectNode, cleanMode = false }: Kn
       .attr('stroke', (d: any) => d.palette.light)
       .attr('stroke-width', 1.5)
       .attr('opacity', 0);
-    linkEnter.transition().duration(600).attr('opacity', cleanMode ? 0.65 : 0.38);
+    linkEnter.transition().duration(600).attr('opacity', isCompact ? 0.65 : 0.38);
     const allLinks = linkEnter.merge(link);
 
     // ─── Nodes — organic blob shapes ───────────────────────────────────────
@@ -199,7 +201,6 @@ export function KnowledgeGraph({ clientId, onSelectNode, cleanMode = false }: Kn
         .attr('opacity', 0);
 
       if (d.type === 'domain') {
-        // Concentric ring treatment (matching landing hero aesthetic)
         el.append('path')
           .attr('d', BLOBS[d.blobIndex])
           .attr('transform', `scale(${r / 50}) translate(-50,-50)`)
@@ -218,7 +219,6 @@ export function KnowledgeGraph({ clientId, onSelectNode, cleanMode = false }: Kn
           .transition().duration(450).ease(d3.easeBackOut)
           .attr('transform', `scale(${r / 50}) translate(-50,-50)`);
       } else {
-        // entry_group — faint, lightweight blobs
         el.append('path')
           .attr('d', BLOBS[d.blobIndex])
           .attr('transform', 'scale(0) translate(-50,-50)')
@@ -230,7 +230,6 @@ export function KnowledgeGraph({ clientId, onSelectNode, cleanMode = false }: Kn
     });
 
     // ─── Labels — separate top layer, radially positioned ──────────────────
-    // Only domain + skill nodes get labels (entry_group is too dense)
     const labelData = simNodes.filter((d: any) => d.type === 'domain' || d.type === 'skill');
     const labelsGroup = g.select('.labels');
     const labelSel = labelsGroup
@@ -250,8 +249,8 @@ export function KnowledgeGraph({ clientId, onSelectNode, cleanMode = false }: Kn
     labelEnter.transition().delay(250).duration(400).attr('opacity', 1);
     const allLabels = labelEnter.merge(labelSel);
 
-    // ─── Drag: resistance (node lags behind cursor); release keeps position, no snap-back ───
-    const DRAG_SMOOTHING = 0.32; // 0 = no move, 1 = no resistance
+    // ─── Drag with resistance ───────────────────────────────────────────────
+    const DRAG_SMOOTHING = 0.32;
     const drag = d3.drag<SVGGElement, any>()
       .on('start', function(e, d) {
         if (!e.active) sim.alphaTarget(0.3).restart();
@@ -277,9 +276,8 @@ export function KnowledgeGraph({ clientId, onSelectNode, cleanMode = false }: Kn
       cbRef.current?.(d.id, d.readme, d.name, d.type);
     });
 
-    // ─── Tick — position everything ────────────────────────────────────────
+    // ─── Tick ──────────────────────────────────────────────────────────────
     sim.on('tick', () => {
-      // Bezier curved edges, stopping short of node radii
       allLinks.attr('d', (d: any) => {
         const dx = d.target.x - d.source.x;
         const dy = d.target.y - d.source.y;
@@ -290,7 +288,6 @@ export function KnowledgeGraph({ clientId, onSelectNode, cleanMode = false }: Kn
         const tr = (NODE_R[d.target.type] || 7) + 6;
         const sx = d.source.x + nx * sr, sy = d.source.y + ny * sr;
         const ex = d.target.x - nx * tr, ey = d.target.y - ny * tr;
-        // Slight perpendicular offset for organic curved feel
         const mx = (sx + ex) / 2 - ny * 10;
         const my = (sy + ey) / 2 + nx * 10;
         return `M${sx},${sy} Q${mx},${my} ${ex},${ey}`;
@@ -298,7 +295,6 @@ export function KnowledgeGraph({ clientId, onSelectNode, cleanMode = false }: Kn
 
       allNodes.attr('transform', (d: any) => `translate(${d.x},${d.y})`);
 
-      // Labels: offset radially outward from simulation center (0,0)
       const lo = 30;
       allLabels
         .attr('x', (d: any) => {
@@ -312,7 +308,7 @@ export function KnowledgeGraph({ clientId, onSelectNode, cleanMode = false }: Kn
 
       simNodes.forEach((n) => posRef.current.set(n.id, { x: n.x, y: n.y }));
     });
-  }, [treeNodes, cleanMode]);
+  }, [treeNodes]);
 
   // ── Selection ring highlight ──
   useEffect(() => {
@@ -324,86 +320,87 @@ export function KnowledgeGraph({ clientId, onSelectNode, cleanMode = false }: Kn
       .attr('opacity', (d: any) => (d.id === selectedId ? 1 : 0));
   }, [selectedId]);
 
-  // ── Loading / empty states ──
-  if (treeNodes === undefined) {
-    return (
-      <div ref={containerRef} className="w-full h-full flex items-center justify-center rounded-xl"
-        style={{ background: 'hsl(215 65% 97%)', border: '1px solid hsl(217 20% 91%)' }}>
-        <div className="text-sm text-muted-foreground animate-pulse">Chargement du graphe…</div>
-      </div>
-    );
-  }
-
-  if (treeNodes.length === 0) {
-    return (
-      <div ref={containerRef} className="w-full h-full flex items-center justify-center rounded-xl min-h-[400px]"
-        style={{ background: 'hsl(215 65% 97%)', border: '1px solid hsl(217 20% 91%)' }}>
-        <div className="text-center space-y-1.5">
-          <div className="text-sm text-muted-foreground">Construction de la base de connaissances…</div>
-          <div className="text-xs" style={{ color: 'hsl(217 20% 68%)' }}>Les nœuds apparaîtront ici</div>
-        </div>
-      </div>
-    );
-  }
-
-  const legendNodes = (cleanMode
-    ? treeNodes.filter((n) => n.type === 'domain' || n.type === 'skill')
-    : treeNodes
-  ).filter((n) => !n.parentId);
-
-  const visibleCount = cleanMode
-    ? treeNodes.filter((n) => n.type === 'domain' || n.type === 'skill').length
-    : treeNodes.length;
+  const legendNodes = treeNodes?.filter((n) => !n.parentId) ?? [];
+  const visibleCount = treeNodes?.length ?? 0;
 
   return (
     <div className="relative w-full h-full" style={{ minHeight: '400px' }}>
 
-      {/* Domain legend — top-left floating card */}
-      <div
-        className="absolute top-3 left-3 z-10 flex flex-col gap-1.5 rounded-2xl px-3 py-2.5"
-        style={{
-          background: 'linear-gradient(135deg, rgba(255,255,255,0.94), hsl(215 50% 97% / 0.94))',
-          backdropFilter: 'blur(12px)',
-          border: '1px solid hsl(215 25% 90% / 0.6)',
-          boxShadow: '0 2px 12px hsl(215 40% 55% / 0.08)',
-        }}
-      >
-        {legendNodes.slice(0, 5).map((n, i) => {
-          const p = DOMAIN_PALETTE[i % DOMAIN_PALETTE.length];
-          return (
-            <div key={n._id} className="flex items-center gap-2 text-xs">
-              <span
-                className="w-2 h-2 rounded-sm shrink-0"
-                style={{ background: p.fill, boxShadow: `0 0 5px ${p.light}` }}
-              />
-              <span style={{ color: p.label, fontWeight: 600 }}>{n.name}</span>
-            </div>
-          );
-        })}
-      </div>
+      {/* Loading overlay */}
+      {treeNodes === undefined && (
+        <div
+          className="absolute inset-0 flex items-center justify-center z-10 rounded-xl"
+          style={{ background: 'hsl(215 65% 97%)', border: '1px solid hsl(217 20% 91%)' }}
+        >
+          <div className="text-sm text-muted-foreground animate-pulse">Chargement du graphe…</div>
+        </div>
+      )}
+
+      {/* Empty overlay */}
+      {treeNodes?.length === 0 && (
+        <div
+          className="absolute inset-0 flex items-center justify-center z-10 rounded-xl"
+          style={{ background: 'hsl(215 65% 97%)', border: '1px solid hsl(217 20% 91%)' }}
+        >
+          <div className="text-center space-y-1.5">
+            <div className="text-sm text-muted-foreground">Construction de la base de connaissances…</div>
+            <div className="text-xs" style={{ color: 'hsl(217 20% 68%)' }}>Les nœuds apparaîtront ici</div>
+          </div>
+        </div>
+      )}
+
+      {/* Domain legend — top-left floating card (only with data) */}
+      {legendNodes.length > 0 && (
+        <div
+          className="absolute top-3 left-3 z-10 flex flex-col gap-1.5 rounded-2xl px-3 py-2.5"
+          style={{
+            background: 'linear-gradient(135deg, rgba(255,255,255,0.94), hsl(215 50% 97% / 0.94))',
+            backdropFilter: 'blur(12px)',
+            border: '1px solid hsl(215 25% 90% / 0.6)',
+            boxShadow: '0 2px 12px hsl(215 40% 55% / 0.08)',
+          }}
+        >
+          {legendNodes.slice(0, 5).map((n, i) => {
+            const p = DOMAIN_PALETTE[i % DOMAIN_PALETTE.length];
+            return (
+              <div key={n._id} className="flex items-center gap-2 text-xs">
+                <span
+                  className="w-2 h-2 rounded-sm shrink-0"
+                  style={{ background: p.fill, boxShadow: `0 0 5px ${p.light}` }}
+                />
+                <span style={{ color: p.label, fontWeight: 600 }}>{n.name}</span>
+              </div>
+            );
+          })}
+        </div>
+      )}
 
       {/* Node count — bottom-right chip */}
-      <div
-        className="absolute bottom-3 right-3 z-10 text-xs px-2.5 py-1 rounded-full font-medium"
-        style={{
-          background: 'rgba(255,255,255,0.82)',
-          backdropFilter: 'blur(8px)',
-          border: '1px solid hsl(217 20% 88%)',
-          color: 'hsl(217 30% 55%)',
-        }}
-      >
-        {visibleCount} nœuds
-      </div>
+      {visibleCount > 0 && (
+        <div
+          className="absolute bottom-3 right-3 z-10 text-xs px-2.5 py-1 rounded-full font-medium"
+          style={{
+            background: 'rgba(255,255,255,0.82)',
+            backdropFilter: 'blur(8px)',
+            border: '1px solid hsl(217 20% 88%)',
+            color: 'hsl(217 30% 55%)',
+          }}
+        >
+          {visibleCount} nœuds
+        </div>
+      )}
 
-      {/* Zoom hint — bottom-left, very subtle */}
-      <div
-        className="absolute bottom-3 left-3 z-10 text-xs opacity-40 select-none"
-        style={{ color: 'hsl(217 20% 55%)' }}
-      >
-        scroll to zoom · drag nodes
-      </div>
+      {/* Zoom hint */}
+      {visibleCount > 0 && (
+        <div
+          className="absolute bottom-3 left-3 z-10 text-xs opacity-40 select-none"
+          style={{ color: 'hsl(217 20% 55%)' }}
+        >
+          scroll to zoom · drag nodes
+        </div>
+      )}
 
-      {/* Graph canvas */}
+      {/* Graph canvas — always rendered so refs are stable */}
       <div
         ref={containerRef}
         className="w-full h-full rounded-xl overflow-hidden"

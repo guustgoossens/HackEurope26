@@ -92,11 +92,20 @@ Stepper vertical 3 étapes :
 
 Layout : `KnowledgeGraph` (flex-1) + `AgentFeed` (w-72 droite).
 
-**KnowledgeGraph** (`src/components/KnowledgeGraph.tsx`) : graphe D3 force-directed. Prop `cleanMode: boolean` (défaut `false`) :
-- `cleanMode=false` : tous les nœuds Convex (46 nœuds de `insertDemoMessy`), répulsion forte.
-- `cleanMode=true` : filtre sur `type === 'domain' || type === 'skill'` uniquement, layout plus organisé.
+**KnowledgeGraph** (`src/components/KnowledgeGraph.tsx`) : graphe D3 force-directed, sans prop `cleanMode`. Les données Convex sont la source unique de vérité. Fonctionnement :
+- Toujours rendu (même en état chargement) → `svgRef`/`containerRef` stables, pas de race condition.
+- Réactif à `useQuery(api.knowledge.getTree)` : quand les données changent, le join D3 anime les nœuds sortants (fade out) et entrants (scale-up `easeBackOut`).
+- Nœuds blob organiques + liens bezier courbes + labels radials dans layer séparé.
+- Drag avec résistance (`DRAG_SMOOTHING = 0.32`).
 
-Animation « dirty → clean » : bouton « Structurer ▶ » déclenche un overlay de 3 lignes séquentielles (« Suppression des doublons… / Regroupement par domaine… / Validation des liens… » via setInterval), puis `cleanMode` passe à `true`.
+**Restructuration en temps réel** : bouton « Structurer ▶ » déclenche :
+1. Overlay animé (3 lignes séquentielles + spinner, ~2.65s).
+2. Appel de la mutation Convex `api.demoData.restructureKnowledge` (supprime les 46 nœuds messy, insère les 11 nœuds clean + entrées vérifiées + événements agent structure).
+3. Convex notifie les abonnés → `treeNodes` mis à jour → graphe transite visuellement en temps réel.
+4. `AgentFeed` se met aussi à jour (nouveaux événements du `structure-agent-1`).
+5. Stats bar passe à « ✅ N nœuds · M domaines · 0 contradiction » (données réactives).
+
+`hasRestructured` (state local) signale que la mutation a été lancée. Pas de `cleanMode` côté client.
 
 #### Phase 3 — Vérifier
 
@@ -108,6 +117,7 @@ Layout : `KnowledgeGraph` (flex-1) + `VerifyPhase` (w-96 droite) — panel laté
 
 - **Client** : « Hartley & Associates LLP » (`createdBy: "demo"`).
 - **Seed** : `convex/demoData.ts` — `createDemoClient` + `insertDemoMessy` (knowledge tree 46 nœuds, contradictions, data_sources, explorations, agent_events).
+- **Restructure temps réel** : `convex/demoData.ts` → `restructureKnowledge` — remplace les 46 nœuds messy par 11 nœuds clean (3 domaines, 7 skills, 1 entry_group) + entrées vérifiées + événements structure-agent-1. Appelé par le bouton « Structurer ▶ » en Phase 2.
 - **Query** : `api.clients.getDemo` récupère le client demo par `createdBy: "demo"`.
 - Schéma complet : `convex/SCHEMA.md`.
 
@@ -193,4 +203,4 @@ Pour repasser en mode « avec login » :
 
 ---
 
-*Dernière mise à jour : i18n EN/FR (landing + démo), polish composants (ExploreMetrics, AgentEventFeed, VerifyPhase, KnowledgeGraph, TopNav), 22 fév. 2026.*
+*Dernière mise à jour : Structurer en temps réel via mutation Convex (`restructureKnowledge`), fix race condition KnowledgeGraph (SVG toujours rendu), suppression cleanMode client-side, 22 fév. 2026.*

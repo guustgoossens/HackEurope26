@@ -772,6 +772,137 @@ export const insertDemoClean = mutation({
   },
 });
 
+// ─── RESTRUCTURE TO CLEAN ─────────────────────────────────────────────────────
+
+/**
+ * Real-time restructure: replaces the messy 46-node knowledge tree with the
+ * clean 11-node hierarchy. Called by the "Structurer ▶" button in Phase 2.
+ * Since Convex is reactive, `useQuery(api.knowledge.getTree)` in KnowledgeGraph
+ * auto-updates — nodes animate out/in via D3 data join transitions.
+ *
+ * Does NOT touch: data_sources, explorations, contradictions (shown in Phase 3).
+ * Adds structure agent events so AgentFeed updates live.
+ */
+export const restructureKnowledge = mutation({
+  args: { clientId: v.id('clients') },
+  returns: v.null(),
+  handler: async (ctx, args) => {
+    const cid = args.clientId;
+
+    // 1. Delete messy knowledge_tree nodes
+    const nodes = await ctx.db
+      .query('knowledge_tree')
+      .withIndex('by_clientId', (q) => q.eq('clientId', cid))
+      .collect();
+    for (const n of nodes) await ctx.db.delete(n._id);
+
+    // 2. Delete messy knowledge_entries
+    const entries = await ctx.db
+      .query('knowledge_entries')
+      .withIndex('by_clientId', (q) => q.eq('clientId', cid))
+      .collect();
+    for (const e of entries) await ctx.db.delete(e._id);
+
+    // 3. Insert clean 3-level hierarchy (11 nodes)
+    const finance = await ctx.db.insert('knowledge_tree', {
+      clientId: cid, name: 'Finance', type: 'domain', order: 0,
+      readme: 'All financial records for Hartley & Associates LLP. Covers invoices, VAT, management accounts, and expenses.',
+    });
+    const clients = await ctx.db.insert('knowledge_tree', {
+      clientId: cid, name: 'Clients', type: 'domain', order: 1,
+      readme: 'Client records, engagement letters, and correspondence.',
+    });
+    const compliance = await ctx.db.insert('knowledge_tree', {
+      clientId: cid, name: 'Compliance', type: 'domain', order: 2,
+      readme: 'Regulatory and HMRC-related documents.',
+    });
+    const invoices = await ctx.db.insert('knowledge_tree', {
+      clientId: cid, name: 'Invoices', type: 'skill', order: 0, parentId: finance,
+      readme: 'Client invoices by year and quarter. All duplicates resolved.',
+    });
+    const vat = await ctx.db.insert('knowledge_tree', {
+      clientId: cid, name: 'VAT Filings', type: 'skill', order: 1, parentId: finance,
+      readme: 'VAT returns by quarter. Q2 2024 uses amended figure of £91,500 (confirmed by user).',
+    });
+    await ctx.db.insert('knowledge_tree', {
+      clientId: cid, name: 'Management Accounts', type: 'skill', order: 2, parentId: finance,
+      readme: 'Trial balance, P&L, and cashflow forecasts. Canonical cashflow: v3_FINAL (March 2024).',
+    });
+    await ctx.db.insert('knowledge_tree', {
+      clientId: cid, name: 'Expenses & Payroll', type: 'skill', order: 3, parentId: finance,
+      readme: 'Staff expenses and payroll. March 2024 files correctly separated.',
+    });
+    await ctx.db.insert('knowledge_tree', {
+      clientId: cid, name: 'Acme Ltd', type: 'skill', order: 0, parentId: clients,
+      readme: 'Engagement letter signed Jan 2024. Active invoice dispute on March invoice.',
+    });
+    await ctx.db.insert('knowledge_tree', {
+      clientId: cid, name: 'Brightfield Co', type: 'skill', order: 1, parentId: clients,
+      readme: 'Engagement letter signed Feb 2024. No outstanding disputes.',
+    });
+    await ctx.db.insert('knowledge_tree', {
+      clientId: cid, name: 'HMRC Correspondence', type: 'skill', order: 0, parentId: compliance,
+      readme: 'All HMRC inbound/outbound correspondence. Q3 VAT query open — deadline 14 Mar 2025.',
+    });
+    await ctx.db.insert('knowledge_tree', {
+      clientId: cid, name: '2024 Invoices', type: 'entry_group', order: 0, parentId: invoices,
+      readme: 'All 2024 invoices. Acme Ltd: Q1 (3 invoices), Q2 (1 invoice).',
+    });
+
+    // 4. Insert verified knowledge entries for the clean nodes
+    const cleanEntries = [
+      { treeNodeId: vat,      title: 'Q2 2024 VAT (Amended)', content: 'Q2 2024 VAT liability confirmed: £91,500 (amended, user-verified). Original draft (£84,200) deprecated.', confidence: 0.99 },
+      { treeNodeId: vat,      title: 'Q1 2024 VAT Return',     content: 'Q1 2024 VAT return. Submitted on time. No outstanding queries.',                                       confidence: 0.97 },
+      { treeNodeId: invoices, title: 'Acme Feb Invoice',        content: 'Invoice for Feb 2024. Amount: £12,400. Canonical: invoice_acme_feb_FINAL_v2.pdf',                   confidence: 0.97 },
+    ];
+    for (const e of cleanEntries) {
+      await ctx.db.insert('knowledge_entries', {
+        clientId: cid,
+        treeNodeId: e.treeNodeId,
+        title: e.title,
+        content: e.content,
+        confidence: e.confidence,
+        verified: true,
+      });
+    }
+
+    // 5. Add structure agent events (AgentFeed updates reactively)
+    const structureEvents: Array<{ eventType: 'info' | 'progress' | 'warning' | 'error' | 'complete'; message: string }> = [
+      { eventType: 'info',     message: 'Structure job started. Processing 46 discovered nodes.' },
+      { eventType: 'progress', message: "Merging duplicates: 'Finance' + 'Finance (Old)' + 'Archive' + 'Desktop Uploads' → 'Finance'" },
+      { eventType: 'progress', message: "Merging: 'VAT' + 'VAT Returns' + '2022/VAT 2022' + '2023/VAT 2023' → 'VAT Filings'" },
+      { eventType: 'info',     message: 'Contradiction resolved: Q2 VAT = £91,500 (amended). Draft figure of £84,200 deprecated.' },
+      { eventType: 'info',     message: 'Canonical cashflow confirmed: v3_FINAL (March 2024). Earlier version archived.' },
+      { eventType: 'progress', message: 'Built Finance hierarchy: Invoices → VAT Filings → Management Accounts → Expenses & Payroll.' },
+      { eventType: 'progress', message: 'Built Clients hierarchy: Acme Ltd, Brightfield Co. (Norton & Sons: pending — no engagement letter).' },
+      { eventType: 'progress', message: 'Built Compliance hierarchy: HMRC Correspondence.' },
+      { eventType: 'complete', message: 'Structure complete. 46 nodes → 11. 3 contradictions resolved. Knowledge base ready for human verification.' },
+    ];
+    for (const e of structureEvents) {
+      await ctx.db.insert('agent_events', {
+        clientId: cid, agentName: 'structure-agent-1',
+        eventType: e.eventType, message: e.message,
+      });
+    }
+
+    // 6. Update pipeline status
+    const pipelineStatus = await ctx.db
+      .query('pipeline_status')
+      .withIndex('by_clientId', (q) => q.eq('clientId', cid))
+      .first();
+    if (pipelineStatus) {
+      await ctx.db.patch(pipelineStatus._id, {
+        currentPhase: 'structure',
+        phaseProgress: 100,
+        activeAgents: [],
+        lastActivity: Date.now(),
+      });
+    }
+
+    return null;
+  },
+});
+
 // ─── RE-OWN DEMO CLIENTS ──────────────────────────────────────────────────────
 
 /**

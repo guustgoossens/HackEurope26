@@ -1,5 +1,5 @@
 import { useState, useCallback, useEffect, useMemo } from 'react';
-import { useQuery } from 'convex/react';
+import { useQuery, useMutation } from 'convex/react';
 import { useTranslation } from 'react-i18next';
 import { api } from '../../convex/_generated/api';
 import type { Id } from '../../convex/_generated/dataModel';
@@ -20,12 +20,14 @@ export default function DemoIndex({ clientId, onBack }: DemoIndexProps) {
     const { t } = useTranslation();
     const client = useQuery(api.clients.get, { id: clientId as Id<'clients'> });
     const treeNodes = useQuery(api.knowledge.getTree, { clientId: clientId as Id<'clients'> });
+    const restructureKnowledge = useMutation(api.demoData.restructureKnowledge);
 
     const phaseInfo: Record<number, { title: string; subtitle: string }> = useMemo(() => ({
         1: { title: t('demo.phase1Title'), subtitle: t('demo.phase1Subtitle') },
         2: { title: t('demo.phase2Title'), subtitle: t('demo.phase2Subtitle') },
         3: { title: t('demo.phase3Title'), subtitle: t('demo.phase3Subtitle') },
     }), [t]);
+
     const RESTRUCTURE_LINES = useMemo(() => [
         t('demo.restructure1'),
         t('demo.restructure2'),
@@ -35,11 +37,12 @@ export default function DemoIndex({ clientId, onBack }: DemoIndexProps) {
     const [phase, setPhase] = useState(1);
     const [isPlaying, setIsPlaying] = useState(false);
     const [exploreStep, setExploreStep] = useState(5);
-    const [visibleNodeCount, setVisibleNodeCount] = useState(0);
     const [isVerifyComplete, setIsVerifyComplete] = useState(false);
 
-    // Phase 2: dirty → clean transition
-    const [cleanMode, setCleanMode] = useState(false);
+    // Phase 2: real-time restructure state
+    // hasRestructured = true means the Convex mutation was triggered.
+    // From that point, useQuery(api.knowledge.getTree) auto-updates the graph.
+    const [hasRestructured, setHasRestructured] = useState(false);
     const [isRestructuring, setIsRestructuring] = useState(false);
     const [restructureLine, setRestructureLine] = useState(0);
 
@@ -55,17 +58,20 @@ export default function DemoIndex({ clientId, onBack }: DemoIndexProps) {
         setSelectedNodeType(type ?? null);
     }, []);
 
+    // Derive stats reactively from Convex data
     const totalNodes = treeNodes?.length ?? 0;
+    const domainCount = treeNodes?.filter(n => !n.parentId).length ?? 0;
     const visibleEdgeCount = useMemo(() => {
         if (!treeNodes) return 0;
-        const visNodes = treeNodes.slice(0, visibleNodeCount);
-        const visIds = new Set(visNodes.map(n => n._id));
-        return visNodes.filter(n => n.parentId && visIds.has(n.parentId)).length;
-    }, [treeNodes, visibleNodeCount]);
+        const ids = new Set(treeNodes.map(n => n._id));
+        return treeNodes.filter(n => n.parentId && ids.has(n.parentId)).length;
+    }, [treeNodes]);
 
-    // Trigger the restructure animation then flip cleanMode
+    // Show animation overlay, then call the real Convex mutation.
+    // When mutation completes, useQuery(api.knowledge.getTree) auto-updates →
+    // KnowledgeGraph transitions via D3 data join (old nodes exit, new nodes enter).
     const handleRestructure = useCallback(() => {
-        if (isRestructuring || cleanMode) return;
+        if (isRestructuring || hasRestructured) return;
         setIsRestructuring(true);
         setRestructureLine(0);
         let lineIdx = 0;
@@ -75,12 +81,13 @@ export default function DemoIndex({ clientId, onBack }: DemoIndexProps) {
             if (lineIdx >= RESTRUCTURE_LINES.length) {
                 clearInterval(lineInterval);
                 setTimeout(() => {
-                    setCleanMode(true);
+                    void restructureKnowledge({ clientId: clientId as Id<'clients'> });
+                    setHasRestructured(true);
                     setIsRestructuring(false);
                 }, 400);
             }
         }, 750);
-    }, [isRestructuring, cleanMode]);
+    }, [isRestructuring, hasRestructured, RESTRUCTURE_LINES.length, restructureKnowledge, clientId]);
 
     // Manual phase change
     const handlePhaseChange = useCallback((p: number) => {
@@ -89,22 +96,18 @@ export default function DemoIndex({ clientId, onBack }: DemoIndexProps) {
         setSelectedNodeId(null);
         if (p === 1) {
             setExploreStep(5);
-            setCleanMode(false);
+            setHasRestructured(false);
             setIsRestructuring(false);
         }
-        if (p >= 2 && totalNodes > 0) {
-            setVisibleNodeCount(totalNodes);
-        }
-    }, [totalNodes]);
+    }, []);
 
     // Auto-play toggle
     const handleTogglePlay = useCallback(() => {
         if (isPlaying) { setIsPlaying(false); return; }
         setPhase(1);
         setExploreStep(0);
-        setVisibleNodeCount(0);
         setIsVerifyComplete(false);
-        setCleanMode(false);
+        setHasRestructured(false);
         setIsRestructuring(false);
         setSelectedNodeId(null);
         setIsPlaying(true);
@@ -119,19 +122,14 @@ export default function DemoIndex({ clientId, onBack }: DemoIndexProps) {
             if (exploreStep < 5) {
                 timer = setTimeout(() => setExploreStep(s => s + 1), 700);
             } else {
-                timer = setTimeout(() => {
-                    setPhase(2);
-                    setVisibleNodeCount(0);
-                }, 2500);
+                timer = setTimeout(() => setPhase(2), 2500);
             }
-        } else if (phase === 2 && treeNodes) {
-            if (!cleanMode && !isRestructuring) {
-                if (visibleNodeCount < treeNodes.length) {
-                    timer = setTimeout(() => setVisibleNodeCount(c => c + 1), 300);
-                } else {
-                    timer = setTimeout(() => handleRestructure(), 2000);
-                }
-            } else if (cleanMode) {
+        } else if (phase === 2) {
+            if (!hasRestructured && !isRestructuring) {
+                // Wait 3s so the user sees the messy graph, then auto-restructure
+                timer = setTimeout(() => handleRestructure(), 3000);
+            } else if (hasRestructured) {
+                // Convex data has updated; wait 2s then advance to Phase 3
                 timer = setTimeout(() => {
                     setPhase(3);
                     setIsPlaying(false);
@@ -140,11 +138,9 @@ export default function DemoIndex({ clientId, onBack }: DemoIndexProps) {
         }
 
         return () => clearTimeout(timer);
-    }, [isPlaying, phase, exploreStep, visibleNodeCount, treeNodes, cleanMode, isRestructuring, handleRestructure]);
+    }, [isPlaying, phase, exploreStep, hasRestructured, isRestructuring, handleRestructure]);
 
     const info = phaseInfo[phase];
-    const messyNodeCount = treeNodes?.length ?? 46;
-    const cleanNodeCount = treeNodes?.filter(n => n.type === 'domain' || n.type === 'skill').length ?? 12;
 
     if (!client) return null;
 
@@ -178,10 +174,12 @@ export default function DemoIndex({ clientId, onBack }: DemoIndexProps) {
                 {phase === 2 && (
                     <div className="flex w-full h-full">
                         <div className="flex-1 relative">
+                            {/* KnowledgeGraph reacts to treeNodes changes in real-time.
+                                After restructureKnowledge mutation runs, Convex pushes
+                                updated data → D3 data join animates old nodes out, new in. */}
                             <KnowledgeGraph
                                 clientId={clientId}
                                 onSelectNode={handleSelectNode}
-                                cleanMode={cleanMode}
                             />
 
                             {/* Restructure animation overlay */}
@@ -214,7 +212,7 @@ export default function DemoIndex({ clientId, onBack }: DemoIndexProps) {
                                 </div>
                             )}
 
-                            {/* Stats bar bottom-left */}
+                            {/* Stats bar bottom-left — driven by reactive treeNodes */}
                             <div
                                 className="absolute bottom-4 left-4 flex items-center gap-3 text-xs rounded-xl px-4 py-2.5"
                                 style={{
@@ -224,18 +222,18 @@ export default function DemoIndex({ clientId, onBack }: DemoIndexProps) {
                                     boxShadow: '0 2px 8px hsl(217 30% 70% / 0.08)',
                                 }}
                             >
-                                {cleanMode ? (
+                                {hasRestructured ? (
                                     <>
                                         <FolioSparkles className="h-5 w-5 text-emerald-500" />
                                         <span className="font-medium text-emerald-600">
-                                            {cleanNodeCount} nœuds · 4 domaines · 0 contradiction
+                                            {totalNodes} nœuds · {domainCount} domaines · 0 contradiction
                                         </span>
                                     </>
                                 ) : (
                                     <>
                                         <FolioDatabase className="h-5 w-5 text-primary" />
                                         <span style={{ color: 'hsl(217 20% 55%)' }}>
-                                            {messyNodeCount} nœuds · doublons détectés · 7 contradictions
+                                            {totalNodes || 46} nœuds · doublons détectés · 7 contradictions
                                         </span>
                                         <span style={{ color: 'hsl(217 20% 82%)' }}>·</span>
                                         <button
@@ -280,7 +278,6 @@ export default function DemoIndex({ clientId, onBack }: DemoIndexProps) {
                             <KnowledgeGraph
                                 clientId={clientId}
                                 onSelectNode={handleSelectNode}
-                                cleanMode={cleanMode}
                             />
                             {selectedNodeId && (
                                 <NodeDetailPanel
@@ -300,7 +297,7 @@ export default function DemoIndex({ clientId, onBack }: DemoIndexProps) {
                     </div>
                 )}
 
-                {/* Phase subtitle — only for phases 2 + 3 (Phase 1 has its own header) */}
+                {/* Phase subtitle — only for phases 2 + 3 */}
                 {phase > 1 && (
                     <div
                         className="absolute top-4 left-1/2 -translate-x-1/2 text-center pointer-events-none z-20"
