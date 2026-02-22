@@ -1,5 +1,6 @@
 import anthropic
-import google.generativeai as genai
+import google.genai as genai
+from google.genai import types as genai_types
 
 
 class AnthropicAdapter:
@@ -80,48 +81,44 @@ class GeminiAdapter:
     """Adapter for Google Gemini API, implementing LLMProvider."""
 
     def __init__(self, api_key: str, model: str = "gemini-2.5-pro"):
-        genai.configure(api_key=api_key)
+        self.client = genai.Client(api_key=api_key)
         self.model_name = model
 
     async def complete(self, prompt: str, system: str = "") -> str:
-        model = genai.GenerativeModel(
-            model_name=self.model_name,
-            system_instruction=system if system else None,
+        config = genai_types.GenerateContentConfig(system_instruction=system) if system else None
+        response = await self.client.aio.models.generate_content(
+            model=self.model_name,
+            contents=prompt,
+            config=config,
         )
-        response = await model.generate_content_async(prompt)
         return response.text
 
     async def complete_messages(self, messages: list[dict], system: str = "") -> str:
-        model = genai.GenerativeModel(
-            model_name=self.model_name,
-            system_instruction=system if system else None,
-        )
-        # Convert messages to Gemini format
-        history = []
-        last_content = ""
+        # Convert messages to Gemini Content objects
+        contents = []
         for msg in messages:
             role = "user" if msg["role"] == "user" else "model"
             content = msg.get("content", "")
             if isinstance(content, list):
-                # Extract text from content blocks
                 text_parts = [c.get("text", "") for c in content if isinstance(c, dict) and c.get("type") == "text"]
                 content = "\n".join(text_parts)
-            if msg == messages[-1]:
-                last_content = content
-            else:
-                history.append({"role": role, "parts": [content]})
+            contents.append(genai_types.Content(role=role, parts=[genai_types.Part(text=content)]))
 
-        chat = model.start_chat(history=history)
-        response = await chat.send_message_async(last_content)
+        config = genai_types.GenerateContentConfig(system_instruction=system) if system else None
+        response = await self.client.aio.models.generate_content(
+            model=self.model_name,
+            contents=contents,
+            config=config,
+        )
         return response.text
 
     async def extract_multimodal(self, file_bytes: bytes, mime_type: str, prompt: str) -> str:
         """Process PDFs, images, and other files using Gemini's multimodal capabilities."""
-        model = genai.GenerativeModel(model_name=self.model_name)
-        response = await model.generate_content_async(
-            [
-                {"mime_type": mime_type, "data": file_bytes},
+        response = await self.client.aio.models.generate_content(
+            model=self.model_name,
+            contents=[
+                genai_types.Part(inline_data=genai_types.Blob(mime_type=mime_type, data=file_bytes)),
                 prompt,
-            ]
+            ],
         )
         return response.text
