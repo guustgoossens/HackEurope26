@@ -68,7 +68,8 @@ Comportement :
 - **Landing** (`src/pages/Landing.tsx`) : design Lovable (folio), thème clair, graph D3 hero, sections produit, CTA.
 - **Démo** : même code que l’app « réelle » (Layout + `ClientDetail`), mais alimentée par le **client démo Convex** (sans auth).
 - **Backend démo** :
-  - `convex/clients.ts` : `getDemo` (query) + `createDemo` (mutation) pour un client `createdBy: "demo"` avec données minimales (sources, explorations, knowledge tree, agent events, questionnaire).
+  - **Données** : `convex/demoData.ts` — client « Hartley & Associates LLP » (phase explore) + seed complet via `createDemoClient` puis `insertDemoMessy` (knowledge tree, contradictions, data_sources, explorations, agent_events). Schéma et relations : `convex/SCHEMA.md`.
+  - `convex/clients.ts` : `getDemo` (query) pour récupérer le client `createdBy: "demo"`. Création du démo faite côté front via `demoData.createDemoClient` + `demoData.insertDemoMessy`.
 - **Design de la démo** : la page démo **est** la page app (Layout sombre + ClientDetail avec graph D3, ExploreVisualization, NodeDetailPanel, Verify questionnaire, etc.). Le « design de la démo » = ce que tu vois sur **`/demo`** (pas un second design à part).
 
 ---
@@ -90,7 +91,8 @@ Alors : **`/`** affiche la landing, et « Get Started » déclenche le flux Work
 - **`src/main.tsx`** : choix entre mode démo (`DemoApp`) et mode auth (`App` + WorkOS).
 - **`src/DemoApp.tsx`** : routing landing vs démo (`/` vs `/demo`), chargement du client démo, rendu `ClientDetail`.
 - **`src/App.tsx`** : app avec auth (Dashboard, ClientDetail, etc.).
-- **`convex/clients.ts`** : `getDemo`, `createDemo` (données démo).
+- **`convex/clients.ts`** : `getDemo` (données démo).
+- **`convex/demoData.ts`** : `createDemoClient`, `insertDemoMessy`, `insertDemoClean`, `clearDemo` — seed démo pour `/demo`. Doc schéma : **`convex/SCHEMA.md`**.
 - **`docs/README.md`** : contexte produit et vision.
 - **`CLAUDE.md`** : commandes, archi, conventions Convex.
 

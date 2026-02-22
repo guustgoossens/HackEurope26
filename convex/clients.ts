@@ -119,6 +119,32 @@ export const updatePhase = mutation({
   },
 });
 
+/** Patch demo client to Hartley + explore (used when reseeding from old minimal demo). */
+export const updateDemoClient = mutation({
+  args: {
+    id: v.id('clients'),
+    name: v.optional(v.string()),
+    industry: v.optional(v.string()),
+    phase: v.optional(v.union(
+      v.literal('onboard'),
+      v.literal('explore'),
+      v.literal('structure'),
+      v.literal('verify'),
+      v.literal('use'),
+    )),
+  },
+  returns: v.null(),
+  handler: async (ctx, args) => {
+    const { id, ...rest } = args;
+    const patch: Record<string, unknown> = {};
+    if (rest.name !== undefined) patch.name = rest.name;
+    if (rest.industry !== undefined) patch.industry = rest.industry;
+    if (rest.phase !== undefined) patch.phase = rest.phase;
+    if (Object.keys(patch).length > 0) await ctx.db.patch(id, patch);
+    return null;
+  },
+});
+
 export const internalUpdatePhase = internalMutation({
   args: {
     id: v.id('clients'),
