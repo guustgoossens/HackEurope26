@@ -2,347 +2,347 @@
 
 This document describes every table in the Convex backend, what it stores, how tables relate to each other, and which platform phase each one supports.
 
+> **Source of truth:** `convex/schema.ts`. This doc is kept in sync manually — if in doubt, read the schema file directly.
+
 ---
 
 ## How the tables connect
 
 ```
-organizations
+clients
   │
-  ├── dataSources          (1 org has many data sources)
-  │     └── dataItems      (1 source has many discovered items)
+  ├── data_sources          (1 client has many connected data sources)
+  │     ├── explorations    (1 source has many exploration runs)
+  │     └── data_items      (1 source has many raw discovered files)
   │
-  ├── knowledgeBaseNodes   (1 org has many KB nodes, nodes form a tree)
-  │     ├── knowledgeBaseLinks   (cross-references between nodes)
-  │     └── nodeDataItems        (maps data items into KB nodes)
+  ├── knowledge_tree        (1 client has many tree nodes, nodes form a hierarchy)
+  │     └── knowledge_entries  (1 node has many extracted knowledge entries)
   │
-  ├── verificationQuestions (1 org has many questions for human review)
+  ├── contradictions        (1 client has many detected conflicts)
+  │     └── questionnaires  (groups contradictions into human review sessions)
+  │           └── questionnaire_responses  (human answers to each question)
   │
-  ├── agentJobs            (1 org has many jobs)
-  │     ├── agentMessages  (1 job has many real-time log messages)
-  │     └── performanceReports  (1 job produces 1 report)
-  │
-  └── (agentJobs link to forumGuides via guideId)
+  ├── pipeline_status       (1 client has 1 current pipeline state)
+  └── agent_events          (1 client has many agent log events)
 
-forumGuides               (shared across ALL orgs — the platform moat)
-  └── performanceReports   (1 guide has many reports from different jobs)
+forum_entries               (shared across ALL clients — platform knowledge moat)
 ```
 
 ---
 
 ## Tables
 
-### organizations
+### clients
 
-The company being onboarded. Every other org-scoped table references back to this.
+The company being onboarded. Every other client-scoped table references back to this.
 
 | Field | Type | Description |
 |-------|------|-------------|
-| name | string | Company name |
-| industry | string | e.g. "accountancy", "legal", "consulting" |
-| description | string? | Optional longer description |
-| phase | `"onboard"` \| `"explore"` \| `"structure"` \| `"verify"` \| `"ready"` | Current onboarding phase |
-| goals | string[]? | What the company wants to achieve with AI |
-| createdBy | string? | Auth subject ID of the user who created this org |
+| name | string | Company name, e.g. "Hartley & Associates LLP" |
+| industry | string | e.g. "Accountancy", "Legal", "Consulting" |
+| phase | `"onboard"` \| `"explore"` \| `"structure"` \| `"verify"` \| `"use"` | Current onboarding phase |
+| createdBy | string | WorkOS user ID of the account manager who created this client |
 
-**Phase values map directly to the platform flow:**
-- **onboard** — company details entered, connecting data sources
-- **explore** — AI agents are crawling and discovering data
-- **structure** — AI is building the hierarchical knowledge base
-- **verify** — human is reviewing and answering verification questions
-- **ready** — knowledge base is verified and usable by AI agents
+**Indexes:** `by_createdBy` — list all clients for a given user
+
+**Phase values map to the five-stage platform flow:**
+- **onboard** — company details entered, data sources being connected
+- **explore** — AI agents are crawling and discovering files
+- **structure** — AI is building the hierarchical knowledge tree
+- **verify** — human is reviewing contradictions and approving the KB
+- **use** — knowledge base is ready; AI agents can query it
 
 ---
 
-### dataSources
+### data_sources
 
-Each external system connected to an organization (Google Drive, Gmail, etc.).
+Each external system connected to a client (Google Drive, Gmail, Sheets).
 
 | Field | Type | Description |
 |-------|------|-------------|
-| orgId | reference | Links to `organizations` |
-| provider | `"google_drive"` \| `"gmail"` \| `"onedrive"` \| `"outlook"` \| `"sharepoint"` \| `"dropbox"` \| `"other"` | Which system this connects to |
-| label | string | User-facing name, e.g. "Main Google Drive" |
-| connectionStatus | `"pending"` \| `"connected"` \| `"error"` \| `"disconnected"` | Current connection state |
-| lastSyncedAt | number? | Timestamp of last successful sync |
-| config | string? | JSON-encoded connection config or token reference |
-| errorMessage | string? | Error details if connection failed |
+| clientId | reference | Links to `clients` |
+| type | `"gmail"` \| `"drive"` \| `"sheets"` | Which system |
+| label | string | User-facing name, e.g. "Hartley Main Drive" |
+| connectionStatus | `"pending"` \| `"connected"` \| `"error"` | Current connection state |
+| composioEntityId | string? | Composio integration entity ID (if using Composio connector) |
+
+**Indexes:** `by_clientId`
 
 ---
 
-### dataItems
+### explorations
 
-Individual files, emails, or documents discovered from a data source. Created during the **explore** phase as agents crawl through connected systems.
+Tracks one agent run per data source. Records how many files were found, processed, and errored.
 
 | Field | Type | Description |
 |-------|------|-------------|
-| orgId | reference | Links to `organizations` |
-| dataSourceId | reference | Links to `dataSources` — which system this came from |
-| name | string | File or document name |
-| fileType | `"pdf"` \| `"spreadsheet"` \| `"document"` \| `"email"` \| `"image"` \| `"presentation"` \| `"other"` | What kind of data this is |
-| path | string? | Original folder path or location in the source system |
+| clientId | reference | Links to `clients` |
+| dataSourceId | reference | Links to `data_sources` — which source was explored |
+| metrics | any | `{ filesFound, filesProcessed, errored }` — progress numbers |
+| status | `"running"` \| `"completed"` \| `"failed"` | Current run state |
+
+**Indexes:** `by_clientId`, `by_clientId_and_dataSourceId`
+
+**Used in:** Exploration graph visualization (`api.visualizationGraph.getExplorationGraph`) — shows which sources have been explored and their status.
+
+---
+
+### data_items
+
+Raw files and emails discovered from a data source during the explore phase. Created by the agent before any knowledge extraction has happened.
+
+| Field | Type | Description |
+|-------|------|-------------|
+| clientId | reference | Links to `clients` |
+| dataSourceId | reference | Links to `data_sources` — which system this came from |
+| name | string | File or document name, e.g. "vat_return_Q2_2024.pdf" |
+| path | string? | Original folder path in the source system |
+| fileType | `"pdf"` \| `"spreadsheet"` \| `"document"` \| `"email"` \| `"image"` \| `"presentation"` \| `"other"` | File type |
+| size | number? | File size in bytes |
 | mimeType | string? | MIME type, e.g. "application/pdf" |
-| sizeBytes | number? | File size |
-| previewSnippet | string? | Short text preview extracted by the AI |
-| externalId | string? | ID in the source system (for syncing) |
-| externalUrl | string? | Direct link to the file in the source system |
-| metadata | string? | JSON-encoded extra metadata |
-| processingStatus | `"discovered"` \| `"processing"` \| `"processed"` \| `"error"` | How far along the AI is with this item |
-| storageId | storage ref? | Convex file storage reference if the file was downloaded |
+| processingStatus | `"discovered"` \| `"processing"` \| `"processed"` \| `"error"` | Agent processing progress |
+| processedAt | number? | Timestamp when processing completed |
+| errorMessage | string? | Error details if processing failed |
+| metadata | any? | JSON blob for any extra metadata |
+
+**Indexes:** `by_clientId`, `by_dataSourceId`, `by_clientId_and_status`
 
 ---
 
-### knowledgeBaseNodes
+### knowledge_tree
 
-The hierarchical folder structure that makes up the AI-navigable knowledge base. Nodes form a tree: each node has an optional parent, a depth level, and a README that explains what's inside.
+The hierarchical knowledge structure — the core output of the **structure** phase. Nodes form a tree via `parentId`. There are three node types:
 
-This is the core output of the **structure** phase.
+| Type | Meaning | Example |
+|------|---------|---------|
+| `domain` | Top-level knowledge area or folder | "Finance", "Clients", "Compliance" |
+| `skill` | A sub-area or sub-folder under a domain | "VAT Filings", "Acme Ltd", "HMRC" |
+| `entry_group` | A file, document group, or leaf node | "vat_return_Q2_2024.pdf", "2024 Invoices" |
 
 | Field | Type | Description |
 |-------|------|-------------|
-| orgId | reference | Links to `organizations` |
-| parentId | reference? | Links to another `knowledgeBaseNodes` — `null` means root level |
-| name | string | Folder/section name |
-| depth | number | 0 = root, 1 = first level, etc. |
-| orderIndex | number | Position among siblings (for display ordering) |
-| readme | string? | AI-generated explanation of what's in this section, why it matters, how to use it |
-| status | `"draft"` \| `"verified"` \| `"archived"` | Draft until a human verifies it |
+| clientId | reference | Links to `clients` |
+| parentId | reference? | Links to another `knowledge_tree` node — `null` means root |
+| name | string | Node name — can be a folder name or a real filename |
+| type | `"domain"` \| `"skill"` \| `"entry_group"` | Node type (see table above) |
+| readme | string? | AI-generated description of what's in this node and why it matters |
+| order | number | Display order among siblings |
 
-**Example tree:**
+**Indexes:** `by_clientId`, `by_clientId_and_parentId`
+
+**Example tree (messy state):**
 ```
-0: Finance (readme: "Overview of all financial data...")
-  1: Invoices (readme: "Client invoices organized by quarter...")
-    2: Q1 2024
-    2: Q2 2024
-  1: VAT Filings (readme: "All VAT returns and supporting docs...")
-0: Clients (readme: "Client records and correspondence...")
-  1: Client A
-  1: Client B
+🏛️ Finance (domain, root)
+  ⚡ VAT (skill)
+    📚 vat_return_Q2_2024_draft.pdf  (entry_group) ← ⚠️ conflicts with amended version
+  ⚡ Invoices (skill)
+🏛️ Finance (Old) (domain, root)    ← duplicate top-level folder!
+  ⚡ VAT Returns (skill)
+    📚 vat_Q2_2024_AMENDED.pdf      (entry_group) ← ⚠️ in the WRONG folder
+🏛️ Misc (domain, root)
+  📚 invoice_acme_march.pdf         (entry_group) ← invoice buried in Misc
+  📚 HMRC_response_draft.docx       (entry_group) ← compliance doc in Misc
 ```
 
+**Graph visualization:** `api.visualizationGraph.getKnowledgeTree` returns nodes + edges:
+- Blue edges (`parent_of`) — from parentId hierarchy
+- Green edges (`relates_to`) — where the same file (`sourceRef`) is referenced from multiple nodes
+
 ---
 
-### knowledgeBaseLinks
+### knowledge_entries
 
-Cross-references between KB nodes. These capture relationships that don't fit into the parent-child tree structure.
+Extracted facts and summaries attached to a `knowledge_tree` node. Each entry represents something the agent learned from one or more source files.
 
 | Field | Type | Description |
 |-------|------|-------------|
-| orgId | reference | Links to `organizations` |
-| sourceNodeId | reference | The node this link comes from |
-| targetNodeId | reference | The node this link points to |
-| relationship | `"depends_on"` \| `"related_to"` \| `"see_also"` \| `"parent_of"` | What kind of relationship |
+| clientId | reference | Links to `clients` |
+| treeNodeId | reference | Links to `knowledge_tree` — which node this entry belongs to |
+| title | string | Short title for the entry, e.g. "Q2 VAT Liability" |
+| content | string | The extracted knowledge, in plain English |
+| sourceRef | string? | Filename or source reference this was extracted from — **used to draw cross-links in the knowledge graph** |
+| confidence | number | 0–1, AI confidence in this entry |
+| verified | boolean | `true` once a human has confirmed it |
 
-**Indexes:**
-- `by_orgId` - Query all links for an organization (used by knowledge graph visualization)
-- `by_sourceNodeId` - Find outgoing links from a node
-- `by_targetNodeId` - Find incoming links to a node
+**Indexes:** `by_clientId`, `by_treeNodeId`
 
-**Example:** The "VAT Filings" node might have a `depends_on` link to "Invoices" because VAT filings reference invoice data.
-
-**Used in:** Knowledge graph visualization (`convex/knowledgeGraph.ts`) to show relationships between nodes in the interactive force-directed graph.
+**Key behaviour:** When two entries on different nodes share the same `sourceRef`, `getKnowledgeTree` draws a green `relates_to` edge between those nodes in the graph. This surfaces files that are cross-referenced across the tree (e.g. a P&L doc referenced from both Finance and HMRC Correspondence).
 
 ---
 
-### nodeDataItems
+### contradictions
 
-Junction table that maps data items into KB nodes. A single data item can appear in multiple nodes (e.g. a document relevant to both "Finance" and "Compliance").
+Conflicts the agent found between source files — the same value appearing differently in two places. These become the human review items.
 
 | Field | Type | Description |
 |-------|------|-------------|
-| nodeId | reference | Links to `knowledgeBaseNodes` |
-| dataItemId | reference | Links to `dataItems` |
-| relevanceScore | number? | 0-1, AI-assigned confidence that this item belongs in this node |
+| clientId | reference | Links to `clients` |
+| description | string | Human-readable description of the conflict |
+| sourceA | string | Filename of the first source |
+| sourceB | string | Filename of the second source |
+| valueA | string | What sourceA says |
+| valueB | string | What sourceB says (contradicts valueA) |
+| status | `"open"` \| `"resolved"` \| `"dismissed"` | Has this been dealt with |
+| resolution | string? | How it was resolved (if status = resolved) |
+
+**Indexes:** `by_clientId`, `by_clientId_and_status`
+
+**Graph visualization:** `api.visualizationGraph.getContradictionsGraph` — each unique source file becomes a node; each contradiction becomes a red `contradicts` edge between two file nodes.
+
+**Example contradictions in the demo:**
+- `vat_return_Q2_2024_draft.pdf` (£84,200) vs `vat_Q2_2024_AMENDED.pdf` (£91,500)
+- `cashflow_forecast_v1.xlsx` (Jan) vs `cashflow_forecast_v3_FINAL.xlsx` (Mar)
+- `payroll_march_2024.xlsx` (in Expenses folder) vs `expenses_march_2024.pdf` (in Payroll folder)
 
 ---
 
-### verificationQuestions
+### questionnaires
 
-Ambiguities and contradictions the AI surfaces during the **verify** phase. Presented to the human as a structured questionnaire.
+Groups contradictions and ambiguities into a structured questionnaire presented to a human during the **verify** phase.
 
 | Field | Type | Description |
 |-------|------|-------------|
-| orgId | reference | Links to `organizations` |
-| relatedNodeId | reference? | Which KB node this question is about |
-| relatedDataItemIds | reference[]? | Which data items are involved |
-| questionText | string | The question itself |
-| questionType | `"disambiguation"` \| `"conflict"` \| `"classification"` \| `"missing_info"` | What kind of problem the AI found |
-| options | array of `{ label, description? }` | Multiple-choice answers |
-| status | `"pending"` \| `"answered"` \| `"skipped"` | Has the human dealt with this yet |
-| answer | string? | The human's chosen answer |
-| aiConfidence | number? | 0-1, how confident the AI was before asking |
+| clientId | reference | Links to `clients` |
+| title | string | Questionnaire title, e.g. "Data Conflicts — Review Required" |
+| questions | array | List of `{ id, text, options[], contradictionId? }` |
+| status | `"draft"` \| `"sent"` \| `"completed"` | Has this been sent to / completed by the human |
 
-**Question type examples:**
-- **disambiguation** — "This column is labeled 'Ref'. Does it mean invoice reference, client code, or internal ID?"
-- **conflict** — "Q3 revenue is EUR 1.2M in one report and EUR 1.4M in another. Which is correct?"
-- **classification** — "We found 15 VAT filing documents. Should they live under Compliance, Finance, or both?"
-- **missing_info** — "No client contact details found for Client B. Can you provide them?"
+**Indexes:** `by_clientId`
 
 ---
 
-### agentJobs
+### questionnaire_responses
 
-Tracks what AI agents are doing. Powers the real-time progress UI so users can watch agents work.
+Human answers to individual questionnaire questions.
 
 | Field | Type | Description |
 |-------|------|-------------|
-| orgId | reference | Links to `organizations` |
-| jobType | `"explore"` \| `"structure"` \| `"verify"` \| `"sync"` | What phase of work this job is doing |
-| status | `"queued"` \| `"running"` \| `"completed"` \| `"failed"` | Current job state |
-| progressPercent | number? | 0-100 progress indicator |
-| startedAt | number? | Timestamp when the job started running |
-| completedAt | number? | Timestamp when the job finished |
-| errorMessage | string? | Error details if the job failed |
-| guideId | reference? | Links to `forumGuides` — which guide the agent followed for this job |
+| questionnaireId | reference | Links to `questionnaires` |
+| questionId | string | ID of the specific question within the questionnaire |
+| selectedOption | string | The answer the human chose |
+| respondedBy | string | WorkOS user ID of the person who answered |
+
+**Indexes:** `by_questionnaireId`, `by_questionnaireId_and_questionId`
 
 ---
 
-### agentMessages
+### pipeline_status
 
-Live feed of agent activity. Each message is a single log entry the UI subscribes to in real-time via Convex reactive queries.
+Tracks the current state of the AI pipeline for a client. One row per client.
 
 | Field | Type | Description |
 |-------|------|-------------|
-| orgId | reference | Links to `organizations` |
-| jobId | reference | Links to `agentJobs` |
-| messageType | `"info"` \| `"warning"` \| `"discovery"` \| `"question"` \| `"error"` | What kind of event this is |
-| content | string | Human-readable description of what happened |
-| relatedNodeId | reference? | Links to a KB node if relevant |
-| relatedDataItemId | reference? | Links to a data item if relevant |
+| clientId | reference | Links to `clients` |
+| currentPhase | `"explore"` \| `"structure"` \| `"verify"` \| `"use"` | Active pipeline phase |
+| phaseProgress | number | 0–100 progress within the current phase |
+| activeAgents | string[] | Names of agents currently running, e.g. `["explorer-agent-1"]` |
+| lastActivity | number | Timestamp of last agent activity |
 
-**Example messages:**
-- `info` — "Scanning Google Drive folder /Finance/2024..."
-- `discovery` — "Found 47 PDF invoices in /Finance/Invoices/"
-- `warning` — "3 files could not be read (password protected)"
-- `error` — "Google Drive API rate limit hit, retrying in 30s"
+**Indexes:** `by_clientId`
 
 ---
 
-### forumGuides
+### agent_events
 
-Action guides written by agents and shared across ALL organizations. This is the platform's data moat — every engagement makes it smarter.
+Real-time log feed of agent activity. Each row is one event. The UI subscribes reactively to see the live feed.
 
-Not scoped to a single org. When an agent figures out a better way to do something, it writes a guide here for all future agents to use.
+| Field | Type | Description |
+|-------|------|-------------|
+| clientId | reference | Links to `clients` |
+| agentName | string | Which agent fired this event, e.g. "explorer-agent-1" |
+| eventType | `"info"` \| `"progress"` \| `"warning"` \| `"error"` \| `"complete"` | Severity/type |
+| message | string | Human-readable description of what happened |
+| metadata | any? | Optional JSON blob with extra structured data |
+
+**Indexes:** `by_clientId`
+
+**Example events:**
+- `info` — "Connected to Google Drive. Scanning 8 top-level folders..."
+- `progress` — "Found 84 files across 21 folders. Beginning classification."
+- `warning` — "vat_Q2_2024_AMENDED.pdf is in Finance (Old) — probably belongs in VAT. Flagged."
+- `error` — "CONFLICT: Q2 VAT liability reported as £84,200 in draft vs £91,500 in amended. Human review needed."
+- `complete` — "Structure complete. 46 nodes → 12. 7 contradictions flagged."
+
+---
+
+### forum_entries
+
+Agent-written knowledge guides shared across ALL clients. This is the platform's data moat — every engagement makes the platform smarter for future clients.
+
+Not scoped to a single client.
 
 | Field | Type | Description |
 |-------|------|-------------|
 | title | string | Guide title, e.g. "Parsing UK VAT returns from PDF" |
-| category | `"connector"` \| `"cleaning"` \| `"structuring"` \| `"format"` \| `"other"` | What area this guide covers |
-| content | string | The guide body in markdown |
-| tags | string[] | Searchable tags, e.g. ["vat", "uk", "pdf", "accountancy"] |
-| sourceContext | string? | What engagement or scenario produced this guide |
-| usefulnessScore | number? | Manual upvote counter (separate from performance metrics) |
+| category | string | Topic area, e.g. "vat", "payroll", "hmrc" |
+| content | string | Guide body in markdown |
+| authorAgent | string | Agent that wrote this guide |
+| tags | string[] | Searchable tags, e.g. `["vat", "uk", "pdf", "accountancy"]` |
+| upvotes | number | Usefulness votes from other agents |
 
-**Aggregated performance metrics** (auto-computed from performance reports):
-
-| Field | Type | Description |
-|-------|------|-------------|
-| totalUses | number? | How many times agents have used this guide |
-| avgDurationMs | number? | Average job duration when following this guide |
-| avgItemsProcessed | number? | Average number of items handled per job |
-| avgErrorRate | number? | Average error rate across all jobs (0-1) |
-| avgQualityScore | number? | Average output quality across all jobs (0-1) |
-| successRate | number? | Percentage of jobs that completed successfully (0-1) |
-| lastUsedAt | number? | Timestamp of the most recent job that used this guide |
-
-These metrics update automatically every time an agent files a performance report. Agents use them to pick the best guide before starting work.
-
----
-
-### performanceReports
-
-Filed by an agent after finishing a job. This is the feedback loop that makes guides compete on results — the best approaches rise to the top.
-
-| Field | Type | Description |
-|-------|------|-------------|
-| guideId | reference | Links to `forumGuides` — which guide was followed |
-| jobId | reference | Links to `agentJobs` — which job produced this report |
-| orgId | reference | Links to `organizations` |
-| jobType | `"explore"` \| `"structure"` \| `"verify"` \| `"sync"` | What kind of work was done |
-| outcome | `"success"` \| `"partial"` \| `"failure"` | How did it go |
-| durationMs | number | How long the job took in milliseconds |
-| itemsProcessed | number | How many data items were handled |
-| itemsErrored | number | How many items hit errors |
-| errorRate | number | Computed: itemsErrored / itemsProcessed (0-1) |
-| qualityScore | number? | 0-1, agent's self-assessment of output quality |
-| notes | string? | Free-text reflection on what worked or didn't |
-| dataSourceProvider | string? | e.g. "google_drive" — enables per-provider comparison |
-| industry | string? | e.g. "accountancy" — enables per-industry comparison |
-
-**The feedback loop:**
-```
-Agent picks best guide  ──>  Runs job  ──>  Files report  ──>  Guide metrics update
-      ^                                                              │
-      └──────────────── Next agent benefits from updated rankings ───┘
-```
+**Indexes:** `by_category`
+**Search index:** `search_content` — full-text search on the `content` field
 
 ---
 
 ## Which tables serve which phase
 
-| Phase | Tables used |
-|-------|-------------|
-| **Onboard** | `organizations`, `dataSources` |
-| **Explore** | `dataItems`, `agentJobs`, `agentMessages`, `forumGuides` |
-| **Structure** | `knowledgeBaseNodes`, `knowledgeBaseLinks`, `nodeDataItems`, `agentJobs`, `agentMessages`, `forumGuides` |
-| **Verify** | `verificationQuestions`, `knowledgeBaseNodes` |
-| **Ready / Use** | All tables (read), `performanceReports` (write) |
-| **Cross-org** | `forumGuides`, `performanceReports` |
+| Phase | Tables read | Tables written |
+|-------|-------------|----------------|
+| **Onboard** | — | `clients`, `data_sources` |
+| **Explore** | `data_sources` | `explorations`, `data_items`, `agent_events`, `pipeline_status` |
+| **Structure** | `data_items`, `explorations` | `knowledge_tree`, `knowledge_entries`, `contradictions`, `agent_events`, `pipeline_status` |
+| **Verify** | `contradictions`, `knowledge_tree` | `questionnaires`, `questionnaire_responses`, `contradictions` (status updates) |
+| **Use** | All tables | — |
+| **Cross-client** | `forum_entries` | `forum_entries` (agents write new guides) |
 
 ---
 
-## Knowledge Graph Visualization
+## Graph Visualizations
 
-The **Structure** phase features an interactive, real-time force-directed graph visualization built with `react-force-graph-2d`.
+Three views are available in `ClientDetail`, each behind a toggle button:
 
-### Backend Queries (`convex/knowledgeGraph.ts`)
+### Knowledge Tree (`api.visualizationGraph.getKnowledgeTree`)
+- **Phase:** Structure
+- **Nodes:** All `knowledge_tree` rows for the client
+  - 🏛️ `domain` — top-level folder/area
+  - ⚡ `skill` — sub-folder/sub-area
+  - 📚 `entry_group` — file or document group
+- **Edges:**
+  - 🔵 Blue `parent_of` — from the `parentId` hierarchy
+  - 🟢 Green `relates_to` — where two nodes share the same `sourceRef` in their `knowledge_entries` (same file referenced from two parts of the tree)
+- **Messy state:** 46 flat/misplaced nodes with cross-links showing files in the wrong folders
+- **Clean state:** 12 well-structured nodes in a 3-level hierarchy
 
-**`getKnowledgeGraph(orgId)`**
-- Returns all `knowledgeBaseNodes` and `knowledgeBaseLinks` for an organization
-- Transforms data into react-force-graph format:
-  - Nodes: `{ id, name, depth, status, readme, parentId, orderIndex }`
-  - Links: `{ source, target, relationship }`
-- Uses indexes: `by_orgId` on both tables for efficient querying
+### Exploration Graph (`api.visualizationGraph.getExplorationGraph`)
+- **Phase:** Explore
+- **Nodes:** All `data_sources` for the client (📧 Gmail, 📁 Drive, 📊 Sheets)
+- **Edges:** Purple `explored` edge for completed explorations
+- **Node colour:** Green = connected, Red = error, Gray = pending
 
-**`getNodeDetails(nodeId)`**
-- Returns detailed information about a specific node
-- Includes:
-  - Node data (name, readme, status, depth)
-  - Associated data items via `nodeDataItems` junction table
-  - Outgoing links via `by_sourceNodeId` index
-  - Incoming links via `by_targetNodeId` index
+### Contradictions Graph (`api.visualizationGraph.getContradictionsGraph`)
+- **Phase:** Verify
+- **Nodes:** Each unique file (`sourceA` / `sourceB`) from open `contradictions`
+- **Edges:** 🔴 Red `contradicts` — one edge per contradiction pair
+- **Demo:** 7 open contradictions → a dense red collision web of conflicting files
 
-### Frontend Components (`src/components/`)
+---
 
-**`KnowledgeGraphView.tsx`**
-- Main graph visualization component
-- Features:
-  - Color-coded nodes by status (verified=green, draft=orange, archived=gray)
-  - Color-coded links by relationship type
-  - Node size based on depth (root nodes are larger)
-  - Hover effects to highlight connected nodes
-  - Click to select nodes
-  - Auto-zoom to fit on load
-  - Real-time updates via Convex reactive queries
+## Demo Data
 
-**`GraphNodeDetail.tsx`**
-- Side panel showing node details
-- Displays: status, depth, README, data items, links
+Use `convex/demoData.ts` to seed Hartley & Associates LLP (fictional accountancy firm):
 
-### Real-time Updates
+```bash
+# Create the client
+npx convex run demoData:createDemoClient
 
-The graph automatically updates when:
-- Agents create new nodes during Structure phase (draft nodes appear)
-- Humans verify nodes during Verify phase (nodes turn green)
-- Links are created or modified
+# Seed messy state (46 nodes, 7 contradictions, files in wrong folders)
+npx convex run demoData:insertDemoMessy '{"clientId":"<id>"}'
 
-New draft nodes are highlighted with a glow effect to draw attention.
+# Switch to clean state (12 nodes, contradictions resolved)
+npx convex run demoData:clearDemo '{"clientId":"<id>"}'
+npx convex run demoData:insertDemoClean '{"clientId":"<id>"}'
 
-### Demo Data
-
-Use `convex/seed.ts` → `seedAccountingFirmKB(orgId)` to populate demo data:
-- Creates 9 nodes (Finance, Clients, Compliance + children)
-- Creates 11 links showing various relationship types
-- Perfect for demonstrating the graph in Phase 3
-
-See `QUICKSTART.md` and `KNOWLEDGE_GRAPH_IMPLEMENTATION.md` for setup instructions.
+# Make demo clients visible to your user account
+npx convex run demoData:reownDemo '{"createdBy":"<your-workos-user-id>"}'
+```
