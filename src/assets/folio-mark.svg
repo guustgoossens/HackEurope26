@@ -1,0 +1,19 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 400 400" width="400" height="400" fill="none">
+
+  <!-- 3 satellite nodes -->
+  <circle cx="318" cy="76"  r="18" fill="#0b172a"/>
+  <circle cx="348" cy="230" r="24" fill="#0b172a"/>
+  <circle cx="100" cy="310" r="15" fill="#0b172a"/>
+
+  <!-- edges -->
+  <path d="M308 92 Q272 122 252 148"  stroke="#0b172a" stroke-width="8"  stroke-linecap="round"/>
+  <path d="M338 222 Q304 214 262 204" stroke="#0b172a" stroke-width="14" stroke-linecap="round"/>
+  <path d="M112 302 Q142 276 158 252" stroke="#0b172a" stroke-width="7"  stroke-linecap="round"/>
+
+  <!-- center node -->
+  <path d="M200 104 C242 102 286 128 294 172 C302 216 284 264 248 286 C212 308 160 306 132 276 C104 246 104 196 122 162 C140 128 158 106 200 104Z" fill="#0b172a"/>
+  <path d="M200 140 C228 137 256 156 264 184 C272 212 260 246 238 260 C216 274 182 272 164 254 C146 236 144 208 154 184 C164 160 172 143 200 140Z" fill="white"/>
+  <path d="M200 172 C214 170 230 178 236 194 C242 210 235 230 220 238 C206 246 188 242 180 228 C172 216 173 198 181 187 C188 177 186 174 200 172Z" fill="#0b172a"/>
+  <circle cx="200" cy="202" r="14" fill="white"/>
+
+</svg>
