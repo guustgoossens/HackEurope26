@@ -274,9 +274,12 @@ SANDBOX_TOOLS = [
     ToolDefinition(
         name="run_command",
         description=(
-            "Execute a shell command in the sandbox workspace. "
-            "Allowed commands: ffmpeg, pdftotext, tesseract, python, uv pip install, file, convert, wc, head, tail, cat, ls, mkdir, cp, mv. "
-            "Use this for file format conversion, text extraction, media processing, etc."
+            "Execute any shell command in the sandbox workspace (full /bin/sh, pipes and redirects work). "
+            "Use for file inspection, text extraction, format conversion, and local data processing. "
+            "Examples: 'ls -la', 'grep -r keyword .', 'pdftotext file.pdf -', "
+            "'python3 script.py', 'ffmpeg -i input.mp4 output.mp3', 'find . -name \"*.csv\"'. "
+            "Only truly destructive commands (rm -rf /, curl | bash, etc.) are blocked. "
+            "Do NOT use this to look for Google/OAuth credentials — use the Google Workspace tools directly."
         ),
         parameters={
             "properties": {

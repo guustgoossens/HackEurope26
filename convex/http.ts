@@ -24,19 +24,6 @@ function errorResponse(message: string, status: number): Response {
   return jsonResponse({ error: message }, status);
 }
 
-/** Strip keys with null values so Convex v.optional() validators accept them.
- *  Also strips empty-string IDs (parentId, treeNodeId) that should be omitted instead. */
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-function stripNulls(obj: Record<string, unknown>): any {
-  return Object.fromEntries(
-    Object.entries(obj).filter(([k, v]) => {
-      if (v === null) return false;
-      if (v === '' && k.toLowerCase().endsWith('id')) return false;
-      return true;
-    }),
-  );
-}
-
 // POST /api/agent/event
 http.route({
   path: '/api/agent/event',
@@ -91,8 +78,7 @@ http.route({
     if (!validateAuth(request, token)) {
       return errorResponse('Unauthorized', 401);
     }
-    const raw = await request.json();
-    const body = stripNulls(raw);
+    const body = await request.json();
     try {
       const id = await ctx.runMutation(internal.knowledge.createNode, body);
       return jsonResponse({ id });
@@ -112,8 +98,7 @@ http.route({
     if (!validateAuth(request, token)) {
       return errorResponse('Unauthorized', 401);
     }
-    const raw = await request.json();
-    const body = stripNulls(raw);
+    const body = await request.json();
     try {
       const id = await ctx.runMutation(internal.knowledge.createEntry, body);
       return jsonResponse({ id });

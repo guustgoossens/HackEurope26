@@ -1,3 +1,4 @@
+import asyncio
 import logging
 from typing import Any
 
@@ -5,13 +6,18 @@ import httpx
 
 logger = logging.getLogger(__name__)
 
+# Transient HTTP status codes worth retrying
+_RETRYABLE_STATUS = {502, 503, 504}
+
 
 class ConvexClient:
     """HTTP client for communicating with Convex backend endpoints."""
 
-    def __init__(self, base_url: str, auth_token: str):
+    def __init__(self, base_url: str, auth_token: str, timeout: int = 30, max_retries: int = 3):
         self._base_url = base_url.rstrip("/")
         self._auth_token = auth_token
+        self._timeout = timeout
+        self._max_retries = max_retries
         self._client: httpx.AsyncClient | None = None
 
     async def __aenter__(self):
@@ -21,7 +27,7 @@ class ConvexClient:
                 "Authorization": f"Bearer {self._auth_token}",
                 "Content-Type": "application/json",
             },
-            timeout=30.0,
+            timeout=float(self._timeout),
         )
         return self
 
@@ -30,14 +36,29 @@ class ConvexClient:
             await self._client.aclose()
             self._client = None
 
-    async def _post(self, path: str, payload: dict) -> dict | None:
-        try:
-            resp = await self._client.post(path, json=payload)
-            resp.raise_for_status()
-            return resp.json()
-        except Exception as e:
-            logger.warning(f"Convex POST {path} failed: {e}")
-            return None
+    async def _post(self, path: str, payload: dict, critical: bool = False) -> dict | None:
+        last_err: Exception | None = None
+        for attempt in range(self._max_retries):
+            try:
+                resp = await self._client.post(path, json=payload)
+                if resp.status_code in _RETRYABLE_STATUS and attempt < self._max_retries - 1:
+                    await asyncio.sleep(2 ** attempt)
+                    continue
+                resp.raise_for_status()
+                return resp.json()
+            except (httpx.ConnectError, httpx.ReadTimeout) as e:
+                last_err = e
+                if attempt < self._max_retries - 1:
+                    logger.warning(f"Convex POST {path} transient error (attempt {attempt + 1}): {e}")
+                    await asyncio.sleep(2 ** attempt)
+                    continue
+            except Exception as e:
+                last_err = e
+                break
+        logger.warning(f"Convex POST {path} failed after {self._max_retries} attempts: {last_err}")
+        if critical:
+            raise RuntimeError(f"Critical Convex POST {path} failed: {last_err}") from last_err
+        return None
 
     async def _get(self, path: str) -> dict | None:
         try:
@@ -67,6 +88,7 @@ class ConvexClient:
                 "message": message,
                 "metadata": metadata or {},
             },
+            critical=True,
         )
 
     # ── Contradictions ─────────────────────────────────────────────────
@@ -122,17 +144,17 @@ class ConvexClient:
         readme: str,
         order: int,
     ) -> dict | None:
-        return await self._post(
-            "/api/agent/knowledge/node",
-            {
-                "clientId": client_id,
-                "parentId": parent_id,
-                "name": name,
-                "type": type,
-                "readme": readme,
-                "order": order,
-            },
-        )
+        payload: dict[str, Any] = {
+            "clientId": client_id,
+            "name": name,
+            "type": type,
+            "order": order,
+        }
+        if parent_id:
+            payload["parentId"] = parent_id
+        if readme:
+            payload["readme"] = readme
+        return await self._post("/api/agent/knowledge/node", payload, critical=True)
 
     async def create_knowledge_entry(
         self,
@@ -144,18 +166,17 @@ class ConvexClient:
         confidence: float,
         verified: bool = False,
     ) -> dict | None:
-        return await self._post(
-            "/api/agent/knowledge/entry",
-            {
-                "clientId": client_id,
-                "treeNodeId": tree_node_id,
-                "title": title,
-                "content": content,
-                "sourceRef": source_ref,
-                "confidence": confidence,
-                "verified": verified,
-            },
-        )
+        payload: dict[str, Any] = {
+            "clientId": client_id,
+            "treeNodeId": tree_node_id,
+            "title": title,
+            "content": content,
+            "confidence": confidence,
+            "verified": verified,
+        }
+        if source_ref:
+            payload["sourceRef"] = source_ref
+        return await self._post("/api/agent/knowledge/entry", payload, critical=True)
 
     # ── Agent forum ────────────────────────────────────────────────────
 

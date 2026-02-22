@@ -89,7 +89,8 @@ export default defineSchema({
     verified: v.boolean(),
   })
     .index('by_clientId', ['clientId'])
-    .index('by_treeNodeId', ['treeNodeId']),
+    .index('by_treeNodeId', ['treeNodeId'])
+    .index('by_clientId_and_treeNodeId', ['clientId', 'treeNodeId']),
 
   forum_entries: defineTable({
     title: v.string(),
@@ -103,6 +104,7 @@ export default defineSchema({
     fileType: v.optional(v.string()),
   })
     .index('by_category', ['category'])
+    .index('by_authorAgent', ['authorAgent'])
     .searchIndex('search_content', {
       searchField: 'content',
       filterFields: ['sourceType', 'phase', 'fileType', 'category'],
@@ -133,5 +135,7 @@ export default defineSchema({
     ),
     message: v.string(),
     metadata: v.optional(v.any()),
-  }).index('by_clientId', ['clientId']),
+  })
+    .index('by_clientId', ['clientId'])
+    .index('by_clientId_and_eventType', ['clientId', 'eventType']),
 });
